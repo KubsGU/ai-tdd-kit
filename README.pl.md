@@ -5,7 +5,7 @@
 Przenośny workflow: opis zadania → doprecyzowanie → kontrakt akceptacji → osobny
 autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależny review.
 Kontroler w Pythonie egzekwuje fazy na podstawie wykonanych testów. Hook i ograniczenia
-narzędzi agentów pilnują właścicieli zmian. Wersja 1.3.1, licencja MIT.
+narzędzi agentów pilnują właścicieli zmian. Wersja 1.4.0, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -17,18 +17,19 @@ claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
 Uruchom Claude w projekcie, w którym chcesz wdrożyć feature. Ustaw agentów na
-pierwszym planie i wybierz model. Konserwatywny domyślny wybór jakościowy to Opus.
+pierwszym planie i wybierz model. Do zwykłych, jasno określonych zadań wybierz
+Sonneta; Opusa świadomie do bardziej złożonej oceny i zmian o dużych konsekwencjach.
 W PowerShell:
 
 ```powershell
 $env:CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
-claude --model opus
+claude --model sonnet
 ```
 
 Na macOS/Linux:
 
 ```sh
-CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model opus
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model sonnet
 ```
 
 Ustawienie jest wymagane także przy wznowieniu; kontrola wstępna wykryje jego brak.
@@ -44,7 +45,7 @@ na PATH; dla Node wybierz wspieraną wersję LTS. Plugin nie wymaga dodatkowych
 bibliotek Pythona. Zależności aplikacji
 i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.3.1.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.4.0.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -62,7 +63,7 @@ miejscu. Uruchom nową sesję Claude Code w swoim projekcie lub użyj
 Możesz też uruchomić plugin bez instalacji:
 
 ```text
-claude --model opus --plugin-dir "/pełna/ścieżka/ai-tdd-kit/plugins/ai-tdd"
+claude --model sonnet --plugin-dir "/pełna/ścieżka/ai-tdd-kit/plugins/ai-tdd"
 ```
 
 Nie kopiuj kluczy API ani konfiguracji konta z tego komputera. Na drugim korzystaj
@@ -71,11 +72,33 @@ zmienną `AI_TDD_PYTHON` na ścieżkę do jego pliku wykonywalnego. Node musi by
 
 ## Modele, tokeny i cache
 
-Każda rola ma `model: inherit`: autor testów, implementer i verifier korzystają
-z modelu sesji. Hook aktywnego zadania odrzuca zmianę modelu w pojedynczym
-wywołaniu agenta. Nie ma automatycznego obniżania jakości testów lub review przez
-przełączanie na tańszy model. Sonnet można wybrać świadomie; nie zakładamy, że
-zawsze daje tę samą jakość co Opus.
+W zarejestrowanym porównaniu małych zadań Sonnet i Opus zaliczyły po 6/6 prób
+z tymi samymi wykryciami wybranych usterek. Sonnet kosztował o 52,55% mniej,
+a średni czas był o 41,05% krótszy. Sonnet z Haiku do implementacji też zaliczył
+6/6, ale oszczędził tylko 2,11%; pozostaje opcją. Cały workflow na Haiku zaliczył
+1/6. Trzy sztuczne zadania powtórzone dwa razy nie dowodzą ogólnej równości
+jakości. Zobacz [wszystkie próby i ograniczenia](validation/MODEL_BENCHMARK.md).
+
+Role dziedziczą model sesji, chyba że przed begin jawnie skonfigurujesz
+`worker_models`. Hook wymaga zgodności z zamrożoną mapą; naprawa konfiguracji nie
+pozwala jej zmienić. Nie ma automatycznego tańszego autora/reviewera ani eskalacji
+w środku zadania. Wybór modelu nie jest gwarancją tej samej jakości.
+
+Do eksperymentu z Haiku przy małej implementacji uruchom sesję na Sonnecie i poproś
+w opisie feature'u o Haiku wyłącznie dla implementera. Koordynator przed begin ustawia:
+
+```json
+"worker_models": {"test-author": "inherit", "implementer": "haiku", "verifier": "inherit"}
+```
+
+Autor testów i verifier mogą otrzymać jawne `opus`; implementer również
+`haiku` lub `sonnet`. Silniejszy reviewer z sesji Sonnet to `verifier: "opus"`.
+Kontrakt, ocena testów i obowiązkowe wykonania pozostają takie same. Niepowodzenie
+stałego profilu zachowaj jako nieukończone zadanie; nie zmieniaj modelu ani kontroli,
+żeby uzyskać zielony wynik. Metodę porównania opisuje
+[protokół benchmarku](validation/MODEL_BENCHMARK_PROTOCOL.md),
+[wyniki i ograniczenia](validation/MODEL_BENCHMARK.md) oraz
+[badania modeli i cache](validation/MODEL_COST_RESEARCH.md).
 
 Po pobraniu ZIP lub sklonowaniu repo możesz skorzystać z launchera. Z katalogu
 paczki wskaż projekt docelowy:
@@ -84,7 +107,7 @@ paczki wskaż projekt docelowy:
 python -B scripts/launch_claude.py --project "C:/projekty/moj-projekt"
 ```
 
-Launcher wybiera Opusa, wymusza agentów na pierwszym planie i usuwa zmienne
+Launcher wybiera Sonneta, wymusza agentów na pierwszym planie i usuwa zmienne
 wyłączające cache lub wymuszające inny model workerów tylko dla tej sesji.
 Nie zmienia ustawień użytkownika, uprawnień, logowania ani MCP. `--dry-run` pokazuje
 wybór bez uruchamiania Claude. Dodatkowe opcje Claude podaj po `--`.

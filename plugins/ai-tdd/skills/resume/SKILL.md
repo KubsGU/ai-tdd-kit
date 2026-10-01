@@ -13,6 +13,9 @@ AMEND. Inspect current GREEN and quality evidence: rerun stale tests with green,
 and let verify refresh quality or use quality explicitly in GREEN/VERIFY. No
 configured tools means not_configured with explicit review limitations.
 Read the frozen repository profile and current per-test review assessments.
+Use the frozen worker_models map for every dispatch; inherit omits the model,
+while explicit overrides require their exact alias. Do not change routing to
+evade a failed attempt or trust a requested model name as backend proof.
 Do not run init/begin
 over an existing task, hand-edit state, use old conversational claims as evidence,
 or claim DONE without fresh required execution. If the task is DONE, report its

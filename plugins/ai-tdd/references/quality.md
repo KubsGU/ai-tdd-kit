@@ -42,6 +42,15 @@ import/compile error is not a behavioral kill; an actually executed exception ca
 disprove a contract when that input must succeed. Label proposed probes separately
 from probes the coordinator actually executed.
 
+A useful test must also accept different correct implementations permitted by
+the contract. When using reference replacements to measure fault detection,
+first oracle-check structurally different correct controls and run the generated
+suite against them with the same inventory. Failure, skip, collection error or
+changed inventory makes that measurement unavailable; it is not a detected fault.
+This catches tests bound to source spelling or incidental implementation choices.
+Use this extra check when suitable controls exist; it is not a mandatory extra
+model call or a demand for alternative implementations on every feature.
+
 In normal TEST create a new file. Files present at begin/next are frozen; new files
 may be revised within the same TEST cycle. Existing-file correction requires AMEND,
 independent contract evidence, coordinator-managed spec.version +1, and preserved

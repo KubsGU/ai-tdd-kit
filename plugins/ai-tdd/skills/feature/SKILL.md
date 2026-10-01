@@ -32,6 +32,16 @@ must preserve the full required suite. Before begin, record factual conventions
 and existing read-only quality commands in `.ai-tdd/repo-profile.json`, configure
 applicable quality_checks and budgets, and write `.ai-tdd/spec.json`.
 
+Read [model and cache guidance](../../references/efficiency.md) when choosing
+cost-sensitive routing. Respect the explicitly selected session model. Before
+begin, configure worker_models only when a deliberate profile is requested;
+default every role to inherit. Haiku implementation is an opt-in for a complete,
+bounded contract, never an automatic cheaper author/verifier. Use the normalized
+policy in status: omit Agent model for inherit; pass the exact alias for each
+override, including the verifier PLAN before begin. Keep review and execution
+gates unchanged. The policy is frozen; do not switch models through config repair
+or environment overrides after a failure, and do not claim lossless routing.
+
 Delegate PLAN to `ai-tdd:verifier` with the spec and existing interface constraints;
 save scenarios in `.ai-tdd/review-plan.json`. Run begin for actual passing test and
 configured quality baselines. Greenfield setup permits only interface stubs and

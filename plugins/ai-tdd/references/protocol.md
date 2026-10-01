@@ -10,9 +10,11 @@ against a hostile process racing filesystem operations.
 
 For model selection, compact handoffs and native cache checks, follow
 [the efficiency policy](efficiency.md). All workers explicitly inherit the chosen
-session model; omit per-invocation model overrides. There is no automatic cheaper
-test-author/reviewer. The bundled launch helper defaults to Opus; a direct Claude
-launch uses the model you choose. Normal provider/organization rules still apply.
+session model unless an explicit worker_models policy was selected before begin.
+For inherit, omit the per-invocation model; for an override, pass its exact alias.
+There is no automatic cheaper test-author/reviewer or mid-task model escalation.
+The bundled launch helper defaults to Sonnet; a direct Claude launch uses the
+model you choose. Normal provider/organization rules still apply.
 For repository profiling, test oracles and tool scope, follow
 [the quality guidance](quality.md).
 
@@ -62,6 +64,10 @@ with an independently configured sandbox. No hidden-test isolation is claimed.
 - `config.json`: schema=1; disjoint narrow source_roots and test_roots; protected_paths
   for fixtures/helpers/config/dependency manifests/custom runner inputs. Paths
   are relative to the project root, with no parent traversal or symlinks.
+  Optional worker_models maps test-author/implementer/verifier to explicit models;
+  missing roles inherit. Author/verifier allow inherit or opus; implementer also
+  allows haiku/sonnet. The normalized policy freezes at begin, including across
+  reconfigure/rebase; it is requested routing, not backend identity proof.
 - `spec.json`: positive integer version, nonempty goal and acceptance list with
   unique nonempty id and description. Add examples, scope, invariants,
   nonfunctional requirements and assumptions where relevant. open_questions

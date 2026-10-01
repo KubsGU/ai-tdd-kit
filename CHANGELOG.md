@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.4.0 — 2026-10-01
+
+- Default ordinary launches to Sonnet, retaining explicit session-model choice.
+  Smaller models are evaluated rather than declared equivalent from cache hits.
+- Add explicit worker_models configuration frozen at begin and checked on every
+  dispatch and transition, including setup repair. Missing roles inherit; the
+  implementer can opt into Haiku/Sonnet/Opus, author/verifier overrides allow Opus.
+- Require the exact configured invocation model, retaining named roles, fresh
+  synchronous contexts and all test/quality/review gates. No automatic fallback
+  or mid-task model switching is supplied.
+- Add a pre-registered paired native model comparison on three synthetic tasks,
+  independent contract checks and twelve selected behavior faults. Failed trials,
+  unavailable costs, actual model mismatches and weak generated tests stay visible.
+- Require generated suites to pass oracle-validated alternative correct
+  implementations before fault-detection credit; retain synthetic local capsules
+  for regrading. Preserve the stopped pilot and its uncontrolled-score limitation.
+- Clarify model-specific cache prefixes, Haiku cache minimums, native effort
+  differences and API-equivalent estimates versus subscription invoices.
+- Publish all eighteen corrected comparison attempts and six mixed-role attempts.
+  Sonnet meets the narrow registered gates at 52.55% lower cost than Opus;
+  mixed Haiku implementation saves only 2.11% and remains optional. Whole-Haiku
+  completes 1/6. Preserve unavailable costs and the stopped pilot.
+- Finish/archive active tasks with their original plugin before updating.
+
 ## 1.3.1 — 2026-10-01
 
 - Reject linked managed state directories before initialization, lock creation

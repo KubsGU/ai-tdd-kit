@@ -1,0 +1,4065 @@
+{
+  "schema": 1,
+  "status": "complete",
+  "date": "2026-10-01",
+  "cost_scope": "Claude Code reported whole-tree API-equivalent cost; not an invoice",
+  "pilot": {
+    "completed_trials": 9,
+    "planned_trials": 18,
+    "status": "protocol_changed",
+    "reported_cost_usd": 10.1697152,
+    "fault_credit": "uncontrolled; not used for quality conclusions"
+  },
+  "whole_v2": {
+    "status": "complete",
+    "protocol": {
+      "schema": 2,
+      "revision": 2,
+      "profile": "whole",
+      "seed": 20261001,
+      "repetitions": 2,
+      "models": [
+        "claude-opus-5-5",
+        "claude-sonnet-5-5",
+        "claude-haiku-4-5"
+      ],
+      "worker_models": {
+        "test-author": "inherit",
+        "implementer": "inherit",
+        "verifier": "inherit"
+      },
+      "trial_count": 18,
+      "max_budget_usd_per_trial": 3,
+      "max_turns_per_trial": 60,
+      "model_timeout_seconds": 600,
+      "evaluator_timeout_seconds": 780,
+      "effort_policy": "model-native default, no --effort; not equal reasoning budgets",
+      "case_fingerprint": "68082f5d30fa1be9ded5d7328846bf8c1f7d0ba4f1aebbca770dd24208f2b212",
+      "trial_plan": [
+        {
+          "trial_id": "whole-v2-fee-r1-claude-sonnet-5-5",
+          "block": 1,
+          "case": "fee",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-fee-r1-claude-haiku-4-5",
+          "block": 1,
+          "case": "fee",
+          "repetition": 1,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-fee-r1-claude-opus-5-5",
+          "block": 1,
+          "case": "fee",
+          "repetition": 1,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r2-claude-sonnet-5-5",
+          "block": 2,
+          "case": "ledger",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r2-claude-haiku-4-5",
+          "block": 2,
+          "case": "ledger",
+          "repetition": 2,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r2-claude-opus-5-5",
+          "block": 2,
+          "case": "ledger",
+          "repetition": 2,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r2-claude-sonnet-5-5",
+          "block": 3,
+          "case": "authorization",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r2-claude-opus-5-5",
+          "block": 3,
+          "case": "authorization",
+          "repetition": 2,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r2-claude-haiku-4-5",
+          "block": 3,
+          "case": "authorization",
+          "repetition": 2,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r1-claude-sonnet-5-5",
+          "block": 4,
+          "case": "ledger",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r1-claude-haiku-4-5",
+          "block": 4,
+          "case": "ledger",
+          "repetition": 1,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-ledger-r1-claude-opus-5-5",
+          "block": 4,
+          "case": "ledger",
+          "repetition": 1,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r1-claude-opus-5-5",
+          "block": 5,
+          "case": "authorization",
+          "repetition": 1,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r1-claude-haiku-4-5",
+          "block": 5,
+          "case": "authorization",
+          "repetition": 1,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-authorization-r1-claude-sonnet-5-5",
+          "block": 5,
+          "case": "authorization",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-fee-r2-claude-haiku-4-5",
+          "block": 6,
+          "case": "fee",
+          "repetition": 2,
+          "model": "claude-haiku-4-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-fee-r2-claude-sonnet-5-5",
+          "block": 6,
+          "case": "fee",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "whole"
+        },
+        {
+          "trial_id": "whole-v2-fee-r2-claude-opus-5-5",
+          "block": 6,
+          "case": "fee",
+          "repetition": 2,
+          "model": "claude-opus-5-5",
+          "profile": "whole"
+        }
+      ],
+      "files": {
+        "scripts/evaluate_claude.py": "1bb07b72ebb022d941e199193a3958dea11bac1cf6eb87b0a5966b3eb83df920",
+        "scripts/model_benchmark_cases.py": "df30213ed70b30936c9d95f1617b5fe4e7fd90ebf43d6f83fe2bb04343805068",
+        "scripts/benchmark_models.py": "8398e91c8ce482aa87fc4eaea862bf5d908c9c030dc46417ec470a5b1bcbcb27",
+        "scripts/launch_claude.py": "fc3a54d62bb402e0f8a1726633d62e4b597dcbd7e8bcbddc37170dc95872080a",
+        "validation/MODEL_BENCHMARK_PROTOCOL.md": "25db40d97dae11ad8b9fde5dc26dc95c39a667a05e54d78cfcd3128caa569c79",
+        "plugin/.claude-plugin/plugin.json": "6aff3c5d13d6789d33d236d69e3f9a79e68e37b331e77ae4d4b3df8af8b7d458",
+        "plugin/agents/implementer.md": "16989d81375ae9075524966bc165d20b16eccec8180eae45c28c267c9356732d",
+        "plugin/agents/test-author.md": "2c9fdd2c6d567c484bce2f15f36be939d9b5bc2f34b097b8917730b8298be446",
+        "plugin/agents/verifier.md": "75e386e0b66d0a4e12f346e64b4e588010014e9244653ff97655aaf80dbcc3db",
+        "plugin/hooks/hooks.json": "39c780ceeef3ab520ccd94fd247b70a026818b64d15fec802292c64f81b29076",
+        "plugin/README.md": "f1e7f806d56e08df88124476ba65176a2adbe7f7cb39015cbc9f34cb9b7dca88",
+        "plugin/references/efficiency.md": "6e443a0ffba3b5c8640add033fa9ed1f7f0c7489a71787077bb6eeb275bf23e8",
+        "plugin/references/protocol.md": "1912c28dbec79659436baf6409ad240f823817142b6ba2b37102528de055d614",
+        "plugin/references/quality.md": "2467fe11f8284891cb746646fa4d7a3b591f5b915cd5bcbd09d60ded3c6ed89e",
+        "plugin/scripts/hook-launcher.cjs": "efb76b5ec857bc701b2373431ab9b28513ececdb41bf16684ddabf651169dc78",
+        "plugin/scripts/pytest_runner.py": "4f0a5b726c29cdc624d45fedeb8a6c9eedc6fea3b41ccc8baa36b81746f69c73",
+        "plugin/scripts/quality.py": "6f4c86ca1ed5d10664f324832ce66a7fb75f25e2ff7b0de5fffdf793aad52190",
+        "plugin/scripts/tdd.py": "ac64ae056829b6c3b62dc4b2e6b94e39e4fd45372c506004ce1cbaf1d927675d",
+        "plugin/scripts/unittest_runner.py": "8b6fc92fa8bbc13bb638bf4b63655c7c50a4b12dcbe3d51fe51466e1d7d03280",
+        "plugin/skills/feature/SKILL.md": "2fc5709944903812e63ec627b92226317c90d9ef59f17a3626dc47f485f528f9",
+        "plugin/skills/resume/SKILL.md": "f6ec5d1677b727a72e2eb40f3d9e9add87df034f327e0b62e031dea82bca4126",
+        "plugin/templates/config.pytest.json": "a38f9beb7485065bb86c108b90dc4d42ebe806eb7554211b165168806e2d0c5d",
+        "plugin/templates/config.unittest.json": "37c9872227a706c311dceedd4017c0c83539462cb6b2eba1634ee7878ad18b6e",
+        "plugin/templates/review.example.json": "9032f4184946414d6f1d6d44a7c6406c2ca790502bb6b3c93c256ae506e711d6",
+        "plugin/templates/spec.example.json": "1c2c70cb6486a228e612ffb8abc50e808f8a6ddfee24d383d378dd43407d870d"
+      },
+      "protocol_fingerprint": "3e1141d41916c418f57378a5bdf7265e09b07b752e11c8ca5f68739548a9f20f"
+    },
+    "jobs": 3,
+    "elapsed_seconds": 3458.8,
+    "aggregate": {
+      "claude-opus-5-5": {
+        "trials": 6,
+        "passed": 6,
+        "oracle_passed": 6,
+        "reported_cost_usd_total": 12.1433844,
+        "reported_cost_usd_observed": 12.1433844,
+        "cost_reports_missing": 0,
+        "model_elapsed_seconds_total": 2402.5,
+        "selected_mutants_detected": 24,
+        "selected_mutants_survived": 0,
+        "selected_mutants_unusable": 0,
+        "test_strength_trials_unavailable": 0
+      },
+      "claude-sonnet-5-5": {
+        "trials": 6,
+        "passed": 6,
+        "oracle_passed": 6,
+        "reported_cost_usd_total": 5.7623923,
+        "reported_cost_usd_observed": 5.7623923,
+        "cost_reports_missing": 0,
+        "model_elapsed_seconds_total": 1416.3,
+        "selected_mutants_detected": 24,
+        "selected_mutants_survived": 0,
+        "selected_mutants_unusable": 0,
+        "test_strength_trials_unavailable": 0
+      },
+      "claude-haiku-4-5": {
+        "trials": 6,
+        "passed": 1,
+        "oracle_passed": 5,
+        "reported_cost_usd_total": null,
+        "reported_cost_usd_observed": 2.5897323,
+        "cost_reports_missing": 2,
+        "model_elapsed_seconds_total": 3143.2,
+        "selected_mutants_detected": 20,
+        "selected_mutants_survived": 0,
+        "selected_mutants_unusable": 0,
+        "test_strength_trials_unavailable": 1
+      }
+    },
+    "trials": [
+      {
+        "trial_id": "whole-v2-fee-r1-claude-sonnet-5-5",
+        "case": "fee",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 37
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 94,
+              "output_tokens": 21096,
+              "cache_read_input_tokens": 1411045,
+              "cache_creation_input_tokens": 89610
+            }
+          },
+          "totals": {
+            "input_tokens": 94,
+            "output_tokens": 21096,
+            "cache_read_input_tokens": 1411045,
+            "cache_creation_input_tokens": 89610
+          },
+          "cache_read_fraction": 0.940227,
+          "estimated_cost_usd": 0.8037924999999999
+        },
+        "model_elapsed_seconds": 208.8,
+        "evaluation_elapsed_seconds": 212.0,
+        "runner_runs": 6,
+        "required_test_count": 5,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 5,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 5
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 5
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "eb7bbd5279c710dff8725951d385760136383673d23255097da4495ffc0302ce"
+      },
+      {
+        "trial_id": "whole-v2-fee-r1-claude-haiku-4-5",
+        "case": "fee",
+        "repetition": 1,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": false,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 52
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:verifier": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-haiku-4-5": {
+              "input_tokens": 505,
+              "output_tokens": 50627,
+              "cache_read_input_tokens": 2719107,
+              "cache_creation_input_tokens": 121479
+            }
+          },
+          "totals": {
+            "input_tokens": 505,
+            "output_tokens": 50627,
+            "cache_read_input_tokens": 2719107,
+            "cache_creation_input_tokens": 121479
+          },
+          "cache_read_fraction": 0.957064,
+          "estimated_cost_usd": 0.7389736999999998
+        },
+        "model_elapsed_seconds": 590.2,
+        "evaluation_elapsed_seconds": 593.6,
+        "runner_runs": 8,
+        "required_test_count": 17,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 17,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 17
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 17
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            }
+          ]
+        },
+        "capsule_sha256": "70a8539f563c56b49b9e4712abff180634d2800bda0f9a3234bbf8a36e5a97f0"
+      },
+      {
+        "trial_id": "whole-v2-fee-r1-claude-opus-5-5",
+        "case": "fee",
+        "repetition": 1,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 30
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 78,
+              "output_tokens": 25113,
+              "cache_read_input_tokens": 1122070,
+              "cache_creation_input_tokens": 106495
+            }
+          },
+          "totals": {
+            "input_tokens": 78,
+            "output_tokens": 25113,
+            "cache_read_input_tokens": 1122070,
+            "cache_creation_input_tokens": 106495
+          },
+          "cache_read_fraction": 0.91326,
+          "estimated_cost_usd": 1.4458360000000001
+        },
+        "model_elapsed_seconds": 278.9,
+        "evaluation_elapsed_seconds": 281.8,
+        "runner_runs": 5,
+        "required_test_count": 8,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 8,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 8
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 8
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            }
+          ]
+        },
+        "capsule_sha256": "4e563a86d6620a18c6229951434c155cb38af86fcc026b58a8cc7ec4522fffef"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r2-claude-sonnet-5-5",
+        "case": "ledger",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 31
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 60,
+              "output_tokens": 24760,
+              "cache_read_input_tokens": 942787,
+              "cache_creation_input_tokens": 106152
+            }
+          },
+          "totals": {
+            "input_tokens": 60,
+            "output_tokens": 24760,
+            "cache_read_input_tokens": 942787,
+            "cache_creation_input_tokens": 106152
+          },
+          "cache_read_fraction": 0.898749,
+          "estimated_cost_usd": 0.8171873999999999
+        },
+        "model_elapsed_seconds": 203.0,
+        "evaluation_elapsed_seconds": 205.0,
+        "runner_runs": 4,
+        "required_test_count": 12,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 12,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 5
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 10
+            }
+          ]
+        },
+        "capsule_sha256": "9c297a1cf4b2ab0f4b3bc68deb4cbf690fd7527f783f57f626e837e130c3185c"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r2-claude-haiku-4-5",
+        "case": "ledger",
+        "repetition": 2,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": false,
+        "phase": "IMPLEMENT",
+        "timed_out": true,
+        "exit_code": 1,
+        "final_result": {
+          "subtype": null,
+          "is_error": null,
+          "num_turns": null
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": false,
+          "scope": "final modelUsage totals including subagents",
+          "models": {},
+          "totals": null,
+          "cache_read_fraction": null,
+          "estimated_cost_usd": null
+        },
+        "model_elapsed_seconds": 601.0,
+        "evaluation_elapsed_seconds": 603.4,
+        "runner_runs": 12,
+        "required_test_count": 31,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": false,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 1,
+          "test_assessment_count": 0,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 31
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 31
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 6
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 10
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 21
+            }
+          ]
+        },
+        "capsule_sha256": "ec1c6e6099efe808096bb0f0ea69a100349a6009b60953fb14e24a371f4a3008"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r2-claude-opus-5-5",
+        "case": "ledger",
+        "repetition": 2,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 42
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 112,
+              "output_tokens": 40943,
+              "cache_read_input_tokens": 2060140,
+              "cache_creation_input_tokens": 162835
+            }
+          },
+          "totals": {
+            "input_tokens": 112,
+            "output_tokens": 40943,
+            "cache_read_input_tokens": 2060140,
+            "cache_creation_input_tokens": 162835
+          },
+          "cache_read_fraction": 0.926702,
+          "estimated_cost_usd": 2.3494560000000004
+        },
+        "model_elapsed_seconds": 428.5,
+        "evaluation_elapsed_seconds": 430.1,
+        "runner_runs": 7,
+        "required_test_count": 12,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 12,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 7
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 6
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 7
+            }
+          ]
+        },
+        "capsule_sha256": "6120a19a2351d485da8c463776c85bdda97cd2d530ca475db15500b84d861362"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r2-claude-sonnet-5-5",
+        "case": "authorization",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 42
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 106,
+              "output_tokens": 38984,
+              "cache_read_input_tokens": 2083681,
+              "cache_creation_input_tokens": 143133
+            }
+          },
+          "totals": {
+            "input_tokens": 106,
+            "output_tokens": 38984,
+            "cache_read_input_tokens": 2083681,
+            "cache_creation_input_tokens": 143133
+          },
+          "cache_read_fraction": 0.935678,
+          "estimated_cost_usd": 1.3190757000000002
+        },
+        "model_elapsed_seconds": 314.1,
+        "evaluation_elapsed_seconds": 315.8,
+        "runner_runs": 8,
+        "required_test_count": 23,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 4,
+          "test_assessment_count": 23,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 23
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 23
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 8
+            }
+          ]
+        },
+        "capsule_sha256": "c4264a91ebf150baadbff86dbf963c5a103987c40d5bbb2b6759fbc3bb66976d"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r2-claude-opus-5-5",
+        "case": "authorization",
+        "repetition": 2,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 35
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 96,
+              "output_tokens": 35495,
+              "cache_read_input_tokens": 1445193,
+              "cache_creation_input_tokens": 123930
+            }
+          },
+          "totals": {
+            "input_tokens": 96,
+            "output_tokens": 35495,
+            "cache_read_input_tokens": 1445193,
+            "cache_creation_input_tokens": 123930
+          },
+          "cache_read_fraction": 0.920963,
+          "estimated_cost_usd": 1.8439155999999997
+        },
+        "model_elapsed_seconds": 372.2,
+        "evaluation_elapsed_seconds": 373.8,
+        "runner_runs": 7,
+        "required_test_count": 7,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 7,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 7
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 7
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "d61b56eca698cfb538b6509ff73d4ac64dd9526834b04897e75eca4443bf6f5d"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r2-claude-haiku-4-5",
+        "case": "authorization",
+        "repetition": 2,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": false,
+        "phase": "TEST",
+        "timed_out": false,
+        "exit_code": 1,
+        "final_result": {
+          "subtype": "error_max_turns",
+          "is_error": true,
+          "num_turns": 61
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-haiku-4-5": {
+              "input_tokens": 773,
+              "output_tokens": 49929,
+              "cache_read_input_tokens": 3741099,
+              "cache_creation_input_tokens": 136505
+            }
+          },
+          "totals": {
+            "input_tokens": 773,
+            "output_tokens": 49929,
+            "cache_read_input_tokens": 3741099,
+            "cache_creation_input_tokens": 136505
+          },
+          "cache_read_fraction": 0.964604,
+          "estimated_cost_usd": 0.8528423999999998
+        },
+        "model_elapsed_seconds": 596.8,
+        "evaluation_elapsed_seconds": 599.0,
+        "runner_runs": 13,
+        "required_test_count": 15,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": false,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 1,
+          "test_assessment_count": 0,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 15
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 15
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            }
+          ]
+        },
+        "capsule_sha256": "e1a721e7cbf2ccdc4c0805d2a549b84e149fcd62ffa2c9ff77eed3b6fc66c79e"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r1-claude-sonnet-5-5",
+        "case": "ledger",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 36
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 98,
+              "output_tokens": 37775,
+              "cache_read_input_tokens": 1759150,
+              "cache_creation_input_tokens": 137328
+            }
+          },
+          "totals": {
+            "input_tokens": 98,
+            "output_tokens": 37775,
+            "cache_read_input_tokens": 1759150,
+            "cache_creation_input_tokens": 137328
+          },
+          "cache_read_fraction": 0.92754,
+          "estimated_cost_usd": 1.2131315
+        },
+        "model_elapsed_seconds": 293.1,
+        "evaluation_elapsed_seconds": 295.0,
+        "runner_runs": 6,
+        "required_test_count": 16,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 4,
+          "test_assessment_count": 16,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 16
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 16
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 8
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 9
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 15
+            }
+          ]
+        },
+        "capsule_sha256": "019da43a096ff3aae645b08e1b7160e19abefb129625174274c4c0a01b48d2d3"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r1-claude-haiku-4-5",
+        "case": "ledger",
+        "repetition": 1,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": false,
+        "phase": "TEST",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 39
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-haiku-4-5": {
+              "input_tokens": 339,
+              "output_tokens": 20988,
+              "cache_read_input_tokens": 1639512,
+              "cache_creation_input_tokens": 61135
+            }
+          },
+          "totals": {
+            "input_tokens": 339,
+            "output_tokens": 20988,
+            "cache_read_input_tokens": 1639512,
+            "cache_creation_input_tokens": 61135
+          },
+          "cache_read_fraction": 0.96386,
+          "estimated_cost_usd": 0.3838711999999999
+        },
+        "model_elapsed_seconds": 262.1,
+        "evaluation_elapsed_seconds": 262.8,
+        "runner_runs": 1,
+        "required_test_count": 1,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": false,
+        "oracle": {
+          "outcome": "assertion_failure",
+          "passed": false,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 1,
+          "test_assessment_count": 0,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": false,
+          "counts": {
+            "detected": null,
+            "survived": null,
+            "unusable": null
+          },
+          "correct_controls": [],
+          "faults": []
+        },
+        "capsule_sha256": "45b5472f95baf8a9be271595ddba5341f8ad310eed77ea94be6db059fb4f2961"
+      },
+      {
+        "trial_id": "whole-v2-ledger-r1-claude-opus-5-5",
+        "case": "ledger",
+        "repetition": 1,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 42
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 138,
+              "output_tokens": 51170,
+              "cache_read_input_tokens": 2263772,
+              "cache_creation_input_tokens": 171313
+            }
+          },
+          "totals": {
+            "input_tokens": 138,
+            "output_tokens": 51170,
+            "cache_read_input_tokens": 2263772,
+            "cache_creation_input_tokens": 171313
+          },
+          "cache_read_fraction": 0.929595,
+          "estimated_cost_usd": 2.6159344
+        },
+        "model_elapsed_seconds": 563.2,
+        "evaluation_elapsed_seconds": 565.5,
+        "runner_runs": 9,
+        "required_test_count": 13,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 13,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 13
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 13
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 5
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 8
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 7
+            }
+          ]
+        },
+        "capsule_sha256": "eade0d550befc900c6ac679dd8da0bbe20b0de492f17d513c14c00b3fa2ba413"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r1-claude-opus-5-5",
+        "case": "authorization",
+        "repetition": 1,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 37
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 106,
+              "output_tokens": 48046,
+              "cache_read_input_tokens": 1823475,
+              "cache_creation_input_tokens": 154330
+            }
+          },
+          "totals": {
+            "input_tokens": 106,
+            "output_tokens": 48046,
+            "cache_read_input_tokens": 1823475,
+            "cache_creation_input_tokens": 154330
+          },
+          "cache_read_fraction": 0.92192,
+          "estimated_cost_usd": 2.3817290000000004
+        },
+        "model_elapsed_seconds": 464.9,
+        "evaluation_elapsed_seconds": 466.9,
+        "runner_runs": 7,
+        "required_test_count": 20,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 20,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 20
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 20
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 6
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 8
+            }
+          ]
+        },
+        "capsule_sha256": "a8a03617e307f972f7923668acfcf0d03470f4d6516953975e1c1012aaddcf2e"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r1-claude-haiku-4-5",
+        "case": "authorization",
+        "repetition": 1,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": false,
+        "phase": "TEST",
+        "timed_out": true,
+        "exit_code": 1,
+        "final_result": {
+          "subtype": null,
+          "is_error": null,
+          "num_turns": null
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": false,
+          "scope": "final modelUsage totals including subagents",
+          "models": {},
+          "totals": null,
+          "cache_read_fraction": null,
+          "estimated_cost_usd": null
+        },
+        "model_elapsed_seconds": 601.2,
+        "evaluation_elapsed_seconds": 603.2,
+        "runner_runs": 10,
+        "required_test_count": 33,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": false,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 1,
+          "test_assessment_count": 0,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 33
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 33
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 6
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 9
+            }
+          ]
+        },
+        "capsule_sha256": "7cee587a176c1b2f3e4cfc5c5359e269e95c0491bab6c44ee3d06000d5155c37"
+      },
+      {
+        "trial_id": "whole-v2-authorization-r1-claude-sonnet-5-5",
+        "case": "authorization",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 33
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 84,
+              "output_tokens": 24160,
+              "cache_read_input_tokens": 1363672,
+              "cache_creation_input_tokens": 88392
+            }
+          },
+          "totals": {
+            "input_tokens": 84,
+            "output_tokens": 24160,
+            "cache_read_input_tokens": 1363672,
+            "cache_creation_input_tokens": 88392
+          },
+          "cache_read_fraction": 0.939072,
+          "estimated_cost_usd": 0.8268384000000001
+        },
+        "model_elapsed_seconds": 201.6,
+        "evaluation_elapsed_seconds": 203.3,
+        "runner_runs": 6,
+        "required_test_count": 9,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 9,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 9
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 9
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            }
+          ]
+        },
+        "capsule_sha256": "9e3e82ad726b5ff8526c7d9ce09e8d82a386ed367f3bb4465681aabda0a1d8df"
+      },
+      {
+        "trial_id": "whole-v2-fee-r2-claude-haiku-4-5",
+        "case": "fee",
+        "repetition": 2,
+        "requested_model": "claude-haiku-4-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 41
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "observed_role_models": {
+          "ai-tdd:test-author": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ],
+          "ai-tdd:verifier": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-haiku-4-5": {
+              "input_tokens": 465,
+              "output_tokens": 45013,
+              "cache_read_input_tokens": 1963250,
+              "cache_creation_input_tokens": 116969
+            }
+          },
+          "totals": {
+            "input_tokens": 465,
+            "output_tokens": 45013,
+            "cache_read_input_tokens": 1963250,
+            "cache_creation_input_tokens": 116969
+          },
+          "cache_read_fraction": 0.94356,
+          "estimated_cost_usd": 0.6140450000000002
+        },
+        "model_elapsed_seconds": 491.9,
+        "evaluation_elapsed_seconds": 494.0,
+        "runner_runs": 6,
+        "required_test_count": 11,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 11,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 11
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 11
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "6163691f7917ba98d53850a410939d10309965fa5ae43a9ca5df6c0b4263b592"
+      },
+      {
+        "trial_id": "whole-v2-fee-r2-claude-sonnet-5-5",
+        "case": "fee",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 36
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-sonnet-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 80,
+              "output_tokens": 21973,
+              "cache_read_input_tokens": 1277359,
+              "cache_creation_input_tokens": 89133
+            }
+          },
+          "totals": {
+            "input_tokens": 80,
+            "output_tokens": 21973,
+            "cache_read_input_tokens": 1277359,
+            "cache_creation_input_tokens": 89133
+          },
+          "cache_read_fraction": 0.934718,
+          "estimated_cost_usd": 0.7823668000000001
+        },
+        "model_elapsed_seconds": 195.7,
+        "evaluation_elapsed_seconds": 197.6,
+        "runner_runs": 5,
+        "required_test_count": 7,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 7,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 7
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 7
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "5b40cad799519ab7e81277a84a79602597fc6c3584d7ba45426dee5a94daa0cf"
+      },
+      {
+        "trial_id": "whole-v2-fee-r2-claude-opus-5-5",
+        "case": "fee",
+        "repetition": 2,
+        "requested_model": "claude-opus-5-5",
+        "profile": "whole",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 30
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "inherit",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_response_models": [
+          "claude-opus-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-opus-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-opus-5-5"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-opus-5-5": {
+              "input_tokens": 78,
+              "output_tokens": 28505,
+              "cache_read_input_tokens": 1179522,
+              "cache_creation_input_tokens": 102570
+            }
+          },
+          "totals": {
+            "input_tokens": 78,
+            "output_tokens": 28505,
+            "cache_read_input_tokens": 1179522,
+            "cache_creation_input_tokens": 102570
+          },
+          "cache_read_fraction": 0.919942,
+          "estimated_cost_usd": 1.5065134000000002
+        },
+        "model_elapsed_seconds": 294.8,
+        "evaluation_elapsed_seconds": 296.4,
+        "runner_runs": 5,
+        "required_test_count": 6,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 6,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 6
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 6
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            }
+          ]
+        },
+        "capsule_sha256": "9f2a8b7e5ee872c675a6ed333646b679c6a38609ca4ebcf11ec89821adc3052b"
+      }
+    ]
+  },
+  "mixed_haiku": {
+    "status": "complete",
+    "protocol": {
+      "schema": 2,
+      "revision": 2,
+      "profile": "mixed-haiku",
+      "seed": 20261001,
+      "repetitions": 2,
+      "models": [
+        "claude-sonnet-5-5"
+      ],
+      "worker_models": {
+        "test-author": "inherit",
+        "implementer": "haiku",
+        "verifier": "inherit"
+      },
+      "trial_count": 6,
+      "max_budget_usd_per_trial": 3,
+      "max_turns_per_trial": 60,
+      "model_timeout_seconds": 600,
+      "evaluator_timeout_seconds": 780,
+      "effort_policy": "model-native default, no --effort; not equal reasoning budgets",
+      "case_fingerprint": "68082f5d30fa1be9ded5d7328846bf8c1f7d0ba4f1aebbca770dd24208f2b212",
+      "trial_plan": [
+        {
+          "trial_id": "mixed-haiku-v2-fee-r1-claude-sonnet-5-5",
+          "block": 1,
+          "case": "fee",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        },
+        {
+          "trial_id": "mixed-haiku-v2-ledger-r2-claude-sonnet-5-5",
+          "block": 2,
+          "case": "ledger",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        },
+        {
+          "trial_id": "mixed-haiku-v2-authorization-r2-claude-sonnet-5-5",
+          "block": 3,
+          "case": "authorization",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        },
+        {
+          "trial_id": "mixed-haiku-v2-ledger-r1-claude-sonnet-5-5",
+          "block": 4,
+          "case": "ledger",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        },
+        {
+          "trial_id": "mixed-haiku-v2-authorization-r1-claude-sonnet-5-5",
+          "block": 5,
+          "case": "authorization",
+          "repetition": 1,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        },
+        {
+          "trial_id": "mixed-haiku-v2-fee-r2-claude-sonnet-5-5",
+          "block": 6,
+          "case": "fee",
+          "repetition": 2,
+          "model": "claude-sonnet-5-5",
+          "profile": "mixed-haiku"
+        }
+      ],
+      "files": {
+        "scripts/evaluate_claude.py": "1bb07b72ebb022d941e199193a3958dea11bac1cf6eb87b0a5966b3eb83df920",
+        "scripts/model_benchmark_cases.py": "df30213ed70b30936c9d95f1617b5fe4e7fd90ebf43d6f83fe2bb04343805068",
+        "scripts/benchmark_models.py": "8398e91c8ce482aa87fc4eaea862bf5d908c9c030dc46417ec470a5b1bcbcb27",
+        "scripts/launch_claude.py": "fc3a54d62bb402e0f8a1726633d62e4b597dcbd7e8bcbddc37170dc95872080a",
+        "validation/MODEL_BENCHMARK_PROTOCOL.md": "25db40d97dae11ad8b9fde5dc26dc95c39a667a05e54d78cfcd3128caa569c79",
+        "plugin/.claude-plugin/plugin.json": "6aff3c5d13d6789d33d236d69e3f9a79e68e37b331e77ae4d4b3df8af8b7d458",
+        "plugin/agents/implementer.md": "16989d81375ae9075524966bc165d20b16eccec8180eae45c28c267c9356732d",
+        "plugin/agents/test-author.md": "2c9fdd2c6d567c484bce2f15f36be939d9b5bc2f34b097b8917730b8298be446",
+        "plugin/agents/verifier.md": "75e386e0b66d0a4e12f346e64b4e588010014e9244653ff97655aaf80dbcc3db",
+        "plugin/hooks/hooks.json": "39c780ceeef3ab520ccd94fd247b70a026818b64d15fec802292c64f81b29076",
+        "plugin/README.md": "f1e7f806d56e08df88124476ba65176a2adbe7f7cb39015cbc9f34cb9b7dca88",
+        "plugin/references/efficiency.md": "6e443a0ffba3b5c8640add033fa9ed1f7f0c7489a71787077bb6eeb275bf23e8",
+        "plugin/references/protocol.md": "1912c28dbec79659436baf6409ad240f823817142b6ba2b37102528de055d614",
+        "plugin/references/quality.md": "2467fe11f8284891cb746646fa4d7a3b591f5b915cd5bcbd09d60ded3c6ed89e",
+        "plugin/scripts/hook-launcher.cjs": "efb76b5ec857bc701b2373431ab9b28513ececdb41bf16684ddabf651169dc78",
+        "plugin/scripts/pytest_runner.py": "4f0a5b726c29cdc624d45fedeb8a6c9eedc6fea3b41ccc8baa36b81746f69c73",
+        "plugin/scripts/quality.py": "6f4c86ca1ed5d10664f324832ce66a7fb75f25e2ff7b0de5fffdf793aad52190",
+        "plugin/scripts/tdd.py": "ac64ae056829b6c3b62dc4b2e6b94e39e4fd45372c506004ce1cbaf1d927675d",
+        "plugin/scripts/unittest_runner.py": "8b6fc92fa8bbc13bb638bf4b63655c7c50a4b12dcbe3d51fe51466e1d7d03280",
+        "plugin/skills/feature/SKILL.md": "2fc5709944903812e63ec627b92226317c90d9ef59f17a3626dc47f485f528f9",
+        "plugin/skills/resume/SKILL.md": "f6ec5d1677b727a72e2eb40f3d9e9add87df034f327e0b62e031dea82bca4126",
+        "plugin/templates/config.pytest.json": "a38f9beb7485065bb86c108b90dc4d42ebe806eb7554211b165168806e2d0c5d",
+        "plugin/templates/config.unittest.json": "37c9872227a706c311dceedd4017c0c83539462cb6b2eba1634ee7878ad18b6e",
+        "plugin/templates/review.example.json": "9032f4184946414d6f1d6d44a7c6406c2ca790502bb6b3c93c256ae506e711d6",
+        "plugin/templates/spec.example.json": "1c2c70cb6486a228e612ffb8abc50e808f8a6ddfee24d383d378dd43407d870d"
+      },
+      "protocol_fingerprint": "7c22697d88bbee6ad653dad11eb49bf1af33ec9aee85ef30698d2150e6a42700"
+    },
+    "jobs": 3,
+    "elapsed_seconds": 1460.0,
+    "aggregate": {
+      "claude-sonnet-5-5": {
+        "trials": 6,
+        "passed": 6,
+        "oracle_passed": 6,
+        "reported_cost_usd_total": 5.64096105,
+        "reported_cost_usd_observed": 5.64096105,
+        "cost_reports_missing": 0,
+        "model_elapsed_seconds_total": 1447.8,
+        "selected_mutants_detected": 24,
+        "selected_mutants_survived": 0,
+        "selected_mutants_unusable": 0,
+        "test_strength_trials_unavailable": 0
+      }
+    },
+    "trials": [
+      {
+        "trial_id": "mixed-haiku-v2-fee-r1-claude-sonnet-5-5",
+        "case": "fee",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 36
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 82,
+              "output_tokens": 21462,
+              "cache_read_input_tokens": 1328002,
+              "cache_creation_input_tokens": 85520
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 26,
+              "output_tokens": 1511,
+              "cache_read_input_tokens": 10285,
+              "cache_creation_input_tokens": 6318
+            }
+          },
+          "totals": {
+            "input_tokens": 108,
+            "output_tokens": 22973,
+            "cache_read_input_tokens": 1338287,
+            "cache_creation_input_tokens": 91838
+          },
+          "cache_read_fraction": 0.935713,
+          "estimated_cost_usd": 0.7956708999999998
+        },
+        "model_elapsed_seconds": 198.6,
+        "evaluation_elapsed_seconds": 200.5,
+        "runner_runs": 6,
+        "required_test_count": 9,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 9,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 9
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 9
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "3a95c1ac41d4a358c951238af128f1f15e7fa24bd3db6c026f50338e99b94e58"
+      },
+      {
+        "trial_id": "mixed-haiku-v2-ledger-r2-claude-sonnet-5-5",
+        "case": "ledger",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 44
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 82,
+              "output_tokens": 32204,
+              "cache_read_input_tokens": 1828666,
+              "cache_creation_input_tokens": 109393
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 42,
+              "output_tokens": 6821,
+              "cache_read_input_tokens": 32537,
+              "cache_creation_input_tokens": 17363
+            }
+          },
+          "totals": {
+            "input_tokens": 124,
+            "output_tokens": 39025,
+            "cache_read_input_tokens": 1861203,
+            "cache_creation_input_tokens": 126756
+          },
+          "cache_read_fraction": 0.93618,
+          "estimated_cost_usd": 1.1525466500000001
+        },
+        "model_elapsed_seconds": 302.7,
+        "evaluation_elapsed_seconds": 304.8,
+        "runner_runs": 5,
+        "required_test_count": 15,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 14,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 15
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 15
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 5
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 7
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 10
+            }
+          ]
+        },
+        "capsule_sha256": "6b9a7000d65ba3dec0049f346e7a391cbb0c4bc02e9fe09d8e8ff9a474273ff0"
+      },
+      {
+        "trial_id": "mixed-haiku-v2-authorization-r2-claude-sonnet-5-5",
+        "case": "authorization",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 34
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 68,
+              "output_tokens": 24610,
+              "cache_read_input_tokens": 1267588,
+              "cache_creation_input_tokens": 83839
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 34,
+              "output_tokens": 2559,
+              "cache_read_input_tokens": 21153,
+              "cache_creation_input_tokens": 9615
+            }
+          },
+          "totals": {
+            "input_tokens": 102,
+            "output_tokens": 27169,
+            "cache_read_input_tokens": 1288741,
+            "cache_creation_input_tokens": 93454
+          },
+          "cache_read_fraction": 0.932318,
+          "estimated_cost_usd": 0.8380771499999999
+        },
+        "model_elapsed_seconds": 216.6,
+        "evaluation_elapsed_seconds": 218.6,
+        "runner_runs": 5,
+        "required_test_count": 11,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 11,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 11
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 11
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 2
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 5
+            }
+          ]
+        },
+        "capsule_sha256": "32551ec754f72304cc072d1672f58d65873357ed9adec421b0878e95d6459c3e"
+      },
+      {
+        "trial_id": "mixed-haiku-v2-ledger-r1-claude-sonnet-5-5",
+        "case": "ledger",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 34
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 66,
+              "output_tokens": 26216,
+              "cache_read_input_tokens": 1359725,
+              "cache_creation_input_tokens": 91184
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 50,
+              "output_tokens": 3060,
+              "cache_read_input_tokens": 46381,
+              "cache_creation_input_tokens": 13589
+            }
+          },
+          "totals": {
+            "input_tokens": 116,
+            "output_tokens": 29276,
+            "cache_read_input_tokens": 1406106,
+            "cache_creation_input_tokens": 104773
+          },
+          "cache_read_fraction": 0.930583,
+          "estimated_cost_usd": 0.9137548499999999
+        },
+        "model_elapsed_seconds": 227.7,
+        "evaluation_elapsed_seconds": 229.6,
+        "runner_runs": 6,
+        "required_test_count": 12,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 9,
+          "executed_count": 9
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 12,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 9
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 12
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "exact_capacity_rejected",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 4
+            },
+            {
+              "id": "duplicate_overwrites",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "cancel_keeps_reservation",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 5
+            },
+            {
+              "id": "shared_instance_storage",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 10
+            }
+          ]
+        },
+        "capsule_sha256": "1023978cb690108986886beb5861964ac9e2b56ec8eda65125c78848170e0d04"
+      },
+      {
+        "trial_id": "mixed-haiku-v2-authorization-r1-claude-sonnet-5-5",
+        "case": "authorization",
+        "repetition": 1,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 35
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 78,
+              "output_tokens": 28081,
+              "cache_read_input_tokens": 1482603,
+              "cache_creation_input_tokens": 93507
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 50,
+              "output_tokens": 3910,
+              "cache_read_input_tokens": 36091,
+              "cache_creation_input_tokens": 13044
+            }
+          },
+          "totals": {
+            "input_tokens": 128,
+            "output_tokens": 31991,
+            "cache_read_input_tokens": 1518694,
+            "cache_creation_input_tokens": 106551
+          },
+          "cache_read_fraction": 0.934366,
+          "estimated_cost_usd": 0.9616047000000002
+        },
+        "model_elapsed_seconds": 253.6,
+        "evaluation_elapsed_seconds": 255.6,
+        "runner_runs": 6,
+        "required_test_count": 19,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 32,
+          "executed_count": 32
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 3,
+          "test_assessment_count": 19,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 19
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 32
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 19
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "archived_owner_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "anonymous_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "sharing_ignored",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            },
+            {
+              "id": "outsider_allowed",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 9
+            }
+          ]
+        },
+        "capsule_sha256": "85734a0e567b213d3abbdcba39c9485370abe4986c9fa44b63054c6b1610f34c"
+      },
+      {
+        "trial_id": "mixed-haiku-v2-fee-r2-claude-sonnet-5-5",
+        "case": "fee",
+        "repetition": 2,
+        "requested_model": "claude-sonnet-5-5",
+        "profile": "mixed-haiku",
+        "passed": true,
+        "phase": "DONE",
+        "timed_out": false,
+        "exit_code": 0,
+        "final_result": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 46
+        },
+        "requested_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_worker_models": {
+          "test-author": "inherit",
+          "implementer": "haiku",
+          "verifier": "inherit"
+        },
+        "observed_coordinator_models": [
+          "claude-sonnet-5-5"
+        ],
+        "observed_response_models": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-5-5"
+        ],
+        "observed_role_models": {
+          "ai-tdd:verifier": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:test-author": [
+            "claude-sonnet-5-5"
+          ],
+          "ai-tdd:implementer": [
+            "claude-haiku-4-5-20251001"
+          ]
+        },
+        "usage": {
+          "available": true,
+          "scope": "final modelUsage totals including subagents",
+          "models": {
+            "claude-sonnet-5-5": {
+              "input_tokens": 96,
+              "output_tokens": 25224,
+              "cache_read_input_tokens": 1884323,
+              "cache_creation_input_tokens": 89716
+            },
+            "claude-haiku-4-5-20251001": {
+              "input_tokens": 26,
+              "output_tokens": 1825,
+              "cache_read_input_tokens": 10827,
+              "cache_creation_input_tokens": 6948
+            }
+          },
+          "totals": {
+            "input_tokens": 122,
+            "output_tokens": 27049,
+            "cache_read_input_tokens": 1895150,
+            "cache_creation_input_tokens": 96664
+          },
+          "cache_read_fraction": 0.951411,
+          "estimated_cost_usd": 0.9793068000000001
+        },
+        "model_elapsed_seconds": 248.6,
+        "evaluation_elapsed_seconds": 250.7,
+        "runner_runs": 7,
+        "required_test_count": 5,
+        "initial_test_file_preserved": true,
+        "final_evidence_current": true,
+        "oracle": {
+          "outcome": "passed",
+          "passed": true,
+          "cases": 6,
+          "executed_count": 6
+        },
+        "quality": {
+          "status": "passed",
+          "runs": 4,
+          "test_assessment_count": 5,
+          "repository_profile_present": true,
+          "checks": [
+            {
+              "kind": "lint",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "format",
+              "exit_code": 0,
+              "error_present": false
+            },
+            {
+              "kind": "typecheck",
+              "exit_code": 0,
+              "error_present": false
+            }
+          ]
+        },
+        "strength": {
+          "available": true,
+          "counts": {
+            "detected": 4,
+            "survived": 0,
+            "unusable": 0
+          },
+          "correct_controls": [
+            {
+              "id": "fault_reference",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 5
+              }
+            },
+            {
+              "id": "structural_alternative",
+              "oracle": {
+                "outcome": "passed",
+                "executed_count": 6
+              },
+              "generated_tests": {
+                "outcome": "passed",
+                "executed_count": 5
+              }
+            }
+          ],
+          "faults": [
+            {
+              "id": "always_paid",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_late",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "threshold_early",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 3
+            },
+            {
+              "id": "free_only_at_threshold",
+              "outcome": "assertion_failure",
+              "assertion_witness_count": 1
+            }
+          ]
+        },
+        "capsule_sha256": "16a4d0bd88be76753ca7e0fd27646c70023b5da757be68312c53843bdeccd685"
+      }
+    ]
+  },
+  "experiment_outlay_observed_usd": 36.30618525,
+  "experiment_cost_reports_complete": false,
+  "separate_feature_resume_integration": {
+    "excluded_from_comparison_and_selection": true,
+    "case": "fee",
+    "passed": true,
+    "phase": "DONE",
+    "requested_model": "claude-sonnet-5-5",
+    "requested_worker_models": {
+      "test-author": "inherit",
+      "implementer": "haiku",
+      "verifier": "inherit"
+    },
+    "observed_coordinator_models": [
+      "claude-sonnet-5-5"
+    ],
+    "observed_role_models": {
+      "ai-tdd:verifier": [
+        "claude-sonnet-5-5"
+      ],
+      "ai-tdd:test-author": [
+        "claude-sonnet-5-5"
+      ],
+      "ai-tdd:implementer": [
+        "claude-haiku-4-5-20251001"
+      ]
+    },
+    "model_policy_passed": true,
+    "turns": 33,
+    "native_seconds": 171.6,
+    "feature_reported_api_cost_usd": 0.6703950500000001,
+    "feature_cache_read_fraction": 0.93559,
+    "required_test_count": 6,
+    "test_assessment_count": 6,
+    "initial_test_file_preserved": true,
+    "final_evidence_current": true,
+    "quality_checks": [
+      {
+        "kind": "lint",
+        "exit_code": 0
+      },
+      {
+        "kind": "format",
+        "exit_code": 0
+      },
+      {
+        "kind": "typecheck",
+        "exit_code": 0
+      }
+    ],
+    "oracle_passed": true,
+    "valid_correct_controls": 2,
+    "selected_faults_detected": 4,
+    "resume_state_preserved": true,
+    "resume_reported_api_cost_usd": 0.09645900000000002,
+    "resume_cache_read_fraction": 0.913816
+  },
+  "observed_outlay_including_separate_integration_lower_bound_usd": 37.0730393
+}

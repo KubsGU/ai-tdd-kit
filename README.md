@@ -13,7 +13,7 @@ hooks and role tool lists check who may change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.3.1**.
+Version **1.4.0**.
 
 ## Install
 
@@ -29,17 +29,18 @@ claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
 Start Claude in your feature project with foreground agents enabled and an
-explicit model. The conservative quality default is Opus. In PowerShell:
+explicit model. Start ordinary, bounded work with Sonnet; choose Opus deliberately
+for complex or consequential reasoning. In PowerShell:
 
 ```powershell
 $env:CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
-claude --model opus
+claude --model sonnet
 ```
 
 On macOS/Linux:
 
 ```sh
-CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model opus
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model sonnet
 ```
 
 This setting is required for sequential agents. The preflight check explains it
@@ -67,14 +68,36 @@ before a task can begin. Claude Code's normal permissions still apply.
 
 ## Models, tokens and caching
 
-All three roles explicitly inherit the session model. Active-task dispatch rejects
-per-call model overrides. There is no automatic cheap test-author or reviewer.
-Keep the chosen model and effort stable; Claude's configured effort applies unless
-you explicitly change it. Sonnet remains an explicit user's choice, with a possible
-quality tradeoff rather than a promised equivalent substitution.
+In the registered small-task comparison, Sonnet and Opus each completed 6/6
+trials with the same selected fault detections. Sonnet cost 52.55% less and took
+41.05% less mean native time. A Sonnet workflow with Haiku implementation also
+passed 6/6, but saved only 2.11%; it remains opt-in. Whole-workflow Haiku passed
+1/6. These three synthetic tasks repeated twice do not establish general quality
+equivalence. See [all attempts and limitations](validation/MODEL_BENCHMARK.md).
+
+All three roles inherit the session unless an explicit `worker_models` policy is
+configured before begin. Dispatch must match that frozen map; setup repair cannot
+change it. There is no automatic cheaper author/reviewer or mid-task escalation.
+Choosing a model is a cost/quality decision, not a promise of equal capability.
+
+For a bounded Haiku implementation experiment, launch Sonnet and request Haiku
+for the implementer in your feature description. Before begin the coordinator sets:
+
+```json
+"worker_models": {"test-author": "inherit", "implementer": "haiku", "verifier": "inherit"}
+```
+
+Author/verifier overrides allow `opus` only; implementer overrides also allow
+`haiku`/`sonnet`. An Opus verifier with a Sonnet session uses `verifier: "opus"`.
+The same test oracles, review and final checks apply. If the fixed profile fails,
+preserve the incomplete task rather than silently switching models or relaxing
+checks. Profile experiments and limits are recorded in the
+[paired benchmark protocol](validation/MODEL_BENCHMARK_PROTOCOL.md),
+[observed results and limitations](validation/MODEL_BENCHMARK.md) and
+[model/caching research](validation/MODEL_COST_RESEARCH.md).
 
 If you download or clone this repository, its optional helper selects the project,
-defaults to Opus, enables foreground workers and removes cache-disable/forced
+defaults to Sonnet, enables foreground workers and removes cache-disable/forced
 worker-model environment variables **only in the child process**:
 
 ```text

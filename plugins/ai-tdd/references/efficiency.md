@@ -1,8 +1,9 @@
 # Models, context and caching
 
-The quality-preserving default keeps the selected session model for every TDD
-role. This release reduces unnecessary evidence repetition; it does not trade
-test quality, review depth or regression scope for a cheaper model.
+The ordinary launch defaults to Sonnet. Every role inherits the explicitly
+selected session model unless a deliberate worker policy was configured before
+begin. Lower price is not evidence of equal quality: keep the same contract,
+test assessment, independent verification and execution gates for every profile.
 
 ## Session launch and model choice
 
@@ -13,12 +14,12 @@ you want to implement:
 python -B scripts/launch_claude.py --project /path/to/your-project
 ```
 
-The launcher requests `opus`, enables foreground workers and removes cache-disable
+The launcher requests `sonnet`, enables foreground workers and removes cache-disable
 and forced worker-model variables from its child environment. It does not edit
 user/project settings or override normal permissions, authentication or providers.
-For difficult reasoning this is a conservative default, not a claim that Opus
-beats every model on every task. All three role definitions explicitly use
-`model: inherit`; active-task Agent calls cannot override that model.
+Use an explicit Opus session for complex or consequential reasoning. All three
+role definitions retain `model: inherit`; the controller permits only the model
+specified by the task's frozen `worker_models` policy, never arbitrary overrides.
 
 An explicitly chosen model/effort remains possible:
 
@@ -38,8 +39,45 @@ reduction and no blanket max setting. Sonnet is an explicit user's cost/quality
 choice, not an automatically equivalent substitute. Pin a full provider-supported
 model ID for reproducible comparisons. Provider aliases, organization rules and
 native fallback can affect the actual model; inspect runtime usage instead of
-treating the requested alias as proof. No Haiku test-author/reviewer profile is
-supplied. Deterministic bookkeeping stays in Python.
+treating the requested alias as proof. Deterministic bookkeeping stays in Python.
+
+## Deliberate role routing
+
+Configure `worker_models` in `.ai-tdd/config.json` before begin. Omitted roles
+inherit the session; `{}` is the same all-inherit default. Supported overrides
+for the author and verifier are `opus` only; the implementer may explicitly use
+`haiku`, `sonnet` or `opus`. These names select models, not capability proofs.
+The session itself remains the user's choice; a Haiku session makes inherited
+roles Haiku and is an experimental whole-workflow choice, not our default.
+
+For a bounded implementation experiment with a Sonnet session:
+
+```json
+"worker_models": {
+  "test-author": "inherit",
+  "implementer": "haiku",
+  "verifier": "inherit"
+}
+```
+
+For an Opus verifier with a Sonnet session, set `verifier` to `opus` and retain
+the other roles as `inherit`. The coordinator must pass the exact configured
+override in each named Agent invocation, including PLAN before begin; omit the
+invocation model for `inherit`. The active hook rejects omitted or wrong explicit
+models and freezes this map independently of setup-repair permissions. Compact
+status includes the normalized map. Legacy missing snapshots permit only inherit.
+
+Choose smaller implementation models only deliberately for complete, bounded
+contracts. Do not weaken the test oracle, review or tool scope to make a cheap
+attempt pass. There is no automatic escalation in this release: a failed small
+model still needs a diagnosis and bounded repair under the same frozen policy.
+If a different model is needed, preserve the incomplete evidence; do not change
+config, use forced environment overrides or silently retry a different profile.
+The current fixed policy trades flexibility for auditable model choices.
+
+Use [the paired benchmark protocol](../../../validation/MODEL_BENCHMARK_PROTOCOL.md)
+and its observed results to assess profiles. Small synthetic samples do not prove
+lossless routing for arbitrary repositories or security-critical changes.
 
 ## Small, faithful handoffs
 
@@ -85,8 +123,15 @@ sessions with cache-disable flags or a forced worker-model override. Stable role
 definitions, scoped tools and a continuing coordinator session avoid avoidable
 prefix churn. The launcher leaves TTL selection to Claude's provider/billing
 defaults; forcing an hour for every short-lived worker can cost more in writes.
-Model changes start a different cache; effort-change behavior depends on model
-and provider. Select settings deliberately and avoid unnecessary switching.
+Each model has a separate cache, and each fresh subagent starts its own prefix.
+Changing the main model reads the existing history cold; stable per-role choices
+avoid repeated switching. Haiku 4.5 needs a 4,096-token cacheable prefix, versus
+512 for the current 5.5 models. Do not pad prompts to manufacture cache hits.
+Effort-change behavior depends on model and provider. Haiku 4.5 does not support
+the effort parameter; retaining model-native defaults is not identical thinking.
+Opus 5.5 and Sonnet 5.5 have the same cache-read unit price, so a smaller model
+does not imply a proportional discount on a cache-heavy task. Include failed
+attempts, output tokens and all role costs in comparisons.
 
 The plugin does not inject API `cache_control`, intercept authenticated traffic,
 cache model answers, or reuse previous runner results. Cached prompt processing
@@ -114,3 +159,5 @@ Primary documentation checked 2026-10-01:
 - [Claude Code cache behavior and TTL](https://code.claude.com/docs/en/prompt-caching)
 - [Whole-tree usage accounting](https://code.claude.com/docs/en/agent-sdk/cost-tracking)
 - [Costs and subscription usage](https://code.claude.com/docs/en/costs)
+- [Cost/intelligence optimization and evidence limits](https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence)
+- [Haiku 4.5 model constraints](https://platform.claude.com/docs/en/models/haiku-4-5/overview)

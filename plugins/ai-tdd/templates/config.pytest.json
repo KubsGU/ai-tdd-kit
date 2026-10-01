@@ -8,6 +8,7 @@
   "max_runner_runs": 100,
   "max_quality_runs": 20,
   "quality_checks": [],
+  "worker_models": {"test-author": "inherit", "implementer": "inherit", "verifier": "inherit"},
   "runner": {
     "format": "json",
     "argv": ["{python}", "-B", "{plugin}/scripts/pytest_runner.py", "--report", "{report}", "--", "tests", "-q"]

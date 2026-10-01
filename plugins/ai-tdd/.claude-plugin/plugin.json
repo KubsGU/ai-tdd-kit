@@ -1,11 +1,20 @@
 {
   "name": "ai-tdd",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "displayName": "AI TDD Kit",
   "description": "AI TDD with versioned acceptance criteria, separate test and implementation agents, deterministic phase gates, and independent verification.",
-  "author": {"name": "KubsGU", "url": "https://github.com/KubsGU"},
+  "author": {
+    "name": "KubsGU",
+    "url": "https://github.com/KubsGU"
+  },
   "homepage": "https://github.com/KubsGU/ai-tdd-kit",
   "repository": "https://github.com/KubsGU/ai-tdd-kit",
   "license": "MIT",
-  "keywords": ["tdd", "atdd", "testing", "agents", "verification"]
+  "keywords": [
+    "tdd",
+    "atdd",
+    "testing",
+    "agents",
+    "verification"
+  ]
 }
