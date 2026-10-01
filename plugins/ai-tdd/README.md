@@ -20,6 +20,12 @@ Compact controller output avoids repeated evidence, with full state on disk and
 The optional repository launcher defaults to Opus and keeps normal user settings.
 See [models and efficiency](references/efficiency.md) for launch options and limits.
 
+Normal increments use new test files; prior files remain frozen until an explicit
+AMEND. Every new or acceptance-mapped test needs a concrete defect/oracle/value
+assessment. Existing repo lint, formatting, types and security checks run through
+the controller, including fresh checks before DONE. Missing configuration is an
+explicit limitation. See [test quality and repository checks](references/quality.md).
+
 Requires Python 3.10+, Node.js on PATH, and your project's working test runner.
 The controller verifies the actual hook before beginning. It stores private
 task state and execution receipts under `.ai-tdd/` in the target project.
@@ -41,4 +47,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.2.0.
+MIT license. Version 1.3.0.

@@ -29,11 +29,15 @@ jobs:
         with:
           node-version: 'lts/*'
           package-manager-cache: false
-      - name: Install development test dependency
+      - name: Install pinned development dependencies
         run: python -m pip install -r requirements-dev.txt
+      - name: Check repository lint rules
+        run: python -m ruff check .
       - name: Controller and integration tests
         run: python -B -m unittest discover -s plugins/ai-tdd/tests -v
       - name: Deterministic RED/GREEN and mutation demo
         run: python -B scripts/smoke_demo.py
+      - name: Compare weak and contract-based tests against selected faults
+        run: python -B scripts/test_strength_demo.py
       - name: Build public ZIP
         run: python -B scripts/build_zip.py

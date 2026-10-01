@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.0 — 2026-10-01
+
+- Freeze existing test-file hashes at begin/next, preserving earlier assertions
+  in normal TEST increments. New tests need new files; controlled AMEND remains
+  the route for legitimate corrections. Hooks permit revising a newly authored
+  file within the same increment.
+- Require review of every new/acceptance-mapped executed test: concrete defect,
+  independent oracle and distinct value. No count/coverage/mutation-score quota.
+  Presence checks validate review completeness, not semantic correctness.
+- Record repository conventions; execute configured read-only lint, format, type,
+  security or custom checks through the controller with logs and bound receipts.
+  Failed checks block completion; absent checks are explicitly not_configured.
+- Freeze quality definitions/inputs and a separate batch budget (default 20).
+  Final completion executes the commands afresh. Source-only mutating tools are
+  rejected and return the task to GREEN for repair.
+- Add project Ruff lint CI, actual Ruff/formatter/strict Mypy in the opt-in Claude
+  fixture, and a real-execution comparison of weak vs contract-based tests.
+- Document primary-source research, tradeoffs and limits of reviewer judgments.
+- Upgrade: finish/archive active tasks with the prior version before updating.
+  Legacy tasks without a checkpoint are never retroactively blessed.
+
 ## 1.2.0 — 2026-10-01
 
 - Explicit `model: inherit` for test-author, implementer and verifier; active-task

@@ -11,7 +11,8 @@ From the standalone plugin repository:
 1. Update the version in `.claude-plugin/marketplace.json`,
    `plugins/ai-tdd/.claude-plugin/plugin.json` and `BUILD_MANIFEST.json`, plus
    README/plugin README and CHANGELOG.md. Keep plugin and marketplace names stable.
-2. Run the controller tests and `scripts/smoke_demo.py`. For runtime/prompt changes,
+2. Run repository Ruff checks, controller tests, `scripts/smoke_demo.py` and
+   `scripts/test_strength_demo.py`. For runtime/prompt changes,
    also run the opt-in real-Claude evaluation and record its exact scope.
 3. Run `claude plugin validate --strict .` and
    `claude plugin validate --strict ./plugins/ai-tdd`.

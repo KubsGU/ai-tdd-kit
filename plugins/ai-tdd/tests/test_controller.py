@@ -49,13 +49,12 @@ class Fixture:
         return json.loads((self.root / ".ai-tdd/state.json").read_text(encoding="utf-8"))
 
     def new_test(self, assertion="self.assertEqual(fee(10000), 0)"):
-        with (self.root / "tests/test_fee.py").open("a", encoding="utf-8") as stream:
-            stream.write("\n    def test_threshold(self):\n        " + assertion + "\n")
+        self.write("tests/test_threshold.py", "import unittest\nfrom src.fee import fee\n\nclass FeeTests(unittest.TestCase):\n    def test_threshold(self):\n        " + assertion + "\n")
 
     def ready_red(self):
         self.c.begin()
         self.new_test()
-        self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1 literal expected zero")
+        self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1 literal expected zero")
 
     def ready_green(self):
         self.ready_red()
@@ -64,6 +63,15 @@ class Fixture:
 
     def review(self, **extra):
         value = {"receipt_id": self.state()["green_receipt"]["id"], "checked_ac": ["AC1"], "findings": [], "limitations": [], "recommendation": "accept"}
+        state = self.state()
+        targets = set(state['required_ids']) - set(state['initial_required_ids'])
+        targets.update(test for tests in state['coverage'].values() for test in tests)
+        value.update(quality_receipt_id=state['quality_receipt']['id'],
+                     repo_conventions='Preserves fee(cents), integer cents and adjacent unittest style',
+                     quality_limitations=[] if self.config.get('quality_checks') else ['No lint/type/security commands configured in this synthetic fixture'],
+                     test_assessment=[{'test_id': test, 'detects': 'Exclusive or missing free-fee threshold',
+                                       'oracle': 'AC1 independent literal zero at 10000 cents',
+                                       'why_needed': 'Distinguishes the threshold boundary from regular-fee baseline'} for test in sorted(targets)])
         value.update(extra)
         self.save(".ai-tdd/review.json", value)
 
@@ -88,19 +96,19 @@ class ControllerTests(Fixture, unittest.TestCase):
         self.new_test()
         self.write("src/fee.py", "def fee(cents):\n    return 123\n")
         with self.assertRaisesRegex(tdd.TddError, "source"):
-            self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
+            self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
 
     def test_import_error_does_not_count_as_red(self):
         self.c.begin()
         self.new_test("import nonexistent_module")
         with self.assertRaises(tdd.TddError):
-            self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
+            self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
 
     def test_red_cannot_expect_infrastructure_exception(self):
         self.c.begin()
         self.new_test("import nonexistent_module")
         with self.assertRaises(tdd.TddError):
-            self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="ModuleNotFoundError", because="AC1")
+            self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="ModuleNotFoundError", because="AC1")
 
     def test_frozen_test_edit_is_detected(self):
         self.ready_red()
@@ -148,13 +156,13 @@ class ControllerTests(Fixture, unittest.TestCase):
         self.c.begin()
         self.new_test("from pathlib import Path; Path(__file__).write_text('# modified'); self.assertEqual(fee(10000), 0)")
         with self.assertRaises(tdd.TddError):
-            self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
+            self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
 
     def test_skipped_new_test_is_not_red(self):
         self.c.begin()
         self.new_test("self.skipTest('deadline')")
         with self.assertRaises(tdd.TddError):
-            self.c.red(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
+            self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="AC1")
 
     def test_repair_budget_is_bounded(self):
         self.ready_red()
@@ -203,7 +211,7 @@ class ControllerTests(Fixture, unittest.TestCase):
     def test_already_green_test_is_recorded_without_fake_red(self):
         self.c.begin()
         self.new_test("self.assertEqual(fee(9999), 799)")
-        result = self.c.cover(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], because="Existing behavior protection")
+        result = self.c.cover(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], because="Existing behavior protection")
         self.assertEqual(result["phase"], "GREEN")
         self.assertEqual(result["green_receipt"]["kind"], "coverage")
 
@@ -221,12 +229,12 @@ class ControllerTests(Fixture, unittest.TestCase):
         result = self.c.amend(reason="Independent example proves incorrect test", ac=["AC1"])
         self.assertEqual(result["phase"], "AMEND")
         with self.assertRaises(tdd.TddError):
-            self.c.cover(tests=["test_fee.FeeTests.test_threshold"], ac=["AC1"], because="correction")
+            self.c.cover(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], because="correction")
 
     def test_real_contract_correction_gets_new_red_for_existing_id(self):
         self.c.begin()
         self.new_test("self.assertEqual(fee(9999), 0)")
-        target = "test_fee.FeeTests.test_threshold"
+        target = "test_threshold.FeeTests.test_threshold"
         self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="Initially incorrect boundary example")
         self.write("src/fee.py", "def fee(cents): return 0 if cents >= 9999 else 799\n")
         self.c.green()
@@ -234,7 +242,7 @@ class ControllerTests(Fixture, unittest.TestCase):
         self.spec["version"] = 2
         self.spec["acceptance"][0]["examples"] = [{"input": 9999, "expected": 799}]
         self.save(".ai-tdd/spec.json", self.spec)
-        path = self.root / "tests/test_fee.py"
+        path = self.root / "tests/test_threshold.py"
         path.write_text(path.read_text().replace("fee(9999), 0", "fee(9999), 799"))
         self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="Correct independent lower-boundary example")
         self.assertEqual(self.state()["spec_version"], 2)
@@ -356,8 +364,8 @@ class ControllerTests(Fixture, unittest.TestCase):
     def test_real_pytest_json_red_green(self):
         self.config["runner"] = json.loads((PLUGIN / "templates/config.pytest.json").read_text())["runner"]
         self.save(".ai-tdd/config.json", self.config)
-        baseline = self.c.begin()
-        target = baseline["required_ids"][0].replace("test_regular", "test_threshold")
+        self.c.begin()
+        target = "tests/test_threshold.py::FeeTests::test_threshold"
         self.new_test()
         self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="Independent expected threshold")
         self.write("src/fee.py", "def fee(cents): return 0 if cents >= 10000 else 799\n")
@@ -373,8 +381,8 @@ class PytestEvidenceTests(Fixture, unittest.TestCase):
         self.c = tdd.Controller(self.root)
 
     def test_missing_module_in_test_body_cannot_certify_red(self):
-        baseline = self.c.begin()
-        target = baseline["required_ids"][0].replace("test_regular", "test_threshold")
+        self.c.begin()
+        target = "tests/test_threshold.py::FeeTests::test_threshold"
         self.new_test("import ai_tdd_missing_module_73ef")
         with self.assertRaisesRegex(tdd.TddError, "exception differs"):
             self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="AC1 should fail on its assertion")
@@ -404,6 +412,85 @@ class PytestEvidenceTests(Fixture, unittest.TestCase):
             self.c.begin()
 
 
+class TestPreservationTests(Fixture, unittest.TestCase):
+    def change_baseline(self):
+        path = self.root / "tests/test_fee.py"
+        path.write_text(path.read_text().replace("fee(100), 799", "fee(100), fee(100)"))
+
+    def assert_checkpoint_blocks_without_run(self, command):
+        before = set((self.root / ".ai-tdd/runs").iterdir())
+        state = self.c.state_path.read_bytes()
+        with self.assertRaisesRegex(tdd.TddError, "test.*checkpoint|checkpoint.*test"):
+            command()
+        self.assertEqual(set((self.root / ".ai-tdd/runs").iterdir()), before)
+        self.assertEqual(self.c.state_path.read_bytes(), state)
+
+    def test_test_phase_cannot_weaken_passing_baseline_before_red(self):
+        self.c.begin()
+        self.change_baseline()
+        self.new_test()
+        self.assert_checkpoint_blocks_without_run(lambda: self.c.red(
+            tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"],
+            expect="AssertionError", because="Independent threshold expectation"))
+
+    def test_test_phase_cannot_weaken_passing_baseline_before_cover(self):
+        self.c.begin()
+        self.change_baseline()
+        self.new_test("self.assertEqual(fee(9999), 799)")
+        self.assert_checkpoint_blocks_without_run(lambda: self.c.cover(
+            tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"],
+            because="Independent lower-boundary expectation"))
+
+    def test_deleted_baseline_is_rejected_before_runner_creates_evidence(self):
+        self.c.begin()
+        (self.root / "tests/test_fee.py").unlink()
+        self.new_test()
+        self.assert_checkpoint_blocks_without_run(lambda: self.c.red(
+            tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"],
+            expect="AssertionError", because="Independent threshold expectation"))
+
+    def helper_checkpoint(self):
+        helper = self.root / "tests/expected_fee.py"
+        helper.write_text("EXPECTED_FEE = 799\n")
+        baseline = self.root / "tests/test_fee.py"
+        baseline.write_text(baseline.read_text().replace(
+            "from src.fee import fee", "from src.fee import fee\nfrom expected_fee import EXPECTED_FEE").replace(
+            "fee(100), 799", "fee(100), EXPECTED_FEE"))
+        self.c.begin()
+        self.new_test()
+        return helper
+
+    def helper_red(self):
+        self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"],
+                   expect="AssertionError", because="Independent threshold expectation")
+
+    def test_frozen_test_helper_cannot_change_during_authoring(self):
+        self.helper_checkpoint().write_text("EXPECTED_FEE = 799  # changed frozen oracle\n")
+        self.assert_checkpoint_blocks_without_run(self.helper_red)
+
+    def test_frozen_test_helper_cannot_disappear_during_authoring(self):
+        self.helper_checkpoint().unlink()
+        self.assert_checkpoint_blocks_without_run(self.helper_red)
+
+    def test_next_cycle_preserves_previously_added_test_file(self):
+        self.ready_green()
+        self.c = tdd.Controller(self.root)
+        self.c.next()
+        self.new_test("self.assertEqual(fee(10000), fee(10000))")
+        self.write("tests/test_boundary.py", "import unittest\nfrom src.fee import fee\nclass BoundaryTests(unittest.TestCase):\n    def test_lower(self):\n        self.assertEqual(fee(9999), 799)\n")
+        self.assert_checkpoint_blocks_without_run(lambda: self.c.cover(
+            tests=["test_boundary.BoundaryTests.test_lower"], ac=["AC1"],
+            because="Independent lower boundary"))
+
+    def test_historical_active_state_requires_explicit_update(self):
+        self.c.begin()
+        state = self.state()
+        state.pop("test_checkpoint", None)
+        self.save(".ai-tdd/state.json", state)
+        with self.assertRaisesRegex(tdd.TddError, "test_checkpoint.*(update|migrat)|(?:update|migrat).*test_checkpoint"):
+            tdd.Controller(self.root)
+
+
 class GuardTests(Fixture, unittest.TestCase):
     def payload(self, tool, inputs, agent=None):
         value = {"cwd": str(self.root), "tool_name": tool, "tool_input": inputs, "hook_event_name": "PreToolUse"}
@@ -422,6 +509,52 @@ class GuardTests(Fixture, unittest.TestCase):
     def test_test_author_can_write_tests(self):
         self.c.begin()
         self.assertIsNone(tdd.guard(self.payload("Write", {"file_path": str(self.root / "tests/new.py")}, "test-author"), PLUGIN))
+
+    def test_test_author_cannot_write_checkpoint_test_files(self):
+        self.c.begin()
+        for tool in ("Write", "Edit", "MultiEdit"):
+            with self.subTest(tool=tool):
+                decision = tdd.guard(self.payload(tool, {"file_path": str(self.root / "tests/test_fee.py")}, "test-author"), PLUGIN)
+                self.assertIsNotNone(decision)
+                self.assertIn("checkpoint", decision)
+
+    def test_new_test_file_remains_editable_until_increment_is_sealed(self):
+        self.c.begin()
+        self.new_test()
+        payload = self.payload("Edit", {"file_path": str(self.root / "tests/test_threshold.py")}, "test-author")
+        self.assertIsNone(tdd.guard(payload, PLUGIN))
+        self.new_test("self.assertEqual(fee(10001), 0)")
+        self.c.red(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], expect="AssertionError", because="Independent upper boundary")
+        self.assertIsNotNone(tdd.guard(payload, PLUGIN))
+
+    def test_next_cycle_locks_new_file_after_controlled_amendment(self):
+        self.ready_green()
+        self.c.amend(reason="Independent example adds upper-boundary protection", ac=["AC1"])
+        payload = self.payload("Edit", {"file_path": str(self.root / "tests/test_threshold.py")}, "test-author")
+        self.assertIsNone(tdd.guard(payload, PLUGIN))
+        self.spec["version"] = 2
+        self.save(".ai-tdd/spec.json", self.spec)
+        self.new_test("self.assertEqual(fee(10001), 0)")
+        self.c.cover(tests=["test_threshold.FeeTests.test_threshold"], ac=["AC1"], because="Independent upper-boundary contract correction")
+        self.c.next()
+        decision = tdd.guard(payload, PLUGIN)
+        self.assertIsNotNone(decision)
+        self.assertIn("checkpoint", decision)
+
+    def test_missing_historical_checkpoint_fails_closed_in_real_hook(self):
+        self.c.begin()
+        state = self.state()
+        state.pop("test_checkpoint", None)
+        self.save(".ai-tdd/state.json", state)
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node 18+ is a documented plugin dependency")
+        payload = self.payload("Write", {"file_path": str(self.root / "tests/test_new.py")}, "test-author")
+        result = subprocess.run([node, "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.strip(), "Hook silently allowed a write with no historical test checkpoint")
+        decision = json.loads(result.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("test_checkpoint", decision["permissionDecisionReason"])
 
     def test_implementer_can_write_only_source(self):
         self.ready_red()
@@ -594,7 +727,7 @@ class DispatchBoundaryTests(Fixture, unittest.TestCase):
         self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:test-author')))
         self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:verifier')))
         self.new_test()
-        self.c.red(tests=['test_fee.FeeTests.test_threshold'], ac=['AC1'], expect='AssertionError', because='AC1')
+        self.c.red(tests=['test_threshold.FeeTests.test_threshold'], ac=['AC1'], expect='AssertionError', because='AC1')
         self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:implementer')))
         self.assertIsNotNone(tdd.guard(self.dispatch('ai-tdd:test-author')))
 
@@ -738,7 +871,7 @@ class CompactOutputTests(Fixture, unittest.TestCase):
         before = set((self.root/'.ai-tdd/runs').iterdir())
         summary, _ = self.cli('status')
         failed = summary['red_receipt']['nonpassing_tests']
-        self.assertEqual(failed[0]['id'], 'test_fee.FeeTests.test_threshold')
+        self.assertEqual(failed[0]['id'], 'test_threshold.FeeTests.test_threshold')
         self.assertEqual(failed[0]['exception'], 'AssertionError')
         self.assertTrue(failed[0]['detail'])
         self.assertEqual(set((self.root/'.ai-tdd/runs').iterdir()), before)

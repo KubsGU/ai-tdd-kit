@@ -9,9 +9,11 @@ hooks and role tool lists check who may change each artifact.
 
 [Polska instrukcja](README.pl.md) · [Protocol](plugins/ai-tdd/references/protocol.md)
 · [Models and efficiency](plugins/ai-tdd/references/efficiency.md)
+· [Test quality and repo checks](plugins/ai-tdd/references/quality.md)
+· [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.2.0**.
+Version **1.3.0**.
 
 ## Install
 
@@ -92,7 +94,7 @@ remain accessible. **Every prescribed test execution still runs.** Scripts needi
 the former full JSON can pass `--full` before the controller command, for example
 `tdd.py --root /project --full status`.
 
-The deterministic demo's DONE response was 88.4% smaller in bytes. Two real Opus runs
+In version 1.2, the deterministic demo's DONE response was 88.4% smaller in bytes. Two real Opus runs
 reported 92.1–92.6% of input tokens read from cache, including subagents; see the
 [validation report](validation/VALIDATION.md). Neither number is a measured
 percentage reduction in total tokens, cost or duration. The evaluator reports
@@ -106,14 +108,17 @@ and current primary documentation.
    regression suite. Record examples, AC IDs and assumptions.
 2. **Plan verification:** the verifier derives scenarios from the contract before
    the new implementation exists. Establish a real passing baseline.
-3. **RED:** a fresh test author writes one behavior increment. The coordinator
+3. **RED:** a fresh test author writes one behavior increment in a new test file,
+   preserving prior test files. The coordinator
    executes it and checks the failure reason and prior passing tests.
 4. **GREEN:** a fresh implementer changes declared source files. The controller
    reruns the required suite and checks frozen test/configuration artifacts.
-5. **Review:** a separate verifier reviews the contract, code, test adequacy,
-   boundaries and interactions. Findings lead to further small test cycles.
+5. **Review:** a separate verifier names each new/mapped test's concrete defect,
+   independent oracle and distinct value, and checks repository conventions.
+   Findings lead to further small test cycles.
 6. **DONE:** the controller requires a current accepting review with no open
-   findings and executes the complete required suite again.
+   findings and executes configured repo quality commands and the complete suite
+   again. A missing quality configuration is an explicit limitation, not a pass.
 
 Refactor only when useful, then rerun the suite. A test that already passes is
 recorded as existing-behavior coverage, without manufacturing a RED phase.
@@ -129,6 +134,30 @@ evidence and require new execution; the implementer cannot weaken its own tests.
 Fresh agent dispatch is checked by phase. A task-wide runner budget (default 100
 invocations, including baseline and final check) also survives retries and setup
 repairs. It bounds test execution, not model usage or spending.
+
+## Useful tests and repository conventions
+
+Optimize defect detection per useful case, rather than a test-count or coverage
+quota. A test needs an independently justified expected answer and a plausible
+incorrect implementation it would reject. The verifier must assess every new or
+acceptance-mapped executed ID. The controller checks that the assessment is present
+and complete; it cannot prove that the oracle or review judgment is right.
+
+The coordinator records existing instructions, neighboring code and CI/tool rules
+in a frozen repository profile. Configure the project's existing read-only lint,
+format, type and security commands under `quality_checks`; their inputs are
+protected. Commands actually run with bounded time, logs and fresh final receipts.
+Defaults allow 20 quality batches, separately from the test-run budget. Configured
+failures block completion; absent tools are reported as `not_configured` with
+explicit limitations. Do not silently disable rules, auto-format the checked patch
+or introduce a universal style. See [configuration and examples](plugins/ai-tdd/references/quality.md).
+
+Selected mutation, property or stateful checks can strengthen appropriate changes.
+They need actual execution and justified contracts; equivalent mutants and tool
+failures do not justify a forced 100% score. The
+[research comparison](validation/RESEARCH.md) connects these choices to primary
+sources and records tradeoffs. `scripts/test_strength_demo.py` contrasts equal-count
+weak and stronger suites on deliberately constructed faults, without calling AI.
 
 ## Project setup and scope
 
@@ -190,14 +219,17 @@ From this repository:
 
 ```text
 python -m pip install -r requirements-dev.txt
+python -m ruff check .
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -B scripts/smoke_demo.py
+python -B scripts/test_strength_demo.py
 python -B scripts/measure_context.py
 python -B scripts/build_zip.py
 ```
 
-The controller uses Python's standard library. The development pytest dependency
-enables actual pytest adapter integration tests. The demo simulates role edits and
+The controller uses Python's standard library. Pinned development dependencies
+enable pytest integration, the kit's Ruff lint rules and the real-Claude fixture's
+Ruff/strict Mypy checks. The demo simulates role edits and
 does not call a model. An optional real-Claude evaluation uses normal account
 usage: `python -B scripts/evaluate_claude.py --output validation/local-claude.json --resume-check`.
 

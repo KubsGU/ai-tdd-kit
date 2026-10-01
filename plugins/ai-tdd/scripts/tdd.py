@@ -6,6 +6,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,9 @@ import uuid
 import xml.etree.ElementTree as ET
 
 PLUGIN = Path(__file__).resolve().parents[1]
+_quality_loader = importlib.util.spec_from_file_location("ai_tdd_quality", PLUGIN / "scripts/quality.py")
+QUALITY = importlib.util.module_from_spec(_quality_loader)
+_quality_loader.loader.exec_module(QUALITY)
 IGNORED = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", ".git", ".venv", "venv"}
 READ_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "SendUserMessage"}
 SELFTEST_REASON = "deny: AI TDD hook self-test"
@@ -211,7 +215,28 @@ class Controller:
             raise TddError("Runner argv must contain {report}; shell command strings are unsupported")
         if runner.get("format") not in {"json", "junit"}:
             raise TddError("Unsupported runner format")
+        try:
+            self.quality_checks = QUALITY.validate_checks(self.config.get("quality_checks", []))
+        except ValueError as error:
+            raise TddError(str(error)) from error
+        quality_limit = self.config.get("max_quality_runs", 20)
+        if type(quality_limit) is not int or not 1 <= quality_limit <= 10000:
+            raise TddError("max_quality_runs must be an integer in 1..10000")
+        self.quality_policy = {"checks": self.quality_checks, "run_limit": quality_limit}
+        self.quality_inputs = sorted({path for check in self.quality_checks for path in check["inputs"]})
+        for path in self.quality_inputs:
+            resolved = safe_path(self.root, path)
+            if inside(resolved, self.folder) or any(part == ".git" or part.startswith(".env") for part in Path(path).parts):
+                raise TddError("Private/control paths cannot be quality inputs")
+            if any(inside(resolved, owned) or inside(owned, resolved) for owned in sources + tests):
+                raise TddError("Quality inputs are configuration; source/test roots are already fingerprinted")
         self.state = read_json(self.state_path) if self.state_path.exists() else None
+        if self.state and self.state.get("phase") != "DONE":
+            if "test_checkpoint" not in self.state:
+                raise TddError("Active task lacks test_checkpoint; finish and archive with the previous plugin version, then update. Do not infer a checkpoint from current files")
+            checkpoint = self.state["test_checkpoint"]
+            if not isinstance(checkpoint, dict) or any(not isinstance(path, str) or not isinstance(value, str) or len(value) != 64 or any(char not in "0123456789abcdef" for char in value) for path, value in checkpoint.items()):
+                raise TddError("Invalid test_checkpoint; restore reviewed task evidence before continuing")
 
     def spec(self):
         value = read_json(self.folder / "spec.json")
@@ -247,15 +272,19 @@ class Controller:
     def source(self):
         return self.manifest(self.config["source_roots"])
 
+    def test_files(self):
+        return {path: value for path, value in self.manifest(self.config["test_roots"]).items()
+                if value not in {None, "directory"}}
+
     def protected(self, include_tests=True, include_spec=True):
-        paths = self.config["protected_paths"] + (self.config["test_roots"] if include_tests else [])
+        paths = self.config["protected_paths"] + self.quality_inputs + (self.config["test_roots"] if include_tests else [])
         result = self.manifest(paths)
-        names = ["config.json", "review-plan.json"] + (["spec.json"] if include_spec else [])
+        names = ["config.json", "review-plan.json", "repo-profile.json"] + (["spec.json"] if include_spec else [])
         for name in names:
             result[".ai-tdd/" + name] = digest(self.folder / name)
-        for name in ("scripts/tdd.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
+        for name in ("scripts/tdd.py", "scripts/quality.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
                      "agents/test-author.md", "agents/implementer.md", "agents/verifier.md",
-                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md"):
+                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md", "references/quality.md"):
             result["plugin/" + name] = digest(PLUGIN / name)
         return result
 
@@ -269,6 +298,8 @@ class Controller:
             raise TddError("Expected phase " + "/".join(allowed))
         if self.state["environment"] != environment():
             raise TddError("Environment changed; start a fresh reviewed run")
+        if self.state["phase"] != "DONE" and self.state.get("quality_policy") != self.quality_policy:
+            raise TddError("Frozen quality definitions/budget changed; setup repair cannot drop or weaken quality checks")
 
     def fixed(self, include_tests=True, include_spec=True):
         expected = self.state["frozen"] if include_tests else self.state["fixed"]
@@ -333,6 +364,58 @@ class Controller:
         if receipt["source"] != self.source() or receipt["environment"] != environment():
             raise TddError("Stale GREEN receipt; run green again before continuing")
 
+    def run_quality(self, kind):
+        if self.state and self.quality_checks:
+            if self.state["quality_runs"] >= self.state["quality_run_limit"]:
+                raise TddError("Task quality budget exhausted; no retry/setup repair grants more checks")
+            self.state["quality_runs"] += 1
+            self.save("quality-started", kind=kind, total_quality_runs=self.state["quality_runs"])
+        source, protected = self.source(), self.protected()
+        before_environment = environment()
+        before_state = digest(self.state_path)
+        before_review = digest(self.folder / "review.json")
+        fingerprint = lambda: (self.source(), self.protected(), environment(), digest(self.state_path), digest(self.folder / "review.json"))
+        try:
+            receipt = QUALITY.execute_checks(self.root, self.folder, self.quality_checks, fingerprint)
+        except ValueError as error:
+            if (self.state and self.source() != source and self.protected() == protected
+                    and environment() == before_environment and digest(self.state_path) == before_state
+                    and digest(self.folder / "review.json") == before_review):
+                self.state["phase"] = "GREEN"
+                self.state.pop("review", None)
+                self.save("quality-rejected", kind=kind, reason="source modified by a check")
+            raise TddError("quality check rejected: " + str(error)) from error
+        receipt.update(kind=kind, utc=datetime.now(timezone.utc).isoformat(), source=source, protected=protected, environment=environment())
+        for check in receipt["checks"]:
+            check["log_hashes"] = {name: digest(safe_path(self.root, check[name])) for name in ("stdout_path", "stderr_path")}
+        path = self.folder / "runs" / (receipt["id"] + ".quality.json")
+        atomic_json(path, receipt)
+        if self.state:
+            self.state.update(quality_receipt=receipt, quality_hash=digest(path))
+            if receipt["status"] == "failed":
+                self.state["phase"] = "GREEN"
+                self.state.pop("review", None)
+            self.save("quality-checked", kind=kind, status=receipt["status"], receipt_id=receipt["id"])
+        if receipt["status"] == "failed":
+            raise TddError("quality checks failed; inspect .ai-tdd/runs/" + receipt["id"] + ".quality.json and its logs")
+        return receipt
+
+    def quality_current(self):
+        receipt = (self.state or {}).get("quality_receipt")
+        if not receipt or receipt["status"] not in {"passed", "not_configured"}:
+            return False
+        path = self.folder / "runs" / (receipt["id"] + ".quality.json")
+        current = (receipt["source"] == self.source() and receipt["protected"] == self.protected()
+                   and receipt["environment"] == environment() and digest(path) == self.state.get("quality_hash"))
+        return current and all(digest(safe_path(self.root, check[name])) == check["log_hashes"][name]
+                               for check in receipt["checks"] for name in ("stdout_path", "stderr_path"))
+
+    def quality(self):
+        self.phase("GREEN", "VERIFY")
+        self.fresh()
+        self.run_quality("pre-review")
+        return self.state
+
     def begin(self, allow_empty=False):
         # Setup artifacts may have been completed after object construction.
         self.__init__(self.root)
@@ -348,8 +431,12 @@ class Controller:
         baseline = self.run("baseline")
         if baseline["exit_code"] or (not baseline["results"] and not allow_empty):
             raise TddError("Baseline must pass and execute tests; bootstrap needs --allow-empty")
-        self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
+        quality_baseline = self.run_quality("baseline")
+        self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "test_checkpoint": self.test_files(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
         self.state.update(runner_runs=1, runner_run_limit=self.config.get("max_runner_runs", 100))
+        self.state.update(initial_required_ids=list(baseline["collected"]), quality_policy=self.quality_policy,
+                          quality_runs=int(bool(self.quality_checks)), quality_run_limit=self.quality_policy["run_limit"],
+                          quality_receipt=quality_baseline, quality_hash=digest(self.folder / "runs" / (quality_baseline["id"] + ".quality.json")))
         return self.save("begin")
 
     def increment(self, tests, ac, because):
@@ -359,6 +446,10 @@ class Controller:
         if self.source() != self.state["source_checkpoint"]:
             raise TddError("Changed source during test authoring")
         amendment = self.state["phase"] == "AMEND"
+        if not amendment:
+            current = self.test_files()
+            if any(current.get(path) != value for path, value in self.state["test_checkpoint"].items()):
+                raise TddError("Changed or deleted test checkpoint files; author a new test file or use explicit contract amendment")
         self.fixed(False, not amendment)
         spec = self.spec()
         valid_ac = {item["id"] for item in spec["acceptance"]}
@@ -432,7 +523,7 @@ class Controller:
     def next(self):
         self.phase("GREEN", "VERIFY")
         self.fresh()
-        self.state.update(phase="TEST", source_checkpoint=self.source(), attempts=0, cycle=self.state["cycle"] + 1)
+        self.state.update(phase="TEST", source_checkpoint=self.source(), test_checkpoint=self.test_files(), attempts=0, cycle=self.state["cycle"] + 1)
         self.state.pop("review", None)
         return self.save("next-increment")
 
@@ -517,6 +608,8 @@ class Controller:
         ids = {item["id"] for item in self.spec()["acceptance"]}
         if ids != set(self.state["coverage"]):
             raise TddError("Every acceptance criterion needs mapped executed tests")
+        if not self.quality_current():
+            self.run_quality("pre-review")
         self.state["phase"] = "VERIFY"
         return self.save("independent-verification")
 
@@ -529,7 +622,25 @@ class Controller:
             raise TddError("Review must reference current GREEN and every AC")
         if review.get("recommendation") != "accept" or review.get("findings") != [] or not isinstance(review.get("limitations"), list):
             raise TddError("Unresolved review findings prevent completion")
+        assessed = review.get("test_assessment", [])
+        required_assessment = set(self.state["required_ids"]) - set(self.state["initial_required_ids"])
+        required_assessment.update(test for targets in self.state["coverage"].values() for test in targets)
+        fields = ("test_id", "detects", "oracle", "why_needed")
+        if (not isinstance(assessed, list) or any(not isinstance(item, dict) or any(not isinstance(item.get(field), str) or not item[field].strip() for field in fields) for item in assessed)):
+            raise TddError("Test assessment needs IDs, concrete defects, independent oracles and distinct justification")
+        assessed_ids = [item["test_id"] for item in assessed]
+        if (len(set(assessed_ids)) != len(assessed_ids) or not required_assessment.issubset(assessed_ids)
+                or not set(assessed_ids).issubset(self.state["required_ids"])):
+            raise TddError("Test assessment must cover every new/changed behavior test with executed IDs")
+        if not isinstance(review.get("repo_conventions"), str) or not review["repo_conventions"].strip():
+            raise TddError("Review must assess repository conventions with concrete evidence")
+        limitations = review.get("quality_limitations")
+        if not isinstance(limitations, list) or any(not isinstance(item, str) or not item.strip() for item in limitations) or (not self.quality_checks and not limitations):
+            raise TddError("Review needs explicit quality limitations when no tools are configured")
+        if review.get("quality_receipt_id") != self.state["quality_receipt"]["id"]:
+            raise TddError("Review must reference current quality evidence")
         review_hash = digest(self.folder / "review.json")
+        self.run_quality("completion")
         receipt = self.run("completion")
         self.require_suite(receipt)
         if not receipt["results"] or receipt["exit_code"] or digest(self.folder / "review.json") != review_hash:
@@ -556,7 +667,7 @@ def compact_state(state):
     """Project execution evidence into a small decision view, retaining disk proofs."""
     if not isinstance(state, dict) or "phase" not in state:
         return state
-    fields = ("schema", "task_id", "phase", "spec_version", "cycle", "attempts", "increment", "coverage", "receipt_current", "empty_baseline_waiver", "review")
+    fields = ("schema", "task_id", "phase", "spec_version", "cycle", "attempts", "increment", "coverage", "receipt_current", "quality_current", "empty_baseline_waiver", "review")
     result = {name: state[name] for name in fields if name in state}
     used, limit = state.get("runner_runs", 1), state.get("runner_run_limit", 100)
     result.update(view="compact", required_test_count=len(state["required_ids"]),
@@ -574,6 +685,14 @@ def compact_state(state):
         result["last_event"] = state["history"][-1]
     if "reconfigure" in state:
         result["reconfigure"] = {name: state["reconfigure"][name] for name in ("paths", "reason")}
+    if "quality_receipt" in state:
+        receipt = state["quality_receipt"]
+        result["quality_receipt"] = {"id": receipt["id"], "status": receipt["status"], "path": ".ai-tdd/runs/" + receipt["id"] + ".quality.json",
+                                     "checks": [{key: check[key] for key in ("name", "kind", "exit_code", "error", "stdout_path", "stderr_path")} for check in receipt["checks"]]}
+        result["quality_budget"] = {"used": state["quality_runs"], "limit": state["quality_run_limit"]}
+    if "review" in result:
+        result["review"] = {name: value for name, value in result["review"].items() if name != "test_assessment"}
+        result["review"]["assessed_test_count"] = len(state["review"].get("test_assessment", []))
     return result
 
 
@@ -585,6 +704,7 @@ def parser():
     sub.add_parser("init")
     sub.add_parser("status")
     sub.add_parser("doctor")
+    sub.add_parser("quality")
     sub.add_parser("archive")
     begin = sub.add_parser("begin")
     begin.add_argument("--allow-empty", action="store_true")
@@ -700,7 +820,7 @@ def guard(payload, plugin_root=PLUGIN):
             return None
         if role not in {"test-author", "implementer"}:
             return "deny: delegate feature edits to the role that owns the phase"
-        protected = [safe_path(root, item) for item in c.config["protected_paths"]]
+        protected = [safe_path(root, item) for item in c.config["protected_paths"] + c.quality_inputs]
         if inside(path, c.folder) or any(inside(path, item) for item in protected) or any(part.startswith(".env") or part == ".git" for part in Path(relative).parts):
             return "deny: controller, contracts, runner configuration and private paths are protected"
         roots = c.config["test_roots"] if phase in {"TEST", "AMEND"} else c.config["source_roots"] if phase in {"IMPLEMENT", "GREEN"} else []
@@ -708,6 +828,8 @@ def guard(payload, plugin_root=PLUGIN):
             return "deny: role does not own the current phase"
         if not any(inside(path, safe_path(root, item)) for item in roots):
             return "deny: write is outside paths owned by the current phase"
+        if phase == "TEST" and any(path == safe_path(root, item) for item in c.state["test_checkpoint"]):
+            return "deny: test checkpoint files are frozen; author a new file or request an explicit contract amendment"
         safe_path(root, relative)
         while inside(cursor, root) and cursor != root:
             if cursor.is_symlink():
@@ -772,8 +894,9 @@ def main():
                 receipt = result["completion_receipt"] if result["phase"] == "DONE" else result["green_receipt"]
                 current = receipt["source"] == c.source() and result["frozen"] == c.protected() and result["environment"] == environment()
                 if result["phase"] == "DONE":
-                    current = current and digest(c.folder / "review.json") == result["review_hash"]
+                    current = current and digest(c.folder / "review.json") == result["review_hash"] and c.quality_current()
                 result = {**result, "receipt_current": current}
+            result = {**result, "quality_current": c.quality_current()}
         else:
             with lock(root):
                 if command == "begin":

@@ -1,5 +1,73 @@
 # Validation report — AI TDD Kit
 
+## 1.3.0 validation — 2026-10-01
+
+**137 controller/integration/helper tests ran in 68.4 seconds: 136 passed, one
+platform skip** on Windows/Python 3.12.10, with pytest 9.1.1. The skipped case
+requires creating a directory symlink, unavailable to this local test identity.
+The CI matrix exercises platform behavior separately; a skip is not a passed
+symlink test. The kit's Ruff 0.16.9 rules passed. Relevant regressions were observed
+failing before the fixes, including earlier-test weakening and the final quality
+check leaving a source-mutation failure in an uneditable verification phase.
+
+New real-process cases cover configured check failures at baseline and completion,
+actual final reruns, missing tools, timeouts, changed artifacts, frozen quality
+definitions/inputs/budgets, unavailable categories, missing per-test assessment
+and deletion of a final quality receipt. No missing configuration is labeled a
+lint/type/security pass. These controller cases use synthetic commands to test
+execution gates; they do not establish a particular linter's defect coverage.
+
+The 1.2 instruction baseline already rejected count quotas, circular oracles and
+mock assertions that erased behavior. It permitted adding to an existing file and
+had no dedicated repository-quality execution gate. Five fresh qualitative
+pressure probes of the new instructions rejected baseline weakening, artificial
+counts, quality bypass flags, fake mutation scores and retroactive checkpoints.
+They required factual conventions, actual receipts and honest missing categories.
+These are instruction tests, not a measured oracle-quality gain or agent benchmark.
+
+Native strict marketplace/plugin validation passed. The deterministic TDD demo
+reached DONE: three RED/GREEN cycles, one existing-coverage increment, five tests
+and two selected behavioral mutation detections. Its per-test review now explains
+the distinct defect, oracle and useful boundary for each mapped ID.
+
+`scripts/test_strength_demo.py` executed **48 unittest cases** across four
+deliberately constructed comparisons. Each suite has three cases: correct code
+passes both; weak tests miss each faulty implementation, while stronger tests
+detect all four through seven actual assertion failures. Import errors, timeouts,
+skips and inconsistent reports cannot count as detections. The examples isolate
+circular assertions, call-only spies, absent threshold boundaries and absent
+validation/membership interactions. They are not an LLM benchmark or a universal
+mutation score, and equal counts do not mean equal input coverage.
+
+The new compact/full DONE byte comparison was **3,381 vs 32,483 bytes, 89.59%
+less**, with current evidence and exact disk state preserved. This measures
+response bytes, not model tokens, bills or elapsed-time improvement. Additional
+quality receipts are retained in full on disk.
+
+**First real Claude Code 2.1.286 trial passed:** the coordinator and every named
+role used actual `claude-opus-5-5`. The synthetic typed-fee project reached DONE
+with eight required tests and eight adequacy assessments. Actual Ruff lint,
+Ruff formatter check and strict Mypy passed in three batches (baseline, review,
+completion). A six-case external oracle passed. A separate resume session
+preserved exact state and DONE. The review explicitly reported that lint rules
+were limited to F, formatting/types covered source only, and security scanning,
+lockfiles and CI were absent.
+
+The first session took 30 turns and 281.5 seconds. Final whole-tree totals were
+82 ordinary input, 113,842 cache-write input, 1,090,730 cache-read input and 26,007
+output tokens: **90.54% of reported input read from cache**. Estimated API-equivalent
+cost was $1.522672, not a subscription invoice. Separate resume totals were 12
+ordinary input, 26,848 cache-write input, 173,584 cache-read input and 2,566 output
+tokens; estimated $0.3008688. This is a successful integration example, not a
+controlled comparison with another framework or proof of minimum test count.
+
+The public allowlist contains 47 source files, plus generated CHECKSUMS.json.
+An isolated ZIP install passed inventory/checksums, strict manifests, marketplace
+registration, plugin installation and the inactive-project hook without changing
+normal user settings. Final public CI and distribution checks are recorded with
+the release. See [the research review](RESEARCH.md) for source-supported choices
+and limits. Historical results below remain specific to their original versions.
+
 ## 1.2.0 validation — 2026-10-01
 
 **100 controller/integration/helper tests passed, zero skips, in 51.1 seconds**
