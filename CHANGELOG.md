@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.1 — 2026-10-01
+
+- Reject linked managed state directories before initialization, lock creation
+  or controller reads. A native Windows junction could previously redirect these
+  operations even though is_symlink returned false.
+- Require canonical quality log folders/runs paths, including on Python 3.10
+  where the optional is_junction method is unavailable.
+- Add actual directory-link regressions with external-write/read witnesses;
+  retained workflow controls do not claim OS isolation or race-proof execution.
+
 ## 1.3.0 — 2026-10-01
 
 - Freeze existing test-file hashes at begin/next, preserving earlier assertions

@@ -5,7 +5,7 @@
 Przenośny workflow: opis zadania → doprecyzowanie → kontrakt akceptacji → osobny
 autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależny review.
 Kontroler w Pythonie egzekwuje fazy na podstawie wykonanych testów. Hook i ograniczenia
-narzędzi agentów pilnują właścicieli zmian. Wersja 1.3.0, licencja MIT.
+narzędzi agentów pilnują właścicieli zmian. Wersja 1.3.1, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -44,7 +44,7 @@ na PATH; dla Node wybierz wspieraną wersję LTS. Plugin nie wymaga dodatkowych
 bibliotek Pythona. Zależności aplikacji
 i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.3.0.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.3.1.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 

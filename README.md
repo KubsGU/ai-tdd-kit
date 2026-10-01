@@ -13,7 +13,7 @@ hooks and role tool lists check who may change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.3.0**.
+Version **1.3.1**.
 
 ## Install
 

@@ -32,6 +32,13 @@ class TddError(RuntimeError):
     pass
 
 
+def managed_folder(root):
+    folder = Path(root).resolve() / ".ai-tdd"
+    if folder.is_symlink() or folder.resolve() != folder:
+        raise TddError("Managed state directory cannot be a symlink or junction")
+    return folder
+
+
 def digest(path):
     if not path.exists():
         return None
@@ -183,10 +190,8 @@ def parse_report(path, fmt):
 class Controller:
     def __init__(self, root):
         self.root = Path(root).resolve()
-        self.folder = self.root / ".ai-tdd"
+        self.folder = managed_folder(self.root)
         self.state_path = self.folder / "state.json"
-        if self.folder.is_symlink():
-            raise TddError("Managed state directory cannot be a symlink")
         self.config = read_json(self.folder / "config.json")
         if self.config.get("schema") != 1:
             raise TddError("Unsupported config schema")
@@ -842,10 +847,8 @@ def guard(payload, plugin_root=PLUGIN):
 
 @contextmanager
 def lock(root):
-    folder = root / ".ai-tdd"
+    folder = managed_folder(root)
     folder.mkdir(parents=True, exist_ok=True)
-    if folder.is_symlink():
-        raise TddError("State directory cannot be a symlink")
     path = folder / "controller.lock"
     try:
         with path.open("x", encoding="utf-8") as stream:
@@ -859,10 +862,8 @@ def lock(root):
 
 
 def init(root):
-    folder = root / ".ai-tdd"
+    folder = managed_folder(root)
     folder.mkdir(parents=True, exist_ok=True)
-    if folder.is_symlink():
-        raise TddError("State directory cannot be a symlink")
     path = folder / "config.json"
     if path.exists():
         raise TddError("Config already exists; will not overwrite it")

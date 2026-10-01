@@ -1,5 +1,30 @@
 # Validation report — AI TDD Kit
 
+## 1.3.1 validation — 2026-10-01
+
+**141 tests ran in 62.8 seconds: 140 passed, one local directory-symlink permission
+skip**, on Windows/Python 3.12.10. All four new directory-boundary regressions
+passed with real native junctions and zero skips; repository Ruff also passed.
+
+A separate real Windows/Python 3.12.14 probe reproduced three defects before the
+fix: init wrote external config.json, lock acquisition created an external
+controller.lock, and Controller accepted config/state from an external sibling
+directory. The native junction reported is_symlink false. New regressions observed
+all three failures, with actual external file/read witnesses. Quality-log rejection
+already passed on Python3.12; the same real junction case now covers Python3.10.
+
+State initialization, locking and controller reads now require the managed
+directory's resolved identity to match its intended absolute path before I/O.
+Quality log paths use the same rule. Python documents
+[is_junction as added in 3.12](https://docs.python.org/3/library/pathlib.html#pathlib.Path.is_junction),
+so protection does not rely on that optional method. Tests use native Windows
+junctions or POSIX directory symlinks, not mocked path predicates. They reject
+pre-existing redirection before writes, reads or command execution; they do not
+establish OS isolation or freedom from malicious filesystem races.
+
+The allowlist has 48 source files plus generated CHECKSUMS.json. Earlier 1.3.0
+quality, model and cache integration results below remain specific to that version.
+
 ## 1.3.0 validation — 2026-10-01
 
 **137 controller/integration/helper tests ran in 68.4 seconds: 136 passed, one
