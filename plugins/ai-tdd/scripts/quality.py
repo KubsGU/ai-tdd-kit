@@ -62,12 +62,12 @@ def _runs_directory(root, folder):
         raise ValueError("Quality logs must stay below the project root")
     cursor = folder
     while cursor != root:
-        if cursor.is_symlink() or (hasattr(cursor, "is_junction") and cursor.is_junction()):
-            raise ValueError("Quality log directories cannot be symlinks")
+        if cursor.is_symlink() or cursor.resolve() != cursor:
+            raise ValueError("Quality log directories cannot be symlinks or junctions")
         cursor = cursor.parent
     runs = folder / "runs"
-    if runs.is_symlink() or (hasattr(runs, "is_junction") and runs.is_junction()):
-        raise ValueError("Quality runs directory cannot be a symlink")
+    if runs.is_symlink() or runs.resolve() != runs:
+        raise ValueError("Quality runs directory cannot be a symlink or junction")
     runs.mkdir(parents=True, exist_ok=True)
     return runs
 

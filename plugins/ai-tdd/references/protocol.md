@@ -1,5 +1,11 @@
 # Execution protocol
 
+Managed state and quality-log directories must be real local directories, not
+symlinks or Windows junctions. Version 1.3.1 checks their resolved identity before
+state initialization, lock creation, controller reads or quality-log writes.
+This rejects existing redirection; it does not provide OS isolation or protection
+against a hostile process racing filesystem operations.
+
 ## Runtime and authority
 
 For model selection, compact handoffs and native cache checks, follow

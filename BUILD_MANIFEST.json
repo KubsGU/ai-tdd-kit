@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.1",
   "files": [
     "README.md", "README.pl.md", "LICENSE", ".gitignore", ".gitattributes", "BUILD_MANIFEST.json",
     "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "ROADMAP.md", "requirements-dev.txt", "pyproject.toml",
@@ -29,6 +29,7 @@
     "plugins/ai-tdd/tests/test_efficiency.py",
     "plugins/ai-tdd/tests/test_quality.py",
     "plugins/ai-tdd/tests/test_quality_gates.py",
+    "plugins/ai-tdd/tests/test_log_paths.py",
     "scripts/build_zip.py", "scripts/check_install.py", "scripts/smoke_demo.py",
     "scripts/evaluate_claude.py", "scripts/launch_claude.py", "scripts/measure_context.py", "scripts/test_strength_demo.py",
     "validation/VALIDATION.md", "validation/RESEARCH.md"
