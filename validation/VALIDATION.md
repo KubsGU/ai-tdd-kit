@@ -61,6 +61,29 @@ ordinary input, 26,848 cache-write input, 173,584 cache-read input and 2,566 out
 tokens; estimated $0.3008688. This is a successful integration example, not a
 controlled comparison with another framework or proof of minimum test count.
 
+**Second trial of the final evaluator also passed**, including exact original
+test-file bytes, current completion/quality evidence, all three actual Opus 5.5
+roles, all quality tools in three batches, external six-case oracle and unchanged
+DONE resume. It kept three executed IDs: the existing regression and two focused
+groups using subtests for below/at/above-threshold cases and the retained integer
+return contract. Inspection of the saved assessments found independent literal
+oracles and concrete threshold, equality-only, upper-band and zero-cart faults.
+Those descriptions are reviewed reasoning; only the actual RED and separate
+mutation demos establish executed fault detections.
+
+Second first-session metrics: 36 turns, 289.6 seconds, 100 ordinary input, 104,112
+cache-write input, 1,422,301 cache-read input and 26,874 output tokens. Cache reads
+were **93.17% of reported input**, estimated API-equivalent cost $1.5171882. Separate
+resume used 8 ordinary input, 24,776 cache-write input, 95,072 cache-read input,
+1,932 output tokens and estimated $0.2558944. Variation in test counts and context
+between these trials is not a measured reduction in bugs, tokens or execution time.
+
+CI retains six OS/Python combinations, runs on PRs and main rather than duplicating
+branch push/PR matrices, cancels superseded runs and caches pinned package downloads.
+All actual lint/test/demo executions remain fresh. This uses documented
+[setup-python caching](https://github.com/actions/setup-python#caching-packages-dependencies)
+and [GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
 The public allowlist contains 47 source files, plus generated CHECKSUMS.json.
 An isolated ZIP install passed inventory/checksums, strict manifests, marketplace
 registration, plugin installation and the inactive-project hook without changing

@@ -17,6 +17,8 @@
   rejected and return the task to GREEN for repair.
 - Add project Ruff lint CI, actual Ruff/formatter/strict Mypy in the opt-in Claude
   fixture, and a real-execution comparison of weak vs contract-based tests.
+- Run branch CI on pull requests and main, avoiding duplicate push/PR matrices;
+  cancel superseded runs and cache pinned development package downloads.
 - Document primary-source research, tradeoffs and limits of reviewer judgments.
 - Upgrade: finish/archive active tasks with the prior version before updating.
   Legacy tasks without a checkpoint are never retroactively blessed.

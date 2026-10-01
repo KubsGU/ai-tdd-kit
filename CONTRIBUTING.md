@@ -21,6 +21,10 @@ real Claude Code; `scripts/evaluate_claude.py` creates a synthetic temporary
 project and uses normal account usage. Report that separately from deterministic
 tests. Do not call a role-edit simulation an agent benchmark.
 
+CI runs for pull requests and main, with six OS/Python combinations. Superseded
+runs are canceled; pinned package downloads use setup-python's pip cache. Actual
+lint, tests and demos still run. Open a PR or use workflow_dispatch for branch CI.
+
 Efficiency changes must preserve behavioral evidence and full regression scope.
 The byte measurement is not a token/cost/time benchmark. Real comparisons need
 the same pinned model and effort, independent oracles, repeated varied tasks and
