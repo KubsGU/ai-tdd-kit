@@ -9,15 +9,17 @@ claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
 Start a new session with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` set in its
-environment and `claude --model opus`, then use `/ai-tdd:feature <description>`. This enforces foreground
+environment and `claude --model sonnet`, then use `/ai-tdd:feature <description>`. This enforces foreground
 workers; see the repository README for PowerShell and Unix launch examples.
 Resume an interrupted task with `/ai-tdd:resume`.
 
-All workers explicitly inherit the selected session model. Native prompt caching
+Workers inherit the selected session unless an explicit frozen worker_models
+policy requests an override. Haiku implementation and an Opus verifier are opt-in;
+the same quality gates apply, without an equal-quality guarantee. Native prompt caching
 stays enabled; preflight detects cache-disable flags and forced worker models.
 Compact controller output avoids repeated evidence, with full state on disk and
 `--full` before the command for diagnostics. Tests are always executed afresh.
-The optional repository launcher defaults to Opus and keeps normal user settings.
+The optional repository launcher defaults to Sonnet and keeps normal user settings.
 See [models and efficiency](references/efficiency.md) for launch options and limits.
 
 Normal increments use new test files; prior files remain frozen until an explicit
@@ -47,4 +49,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.3.1.
+MIT license. Version 1.4.0.

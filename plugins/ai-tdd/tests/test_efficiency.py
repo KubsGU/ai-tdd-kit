@@ -19,6 +19,15 @@ def module(name):
 
 
 class LaunchTests(unittest.TestCase):
+    def test_ordinary_launch_requests_sonnet_and_keeps_explicit_opus_available(self):
+        launcher = module('launch_claude')
+        with tempfile.TemporaryDirectory() as project:
+            for selected, expected in (([], 'sonnet'), (['--model', 'opus'], 'opus')):
+                with self.subTest(selected=selected), mock.patch('sys.argv', ['launcher', '--project', project] + selected), mock.patch.object(launcher.shutil, 'which', return_value='claude'), mock.patch.object(launcher.subprocess, 'call', return_value=0) as call:
+                    self.assertEqual(launcher.main(), 0)
+                    argv = call.call_args.args[0]
+                    self.assertEqual(argv[argv.index('--model') + 1], expected)
+
     def test_launcher_opens_the_selected_project(self):
         launcher = module('launch_claude')
         with tempfile.TemporaryDirectory() as project:

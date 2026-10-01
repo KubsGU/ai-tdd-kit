@@ -32,6 +32,19 @@ class TddError(RuntimeError):
     pass
 
 
+def worker_models(value):
+    allowed = {'test-author': {'inherit', 'opus'}, 'implementer': {'inherit', 'sonnet', 'haiku', 'opus'},
+               'verifier': {'inherit', 'opus'}}
+    if not isinstance(value, dict) or set(value) - set(allowed):
+        raise TddError('worker_models must map only test-author, implementer and verifier roles')
+    result = {role: 'inherit' for role in allowed}
+    for role, model in value.items():
+        if not isinstance(model, str) or model not in allowed[role]:
+            raise TddError('worker_models has an unsupported model for ' + role)
+        result[role] = model
+    return result
+
+
 def managed_folder(root):
     folder = Path(root).resolve() / ".ai-tdd"
     if folder.is_symlink() or folder.resolve() != folder:
@@ -195,6 +208,7 @@ class Controller:
         self.config = read_json(self.folder / "config.json")
         if self.config.get("schema") != 1:
             raise TddError("Unsupported config schema")
+        self.worker_models = worker_models(self.config.get('worker_models', {}))
         for key in ("source_roots", "test_roots", "protected_paths"):
             paths = self.config.get(key)
             if not isinstance(paths, list) or (key != "protected_paths" and not paths):
@@ -305,6 +319,12 @@ class Controller:
             raise TddError("Environment changed; start a fresh reviewed run")
         if self.state["phase"] != "DONE" and self.state.get("quality_policy") != self.quality_policy:
             raise TddError("Frozen quality definitions/budget changed; setup repair cannot drop or weaken quality checks")
+        if self.state["phase"] != "DONE":
+            self.fixed_worker_models()
+
+    def fixed_worker_models(self):
+        if self.state.get('worker_models', worker_models({})) != self.worker_models:
+            raise TddError('Frozen worker model policy changed; finish and archive this task before selecting another policy')
 
     def fixed(self, include_tests=True, include_spec=True):
         expected = self.state["frozen"] if include_tests else self.state["fixed"]
@@ -440,6 +460,7 @@ class Controller:
         self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "test_checkpoint": self.test_files(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
         self.state.update(runner_runs=1, runner_run_limit=self.config.get("max_runner_runs", 100))
         self.state.update(initial_required_ids=list(baseline["collected"]), quality_policy=self.quality_policy,
+                          worker_models=dict(self.worker_models),
                           quality_runs=int(bool(self.quality_checks)), quality_run_limit=self.quality_policy["run_limit"],
                           quality_receipt=quality_baseline, quality_hash=digest(self.folder / "runs" / (quality_baseline["id"] + ".quality.json")))
         return self.save("begin")
@@ -672,7 +693,7 @@ def compact_state(state):
     """Project execution evidence into a small decision view, retaining disk proofs."""
     if not isinstance(state, dict) or "phase" not in state:
         return state
-    fields = ("schema", "task_id", "phase", "spec_version", "cycle", "attempts", "increment", "coverage", "receipt_current", "quality_current", "empty_baseline_waiver", "review")
+    fields = ("schema", "task_id", "phase", "spec_version", "cycle", "attempts", "increment", "coverage", "receipt_current", "quality_current", "empty_baseline_waiver", "review", "worker_models")
     result = {name: state[name] for name in fields if name in state}
     used, limit = state.get("runner_runs", 1), state.get("runner_run_limit", 100)
     result.update(view="compact", required_test_count=len(state["required_ids"]),
@@ -778,21 +799,25 @@ def guard(payload, plugin_root=PLUGIN):
                 "ai-tdd:verifier": "verifier"}.get(payload.get("agent_type", ""), "")
         worker = bool(payload.get("agent_id"))
         if tool == "Agent":
+            c.fixed_worker_models()
             if worker or role:
                 return "deny: workers cannot delegate managed work"
             if (root / ".ai-tdd/controller.lock").exists():
                 return "deny: controller is executing; wait before dispatch"
             if any(inputs.get(key) for key in ("resume", "run_in_background", "isolation")):
                 return "deny: managed workers need fresh contexts in the current checkout"
-            if inputs.get("model") not in {None, "inherit"}:
-                return "deny: managed workers inherit the selected session model; omit model overrides"
             requested = inputs.get("subagent_type")
             allowed = {"ai-tdd:verifier"}
             if phase in {"TEST", "AMEND"}:
                 allowed.add("ai-tdd:test-author")
             if phase in {"IMPLEMENT", "GREEN"}:
                 allowed.add("ai-tdd:implementer")
-            return None if requested in allowed else "deny: dispatch the named agent that owns this phase"
+            if requested not in allowed:
+                return "deny: dispatch the named agent that owns this phase"
+            selected = c.worker_models[requested.removeprefix('ai-tdd:')]
+            if inputs.get('model', 'inherit') != selected:
+                return 'deny: worker dispatch must match frozen worker_models policy for ' + requested
+            return None
         if tool in READ_TOOLS:
             return None
         if (root / ".ai-tdd/controller.lock").exists():

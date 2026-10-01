@@ -31,7 +31,7 @@ def launch_argv(executable, model, effort, extra):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=Path.cwd(), help="Feature project directory; default current directory")
-    parser.add_argument("--model", default="opus", help="Explicit session model; default opus. Workers inherit it")
+    parser.add_argument("--model", default="sonnet", help="Explicit session model; default sonnet. Workers follow the frozen task policy")
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], help="Optional stable effort; otherwise Claude keeps its normal configuration")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("claude_args", nargs=argparse.REMAINDER, help="Additional Claude options after --")

@@ -1,5 +1,30 @@
 # Validation report — AI TDD Kit
 
+## 1.4.0 validation — 2026-10-01
+
+**167 tests ran in 124.1 seconds: 166 passed, one local directory-symlink permission
+skip**, on Windows/Python 3.12.10. New frozen worker-policy regressions observed
+eight failing methods before implementation, then all eleven passed. The default
+Sonnet launch test failed before the default changed; explicit Opus remains
+available. Fourteen no-model benchmark tests validate independent contract tables,
+stateful scenarios, selected assertion witnesses, invalid reports, missing usage,
+model mismatch, deterministic trial ordering, exact mixed routing, synthetic
+capsule filtering and alternative correct implementations. Two source-identity
+false-credit regressions failed before the grader fix, then passed. Repository Ruff and native
+strict marketplace/plugin manifests passed.
+
+All three initial and three reference fixtures passed actual Ruff F lint,
+source-only format checks and strict Mypy: eighteen real quality commands. The
+paired native benchmark is governed by its [pre-registered protocol](MODEL_BENCHMARK_PROTOCOL.md).
+Its observed results belong in [the comparison report](MODEL_BENCHMARK.md), rather
+than being inferred from model prices or cache fractions.
+
+An original instruction probe correctly reported that mixed-role dispatch was
+unsupported. A fresh updated-policy pressure probe selected exact Haiku-only
+implementation routing, kept author/verifier inherited, rejected forced-model
+and setup-repair bypasses, preserved failed-attempt evidence and denied silent
+escalation. These are qualitative instruction checks, not quality equivalence.
+
 ## 1.3.1 validation — 2026-10-01
 
 **141 tests ran in 62.8 seconds: 140 passed, one local directory-symlink permission
