@@ -1,6 +1,55 @@
 # Validation report — AI TDD Kit
 
-## English summary
+## 1.1.0 validation — 2026-10-01
+
+**84 controller and integration tests passed, zero skips, in 51.4 seconds** on
+Windows/Python 3.12.10 with pytest 9.1.1. New tests reproduce dispatch before RED,
+foreign role names, worker delegation, resumed/background/isolated workers,
+dispatch during controller execution, missing foreground configuration, JUnit
+count/outcome inconsistencies, typeless failures, stale/missing DONE reviews and
+runner-budget reset attempts. The relevant new regression cases were observed
+failing before their controller fixes.
+
+Actual pytest integration reproduced a missing import inside a test body being
+accepted as behavioral RED by the old JUnit convention. It also reproduced
+invisible deselection and a non-strict xpass being accepted at baseline. The new
+JSON adapter rejects these cases, uses native parameterized node IDs, preserves
+teardown failure evidence and completes a real RED/GREEN cycle. A typeless generic
+JUnit failure no longer defaults to AssertionError.
+
+The deterministic demo again reached DONE with three RED/GREEN cycles, one
+existing-coverage cycle, five tests and both selected mutation probes detected.
+Native strict marketplace/plugin validation returned no errors or warnings.
+
+**Real Claude Code 2.1.286 evaluation passed**, with foreground workers enabled:
+
+- Both `/ai-tdd:feature` and `/ai-tdd:resume` loaded.
+- Verifier planned first, test author wrote tests, implementer delivered the
+  feature, a further test-author cycle added existing-behavior coverage, and a
+  fresh verifier reviewed the result.
+- The controller reached DONE with six required tests. One real RED/GREEN cycle
+  and one existing-coverage cycle were recorded; every runner start was audited.
+- The CLI returned success without error/timeout after 24 turns. The first
+  session/evidence collection took 183.0 seconds.
+- A separate resume session returned success, retained DONE and preserved the
+  exact task state.
+
+This is a synthetic shipping-fee task with the unittest runner, plus deterministic
+pytest/controller integrations. It does not test interactive fork-mode behavior
+in a terminal UI, every task/language, or comparative cost/performance. The native
+foreground flag follows the documented runtime contract and is checked in the
+preflight. Role prompts are unchanged. Raw model logs and local evaluation JSON
+remain excluded from the public package.
+
+The release workflow adds macOS to Windows/Linux, each with Python 3.10/3.12.
+The portable ZIP passed native strict validation, all 36 public-file checksums,
+actual marketplace/plugin installation in a temporary `CLAUDE_CONFIG_DIR`, and
+the inactive hook check. It contains 37 members including generated CHECKSUMS.json;
+ordinary user settings were not the installation target.
+Per-commit CI and release installation results are recorded in the public pull
+request/release. The historical records below describe the earlier releases.
+
+## 1.0.1 English summary (historical)
 
 On 2026-10-01, **56 controller and integration tests passed with zero skips**.
 They include actual Node → Python hook execution, hook health failures, pytest

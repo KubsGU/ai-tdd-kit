@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 
 PLUGIN = Path(__file__).resolve().parents[1]
 IGNORED = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", ".git", ".venv", "venv"}
-READ_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "Agent", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "SendUserMessage"}
+READ_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "SendUserMessage"}
 SELFTEST_REASON = "deny: AI TDD hook self-test"
 
 
@@ -80,13 +80,15 @@ def safe_path(root, value):
 
 
 def environment():
-    names = ("PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ")
+    names = ("PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS")
     value = {"python": sys.version, "executable": str(Path(sys.executable).resolve()), "platform": platform.platform(),
              "options": {name: hashlib.sha256(os.environ.get(name, "").encode()).hexdigest() for name in names}}
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
 def hook_health():
+    if os.environ.get("CLAUDECODE") and os.environ.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS") != "1":
+        raise TddError("Sequential AI TDD requires foreground workers; start Claude with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1")
     node = shutil.which("node")
     if not node:
         raise TddError("AI TDD hook requires Node.js on PATH")
@@ -126,15 +128,29 @@ def parse_report(path, fmt):
                 raise TddError("JUnit testcase needs a name")
             test_id = ".".join(part for part in (case.get("classname", ""), name) if part)
             item = {"id": test_id, "status": "passed", "exception": "", "detail": ""}
+            if sum(case.find(tag) is not None for tag in ("skipped", "failure", "error")) > 1:
+                raise TddError("JUnit testcase has contradictory outcomes")
             for tag, status in (("skipped", "skipped"), ("failure", "failed"), ("error", "error")):
                 child = case.find(tag)
                 if child is not None:
-                    item.update(status=status, exception=child.get("type", "AssertionError" if tag == "failure" else "RunnerError").split(".")[-1], detail=(child.get("message", "") + " " + (child.text or ""))[:1200])
+                    item.update(status=status, exception=child.get("type", "UnknownFailure" if tag == "failure" else "RunnerError").split(".")[-1], detail=(child.get("message", "") + " " + (child.text or ""))[:1200])
             results.append(item)
         collected = [item["id"] for item in results]
-        for suite in tree.iter("testsuite"):
-            if "tests" in suite.attrib and int(suite.attrib["tests"]) != len(list(suite.iter("testcase"))):
-                raise TddError("JUnit declared test count differs from testcase inventory")
+        for suite in tree.iter():
+            if suite.tag not in {"testsuite", "testsuites"}:
+                continue
+            cases = list(suite.iter("testcase"))
+            actual_counts = {"tests": len(cases), **{name: sum(case.find(tag) is not None for case in cases)
+                              for name, tag in (("failures", "failure"), ("errors", "error"), ("skipped", "skipped"))}}
+            for name, actual in actual_counts.items():
+                if name not in suite.attrib:
+                    continue
+                try:
+                    declared = int(suite.attrib[name])
+                except ValueError as error:
+                    raise TddError("JUnit count must be a nonnegative integer: " + name) from error
+                if declared < 0 or declared != actual:
+                    raise TddError("JUnit declared " + name + " count differs from testcase inventory")
     else:
         raise TddError("Runner format must be json or junit")
     if not isinstance(collected, list) or not isinstance(results, list):
@@ -177,6 +193,9 @@ class Controller:
             raise TddError("source and test roots must not overlap")
         if not isinstance(self.config.get("max_attempts", 3), int) or not 1 <= self.config.get("max_attempts", 3) <= 20:
             raise TddError("max_attempts must be 1..20")
+        budget = self.config.get("max_runner_runs", 100)
+        if type(budget) is not int or not 1 <= budget <= 10000:
+            raise TddError("max_runner_runs must be an integer in 1..10000")
         if not isinstance(self.config.get("timeout_seconds", 120), (int, float)) or not 0 < self.config.get("timeout_seconds", 120) <= 3600:
             raise TddError("timeout_seconds must be positive and at most 3600")
         runner = self.config.get("runner", {})
@@ -227,7 +246,7 @@ class Controller:
         names = ["config.json", "review-plan.json"] + (["spec.json"] if include_spec else [])
         for name in names:
             result[".ai-tdd/" + name] = digest(self.folder / name)
-        for name in ("scripts/tdd.py", "scripts/unittest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
+        for name in ("scripts/tdd.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
                      "agents/test-author.md", "agents/implementer.md", "agents/verifier.md",
                      "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md"):
             result["plugin/" + name] = digest(PLUGIN / name)
@@ -250,6 +269,10 @@ class Controller:
             raise TddError("Changed protected artifacts; use explicit contract amendment")
 
     def run(self, kind):
+        if self.state:
+            self.require_run_budget()
+            self.state["runner_runs"] = self.state.get("runner_runs", 1) + 1
+            self.save("runner-started", kind=kind, total_runner_runs=self.state["runner_runs"])
         before_protected, before_source = self.protected(), self.source()
         before_state = digest(self.state_path)
         run_id = uuid.uuid4().hex
@@ -285,6 +308,10 @@ class Controller:
         atomic_json(runs / (run_id + ".receipt.json"), receipt)
         return receipt
 
+    def require_run_budget(self):
+        if self.state.get("runner_runs", 1) >= self.state.get("runner_run_limit", self.config.get("max_runner_runs", 100)):
+            raise TddError("Task runner budget exhausted; no retry or setup repair grants more runs")
+
     def require_suite(self, receipt, failing=()):
         actual = {item["id"]: item for item in receipt["results"]}
         if not set(self.state["required_ids"]).issubset(actual):
@@ -315,6 +342,7 @@ class Controller:
         if baseline["exit_code"] or (not baseline["results"] and not allow_empty):
             raise TddError("Baseline must pass and execute tests; bootstrap needs --allow-empty")
         self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
+        self.state.update(runner_runs=1, runner_run_limit=self.config.get("max_runner_runs", 100))
         return self.save("begin")
 
     def increment(self, tests, ac, because):
@@ -385,7 +413,8 @@ class Controller:
             if not receipt["results"] or receipt["exit_code"]:
                 raise TddError("GREEN requires a nonempty passing suite")
         except TddError as error:
-            self.state["phase"] = "BLOCKED" if self.state["attempts"] >= self.config.get("max_attempts", 3) else "IMPLEMENT"
+            exhausted = self.state["runner_runs"] >= self.state["runner_run_limit"]
+            self.state["phase"] = "BLOCKED" if exhausted or self.state["attempts"] >= self.config.get("max_attempts", 3) else "IMPLEMENT"
             self.save("green-failed", category=str(error))
             raise
         increment = self.state["increment"]
@@ -415,6 +444,7 @@ class Controller:
     def retry(self, reason):
         self.phase("BLOCKED")
         self.fixed()
+        self.require_run_budget()
         if not reason.strip():
             raise TddError("Retry needs a new diagnosis")
         self.state.update(phase="IMPLEMENT", attempts=0)
@@ -586,8 +616,23 @@ def guard(payload, plugin_root=PLUGIN):
         if phase == "DONE":
             return None
         tool, inputs = payload.get("tool_name", ""), payload.get("tool_input", {})
-        role = payload.get("agent_type", "").split(":")[-1]
+        role = {"ai-tdd:test-author": "test-author", "ai-tdd:implementer": "implementer",
+                "ai-tdd:verifier": "verifier"}.get(payload.get("agent_type", ""), "")
         worker = bool(payload.get("agent_id"))
+        if tool == "Agent":
+            if worker or role:
+                return "deny: workers cannot delegate managed work"
+            if (root / ".ai-tdd/controller.lock").exists():
+                return "deny: controller is executing; wait before dispatch"
+            if any(inputs.get(key) for key in ("resume", "run_in_background", "isolation")):
+                return "deny: managed workers need fresh contexts in the current checkout"
+            requested = inputs.get("subagent_type")
+            allowed = {"ai-tdd:verifier"}
+            if phase in {"TEST", "AMEND"}:
+                allowed.add("ai-tdd:test-author")
+            if phase in {"IMPLEMENT", "GREEN"}:
+                allowed.add("ai-tdd:implementer")
+            return None if requested in allowed else "deny: dispatch the named agent that owns this phase"
         if tool in READ_TOOLS:
             return None
         if (root / ".ai-tdd/controller.lock").exists():
@@ -616,7 +661,7 @@ def guard(payload, plugin_root=PLUGIN):
             return "deny: verifier is read-only"
         if path == root / ".ai-tdd/review.json" and phase == "VERIFY" and not worker:
             return None
-        if path == root / ".ai-tdd/spec.json" and phase == "AMEND" and role in {"", "test-author"}:
+        if path == root / ".ai-tdd/spec.json" and phase == "AMEND" and (role == "test-author" or (not worker and not role)):
             return None
         if role not in {"test-author", "implementer"}:
             return "deny: delegate feature edits to the role that owns the phase"
@@ -688,7 +733,11 @@ def main():
             if not result:
                 raise TddError("Not started yet")
             if result["phase"] in {"GREEN", "VERIFY", "DONE"}:
-                result = {**result, "receipt_current": result["green_receipt"]["source"] == c.source() and result["frozen"] == c.protected() and result["environment"] == environment()}
+                receipt = result["completion_receipt"] if result["phase"] == "DONE" else result["green_receipt"]
+                current = receipt["source"] == c.source() and result["frozen"] == c.protected() and result["environment"] == environment()
+                if result["phase"] == "DONE":
+                    current = current and digest(c.folder / "review.json") == result["review_hash"]
+                result = {**result, "receipt_current": current}
         else:
             with lock(root):
                 if command == "begin":

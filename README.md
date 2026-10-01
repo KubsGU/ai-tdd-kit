@@ -8,7 +8,7 @@ A Python controller owns phase transitions and execution evidence. Claude Code
 hooks and role tool lists check who may change each artifact.
 
 [Polska instrukcja](README.pl.md) · [Protocol](plugins/ai-tdd/references/protocol.md)
-· [Validation](validation/VALIDATION.md) · [MIT license](LICENSE)
+· [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
 ## Install
 
@@ -23,7 +23,21 @@ claude plugin marketplace add KubsGU/ai-tdd-kit
 claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
-Start a new Claude Code session in your project, then:
+Start Claude with foreground agents enabled. In PowerShell:
+
+```powershell
+$env:CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
+claude
+```
+
+On macOS/Linux:
+
+```sh
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude
+```
+
+This setting is required for sequential agents. The preflight check explains it
+if missing. Keep it set when resuming a task. In that session, run:
 
 ```text
 /ai-tdd:feature Add a loyalty discount of 10%. Amounts are integer cents. It cannot be combined with a promotion.
@@ -71,6 +85,9 @@ required test IDs and stale results cannot stand in for behavioral RED or GREEN.
 An incorrect test has an evidence-based, versioned `amend` flow. A demonstrated
 runner configuration problem has `reconfigure` and `rebase`. Both invalidate old
 evidence and require new execution; the implementer cannot weaken its own tests.
+Fresh agent dispatch is checked by phase. A task-wide runner budget (default 100
+invocations, including baseline and final check) also survives retries and setup
+repairs. It bounds test execution, not model usage or spending.
 
 ## Project setup and scope
 
@@ -79,8 +96,10 @@ local execution evidence. One checkout supports one active task. Before another
 feature it archives a completed task into `.ai-tdd-history/`, preserving evidence,
 source and tests. Keep these local state directories private.
 
-Use the repository's existing runner. Built-in adapters support unittest JSON
-and JUnit XML; unittest and pytest integrations were exercised. See the
+Use the repository's existing suite. Bundled JSON adapters support unittest and
+serial pytest; pytest records actual exception types and native node IDs.
+Generic JUnit is also supported, but a behavioral RED needs an explicit failure
+type. Typeless failures are rejected as ambiguous. See the
 [configuration examples](plugins/ai-tdd/templates/) and the
 [execution protocol](plugins/ai-tdd/references/protocol.md) for ownership roots,
 protected helpers/configuration, test reports and controller commands.
@@ -92,8 +111,8 @@ runner inputs matter. Small cosmetic changes may not justify this workflow.
 
 ## Evidence and limitations
 
-The [validation report](validation/VALIDATION.md) records 56 passing controller
-and integration tests, a deterministic demo with three RED/GREEN cycles and two
+The [validation report](validation/VALIDATION.md) records controller and
+integration tests, a deterministic demo with three RED/GREEN cycles and two
 selected mutation probes, and a real Claude Code run through DONE followed by a
 successful second-session resume. The instruction-only baseline already handled
 the cases tested; no measured prompt improvement is claimed.
@@ -105,12 +124,16 @@ A malicious test process can undermine runner evidence, and tests in the same
 repository are not a secret holdout.
 
 The initial local validation used Windows, Python 3.12.10 and Claude Code 2.1.285.
-GitHub CI exercises Windows and Linux with Python 3.10 and 3.12; inspect its
+GitHub CI is configured for Windows, Linux and macOS with Python 3.10 and 3.12; inspect its
 actual results for each commit. One small feature does not establish comparative
 superiority, large-repository effectiveness, or a favorable cost/time tradeoff.
 The complete workflow targets **Claude Code**, with local hooks and execution.
 
 ## Update or uninstall
+
+Finish and archive active tasks before updating. Receipts bind the controller,
+runner and protocol version; changing them invalidates earlier evidence. DONE
+status also detects an edited or missing final review.
 
 ```text
 claude plugin update ai-tdd@ai-tdd-kit
@@ -131,8 +154,8 @@ python -B scripts/smoke_demo.py
 python -B scripts/build_zip.py
 ```
 
-The plugin itself uses Python's standard library. The development pytest
-dependency enables the JUnit integration test. The demo simulates role edits and
+The controller uses Python's standard library. The development pytest dependency
+enables actual pytest adapter integration tests. The demo simulates role edits and
 does not call a model. An optional real-Claude evaluation uses normal account
 usage: `python -B scripts/evaluate_claude.py --output validation/local-claude.json --resume-check`.
 
