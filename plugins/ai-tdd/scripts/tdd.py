@@ -21,6 +21,7 @@ PLUGIN = Path(__file__).resolve().parents[1]
 IGNORED = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", ".git", ".venv", "venv"}
 READ_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "SendUserMessage"}
 SELFTEST_REASON = "deny: AI TDD hook self-test"
+CACHE_FLAGS = ("DISABLE_PROMPT_CACHING", "DISABLE_PROMPT_CACHING_OPUS", "DISABLE_PROMPT_CACHING_SONNET", "DISABLE_PROMPT_CACHING_HAIKU", "DISABLE_PROMPT_CACHING_FABLE")
 
 
 class TddError(RuntimeError):
@@ -80,7 +81,8 @@ def safe_path(root, value):
 
 
 def environment():
-    names = ("PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS")
+    names = ("PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+             "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_EFFORT_LEVEL") + CACHE_FLAGS
     value = {"python": sys.version, "executable": str(Path(sys.executable).resolve()), "platform": platform.platform(),
              "options": {name: hashlib.sha256(os.environ.get(name, "").encode()).hexdigest() for name in names}}
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
@@ -89,6 +91,11 @@ def environment():
 def hook_health():
     if os.environ.get("CLAUDECODE") and os.environ.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS") != "1":
         raise TddError("Sequential AI TDD requires foreground workers; start Claude with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1")
+    if os.environ.get("CLAUDECODE"):
+        if any(os.environ.get(name) == "1" for name in CACHE_FLAGS):
+            raise TddError("Prompt caching is disabled in the environment; use the bundled launch_claude.py or unset DISABLE_PROMPT_CACHING flags before starting Claude")
+        if os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL_FORCE") == "1" and os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL", "inherit") not in {"", "inherit"}:
+            raise TddError("Forced worker model bypasses model inheritance; use launch_claude.py or remove the forced model override")
     node = shutil.which("node")
     if not node:
         raise TddError("AI TDD hook requires Node.js on PATH")
@@ -248,7 +255,7 @@ class Controller:
             result[".ai-tdd/" + name] = digest(self.folder / name)
         for name in ("scripts/tdd.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
                      "agents/test-author.md", "agents/implementer.md", "agents/verifier.md",
-                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md"):
+                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md"):
             result["plugin/" + name] = digest(PLUGIN / name)
         return result
 
@@ -545,9 +552,35 @@ class Controller:
         return {"archive": str(destination), "next": "init for the next feature; all old evidence retained"}
 
 
+def compact_state(state):
+    """Project execution evidence into a small decision view, retaining disk proofs."""
+    if not isinstance(state, dict) or "phase" not in state:
+        return state
+    fields = ("schema", "task_id", "phase", "spec_version", "cycle", "attempts", "increment", "coverage", "receipt_current", "empty_baseline_waiver", "review")
+    result = {name: state[name] for name in fields if name in state}
+    used, limit = state.get("runner_runs", 1), state.get("runner_run_limit", 100)
+    result.update(view="compact", required_test_count=len(state["required_ids"]),
+                  runner_budget={"used": used, "limit": limit, "remaining": max(0, limit-used)},
+                  artifacts={"state": ".ai-tdd/state.json", "spec": ".ai-tdd/spec.json", "config": ".ai-tdd/config.json",
+                             "review_plan": ".ai-tdd/review-plan.json", "review": ".ai-tdd/review.json"})
+    for name in ("baseline_receipt", "red_receipt", "green_receipt", "completion_receipt"):
+        if name not in state:
+            continue
+        receipt = state[name]
+        result[name] = {"id": receipt["id"], "kind": receipt["kind"], "exit_code": receipt["exit_code"],
+                        "executed_count": len(receipt["results"]), "path": ".ai-tdd/runs/" + receipt["id"] + ".receipt.json",
+                        "nonpassing_tests": [item for item in receipt["results"] if item["status"] != "passed"]}
+    if state.get("history"):
+        result["last_event"] = state["history"][-1]
+    if "reconfigure" in state:
+        result["reconfigure"] = {name: state["reconfigure"][name] for name in ("paths", "reason")}
+    return result
+
+
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--root", default=".")
+    result.add_argument("--full", action="store_true", help="Emit full state instead of the default compact decision view")
     sub = result.add_subparsers(dest="command", required=True)
     sub.add_parser("init")
     sub.add_parser("status")
@@ -626,6 +659,8 @@ def guard(payload, plugin_root=PLUGIN):
                 return "deny: controller is executing; wait before dispatch"
             if any(inputs.get(key) for key in ("resume", "run_in_background", "isolation")):
                 return "deny: managed workers need fresh contexts in the current checkout"
+            if inputs.get("model") not in {None, "inherit"}:
+                return "deny: managed workers inherit the selected session model; omit model overrides"
             requested = inputs.get("subagent_type")
             allowed = {"ai-tdd:verifier"}
             if phase in {"TEST", "AMEND"}:
@@ -724,6 +759,7 @@ def main():
         return 0
     values = vars(parser().parse_args()).copy()
     root, command = Path(values.pop("root")).resolve(), values.pop("command")
+    full = values.pop("full")
     try:
         if command == "doctor":
             result = hook_health()
@@ -743,7 +779,7 @@ def main():
                 if command == "begin":
                     hook_health()
                 result = init(root) if command == "init" else getattr(Controller(root), command)(**values)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(result if full else compact_state(result), ensure_ascii=False, indent=2))
         return 0
     except (TddError, KeyError, TypeError, ValueError) as error:
         print(json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False), file=sys.stderr)

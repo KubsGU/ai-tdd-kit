@@ -5,7 +5,7 @@
 Przenośny workflow: opis zadania → doprecyzowanie → kontrakt akceptacji → osobny
 autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależny review.
 Kontroler w Pythonie egzekwuje fazy na podstawie wykonanych testów. Hook i ograniczenia
-narzędzi agentów pilnują właścicieli zmian. Wersja 1.1.0, licencja MIT.
+narzędzi agentów pilnują właścicieli zmian. Wersja 1.2.0, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -16,18 +16,19 @@ claude plugin marketplace add KubsGU/ai-tdd-kit
 claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
-Uruchom Claude z ustawieniem wymuszającym agentów na pierwszym planie.
+Uruchom Claude w projekcie, w którym chcesz wdrożyć feature. Ustaw agentów na
+pierwszym planie i wybierz model. Konserwatywny domyślny wybór jakościowy to Opus.
 W PowerShell:
 
 ```powershell
 $env:CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
-claude
+claude --model opus
 ```
 
 Na macOS/Linux:
 
 ```sh
-CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model opus
 ```
 
 Ustawienie jest wymagane także przy wznowieniu; kontrola wstępna wykryje jego brak.
@@ -43,7 +44,7 @@ na PATH; dla Node wybierz wspieraną wersję LTS. Plugin nie wymaga dodatkowych
 bibliotek Pythona. Zależności aplikacji
 i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.1.0.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.2.0.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -61,12 +62,49 @@ miejscu. Uruchom nową sesję Claude Code w swoim projekcie lub użyj
 Możesz też uruchomić plugin bez instalacji:
 
 ```text
-claude --plugin-dir "/pełna/ścieżka/ai-tdd-kit/plugins/ai-tdd"
+claude --model opus --plugin-dir "/pełna/ścieżka/ai-tdd-kit/plugins/ai-tdd"
 ```
 
 Nie kopiuj kluczy API ani konfiguracji konta z tego komputera. Na drugim korzystaj
 ze swojego zwykłego logowania Claude Code. Jeżeli Python jest poza PATH, ustaw
 zmienną `AI_TDD_PYTHON` na ścieżkę do jego pliku wykonywalnego. Node musi być na PATH.
+
+## Modele, tokeny i cache
+
+Każda rola ma `model: inherit`: autor testów, implementer i verifier korzystają
+z modelu sesji. Hook aktywnego zadania odrzuca zmianę modelu w pojedynczym
+wywołaniu agenta. Nie ma automatycznego obniżania jakości testów lub review przez
+przełączanie na tańszy model. Sonnet można wybrać świadomie; nie zakładamy, że
+zawsze daje tę samą jakość co Opus.
+
+Po pobraniu ZIP lub sklonowaniu repo możesz skorzystać z launchera. Z katalogu
+paczki wskaż projekt docelowy:
+
+```text
+python -B scripts/launch_claude.py --project "C:/projekty/moj-projekt"
+```
+
+Launcher wybiera Opusa, wymusza agentów na pierwszym planie i usuwa zmienne
+wyłączające cache lub wymuszające inny model workerów tylko dla tej sesji.
+Nie zmienia ustawień użytkownika, uprawnień, logowania ani MCP. `--dry-run` pokazuje
+wybór bez uruchamiania Claude. Dodatkowe opcje Claude podaj po `--`.
+Możesz ustawić `--effort high` dla trudniejszych zadań; domyślnie zachowujemy
+zwykłe ustawienie Claude zamiast wymuszać maksymalny wysiłek na każdym kroku.
+
+Cache promptów obsługuje sam Claude Code. Zachowujemy domyślne TTL dostawcy.
+Krótkie odpowiedzi kontrolera i przekazywanie ścieżek do artefaktów ograniczają
+powtarzanie historii, hashy i zielonych logów. Wymagania oraz pełne dowody pozostają
+dostępne. Każde wymagane wykonanie testów nadal się odbywa; wyników runnera nie
+cachujemy. Pełny JSON dla diagnostyki lub skryptów otrzymasz przez `--full` przed
+poleceniem kontrolera, np. `tdd.py --root /projekt --full status`.
+
+W demonstratorze odpowiedź DONE była o 88,4% mniejsza w bajtach. W dwóch rzeczywistych
+próbach Opusa 92,1–92,6% raportowanych tokenów wejściowych odczytano z cache, łącznie
+z agentami. To nie jest dowód obniżenia całego rachunku, czasu lub liczby tokenów
+o taki procent. Pomiar obejmuje rzeczywiste modele i końcowe liczniki wszystkich
+agentów; brak danych nie jest traktowany jako zero.
+Szczegóły: [polityka efektywności](plugins/ai-tdd/references/efficiency.md)
+i [wykonane próby](validation/VALIDATION.md).
 
 ## Użycie
 
@@ -129,6 +167,7 @@ Z katalogu `ai-tdd-kit`:
 ```text
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -B scripts/smoke_demo.py
+python -B scripts/measure_context.py
 ```
 
 Pierwsze polecenie sprawdza bramki i próby obejścia procesu. Drugie wykonuje trzy

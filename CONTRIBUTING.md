@@ -10,6 +10,7 @@ Use Python 3.10+ and a supported Node LTS on PATH. From the repository root:
 python -m pip install -r requirements-dev.txt
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -B scripts/smoke_demo.py
+python -B scripts/measure_context.py
 ```
 
 The Claude CLI is only needed for native plugin validation and an actual model
@@ -17,6 +18,12 @@ evaluation. Changes to skills or agent prompts should also be exercised with
 real Claude Code; `scripts/evaluate_claude.py` creates a synthetic temporary
 project and uses normal account usage. Report that separately from deterministic
 tests. Do not call a role-edit simulation an agent benchmark.
+
+Efficiency changes must preserve behavioral evidence and full regression scope.
+The byte measurement is not a token/cost/time benchmark. Real comparisons need
+the same pinned model and effort, independent oracles, repeated varied tasks and
+failed runs included. Use final `modelUsage` totals, including subagents, rather
+than adding streamed usage fragments or treating missing counters as zero.
 
 Preserve regressions and justified test expectations. Do not bypass failing
 checks by removing test IDs, weakening the runner, adding skips, editing task

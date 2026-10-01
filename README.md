@@ -8,7 +8,10 @@ A Python controller owns phase transitions and execution evidence. Claude Code
 hooks and role tool lists check who may change each artifact.
 
 [Polska instrukcja](README.pl.md) · [Protocol](plugins/ai-tdd/references/protocol.md)
+· [Models and efficiency](plugins/ai-tdd/references/efficiency.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
+
+Version **1.2.0**.
 
 ## Install
 
@@ -23,17 +26,18 @@ claude plugin marketplace add KubsGU/ai-tdd-kit
 claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
-Start Claude with foreground agents enabled. In PowerShell:
+Start Claude in your feature project with foreground agents enabled and an
+explicit model. The conservative quality default is Opus. In PowerShell:
 
 ```powershell
 $env:CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = "1"
-claude
+claude --model opus
 ```
 
 On macOS/Linux:
 
 ```sh
-CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 claude --model opus
 ```
 
 This setting is required for sequential agents. The preflight check explains it
@@ -58,6 +62,43 @@ After interruption or a context reset:
 If Python is outside PATH, set `AI_TDD_PYTHON` to its executable. Node must be
 available on PATH. The `doctor` check verifies the actual Node → Python hook
 before a task can begin. Claude Code's normal permissions still apply.
+
+## Models, tokens and caching
+
+All three roles explicitly inherit the session model. Active-task dispatch rejects
+per-call model overrides. There is no automatic cheap test-author or reviewer.
+Keep the chosen model and effort stable; Claude's configured effort applies unless
+you explicitly change it. Sonnet remains an explicit user's choice, with a possible
+quality tradeoff rather than a promised equivalent substitution.
+
+If you download or clone this repository, its optional helper selects the project,
+defaults to Opus, enables foreground workers and removes cache-disable/forced
+worker-model environment variables **only in the child process**:
+
+```text
+python -B scripts/launch_claude.py --project /path/to/your-project
+```
+
+Use `--effort high` when deeper reasoning is needed, `--model` for an explicit
+choice, and `--dry-run` to inspect launch choices. Extra Claude options follow `--`.
+The helper does not edit settings, permissions, authentication or MCP configuration.
+For direct launches, remove cache-disable flags and forced worker-model overrides
+if preflight reports them.
+
+Claude Code manages prompt caching automatically; this plugin keeps native TTL
+defaults. Compact controller output and short artifact-based handoffs avoid
+repeating whole histories, hashes and passing logs. Full requirements and evidence
+remain accessible. **Every prescribed test execution still runs.** Scripts needing
+the former full JSON can pass `--full` before the controller command, for example
+`tdd.py --root /project --full status`.
+
+The deterministic demo's DONE response was 88.4% smaller in bytes. Two real Opus runs
+reported 92.1–92.6% of input tokens read from cache, including subagents; see the
+[validation report](validation/VALIDATION.md). Neither number is a measured
+percentage reduction in total tokens, cost or duration. The evaluator reports
+actual models and whole-tree cache counters; missing data stays unavailable.
+See [the efficiency policy](plugins/ai-tdd/references/efficiency.md) for limits
+and current primary documentation.
 
 ## What happens during a task
 
@@ -151,6 +192,7 @@ From this repository:
 python -m pip install -r requirements-dev.txt
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -B scripts/smoke_demo.py
+python -B scripts/measure_context.py
 python -B scripts/build_zip.py
 ```
 

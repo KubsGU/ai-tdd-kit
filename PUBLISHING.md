@@ -29,9 +29,11 @@ Users can run `claude plugin update ai-tdd@ai-tdd-kit`; the plugin version must
 change for the new copy to be installed. Automatic update is a user-side
 marketplace setting.
 Finish and archive active tasks before updating because their receipts bind
-protected plugin files. Version 1.1.0 requires launching Claude with
-`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`; include that launch instruction in
-release notes. Ordinary standalone install checks do not run a Claude task.
+protected plugin files. Launch Claude with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`
+and an explicit selected model, or use `scripts/launch_claude.py --project <path>`.
+Include launch instructions in release notes. Version 1.2.0 defaults to compact
+controller CLI output; document `--full` for scripts consuming the previous JSON.
+Ordinary standalone install checks do not run a Claude task.
 
 ## Anthropic directory
 

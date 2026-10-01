@@ -1,5 +1,66 @@
 # Validation report — AI TDD Kit
 
+## 1.2.0 validation — 2026-10-01
+
+**100 controller/integration/helper tests passed, zero skips, in 51.1 seconds**
+on Windows/Python 3.12.10 with pytest 9.1.1. New cases cover child-only launch
+settings, selecting the feature project, model-override rejection, disabled-cache
+preflight, whole-tree usage accounting, missing/invalid counters, compact/full
+decision parity, real failure details, retained review limitations and exact setup
+repair paths. They also check that status preserves disk evidence without another
+runner execution. Relevant regressions failed before their fixes.
+
+Native strict marketplace/plugin validation returned no errors or warnings.
+`scripts/measure_context.py` executed the existing deterministic demo, then compared
+two read-only DONE responses: **2,690 bytes compact vs 23,188 bytes full, 88.4% less**.
+Both receipts were current and the exact state bytes were preserved. This measures
+response bytes; it does not measure model tokens, total cost or wall-clock savings.
+
+The instruction-only 1.1 baseline already preserved model quality, fresh workers,
+test execution and artifact references. It used full `status` because compact
+output did not exist. Five fresh instruction pressure checks for the new policy
+all selected compact `status`, an ordered artifact brief, inherited session models,
+fresh sequential workers and complete requirements/failure evidence, while rejecting
+cached answers/results or skipped checks. This is qualitative instruction testing,
+not an LLM benchmark or evidence of a quality increase.
+
+**First real Claude Code 2.1.286 trial passed**, on the synthetic shipping-fee task:
+
+- Requested `opus`; actual streamed model was `claude-opus-5-5` for the coordinator
+  and all three named roles. No cheaper role model appeared.
+- Reached DONE with six required tests, one executed RED/GREEN cycle and two honest
+  existing-behavior coverage increments. An external six-case behavioral oracle
+  passed; a separate resume session kept DONE and preserved the exact state.
+- First session/evidence collection: 32 turns, 277.4 seconds, success without
+  timeout. Controller tool-result output totaled 30,922 bytes.
+- Final whole-tree `modelUsage`: 96 ordinary input, 92,840 cache-write input,
+  1,161,546 cache-read input and 24,595 output tokens. Cache reads were **92.59% of
+  all reported input tokens**, not a request hit rate or bill-reduction percentage.
+- Estimated CLI API-equivalent cost: $1.3394232 for the first session. This is not
+  a subscription invoice. Resume is separate: 10 ordinary input, 33,679 cache-write
+  input, 141,011 cache-read input and 2,622 output tokens; estimated $0.3501142.
+
+**A second trial of the final candidate also passed**, including all three actual
+Opus 5.5 role models, DONE, an external six-case oracle and unchanged-state resume.
+It recorded one RED/GREEN cycle and one existing-coverage increment with four
+required tests. First session: 24 turns, 167.2 seconds, 16,363 controller-output
+bytes; 66 ordinary input, 61,612 cache-write input, 716,162 cache-read input and
+15,077 output tokens. Cache reads were **92.07%** of reported input; estimated
+API-equivalent cost $0.8606884. Separate resume: 10 ordinary input, 19,747 cache-write
+input, 127,382 cache-read input, 2,239 output tokens and estimated $0.2282724.
+These two runs are repeatability checks, not a before/after efficiency comparison.
+
+The role model policy, compact output and normal native caching were exercised
+together. Relevant full evidence remains available on disk and all prescribed
+runner checks still execute. These are successful examples, not paired evidence
+of lower overall token use, cost, duration or identical quality across repositories.
+Provider/model/effort choices, task structure and TTLs influence actual outcomes.
+Raw transcripts and evaluation JSON are excluded from the public package.
+
+The release allowlist has 40 source files, plus generated CHECKSUMS.json. Per-commit
+CI and isolated/public installation results are recorded in the pull request and
+release. Historical validation below remains specific to its original version.
+
 ## 1.1.0 validation — 2026-10-01
 
 **84 controller and integration tests passed, zero skips, in 51.4 seconds** on

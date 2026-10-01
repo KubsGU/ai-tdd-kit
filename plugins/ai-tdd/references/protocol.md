@@ -2,7 +2,13 @@
 
 ## Runtime and authority
 
-Tested Claude Code: 2.1.285. Use this version or a newer compatible release;
+For model selection, compact handoffs and native cache checks, follow
+[the efficiency policy](efficiency.md). All workers explicitly inherit the chosen
+session model; omit per-invocation model overrides. There is no automatic cheaper
+test-author/reviewer. The bundled launch helper defaults to Opus; a direct Claude
+launch uses the model you choose. Normal provider/organization rules still apply.
+
+Tested Claude Code: 2.1.285 and 2.1.286. Use a compatible current release;
 older hook/subagent behavior is not validated. Python 3.10+ and Node.js must be
 on PATH; use an actively supported Node LTS release. The Node launcher chooses
 `python` on Windows and `python3` on Unix;
@@ -83,7 +89,7 @@ or command chaining. Keep rationale text plain without shell metacharacters.
 | doctor | Executes the actual Node/Python hook with a sentinel input and validates its structured denial response. No task or source changes. |
 | archive | DONE only; moves .ai-tdd into a unique project-local .ai-tdd-history/task-id without overwriting old evidence or changing feature files. |
 | begin [--allow-empty] | Validated spec/plan, passing full baseline → TEST. |
-| status | Reads task, receipts and history; never changes state. |
+| status | Recomputes freshness and returns the compact decision view with receipt paths; never changes state. Put --full before status for the complete diagnostic state. |
 | red --tests ID... --ac AC... --because "basis" [--expect AssertionError] | TEST/AMEND; unchanged source, exactly target behavior failures, old regressions pass → IMPLEMENT. Only AssertionError/explicit stub NotImplementedError accepted. |
 | cover --tests ID... --ac AC... --because "basis" | New tests already pass with unchanged source → GREEN without claiming a RED cycle. |
 | green | IMPLEMENT/GREEN; immutable tests/config, every required ID executes and passes → GREEN. Also used after a justified refactor. |
