@@ -68,6 +68,13 @@ before a task can begin. Claude Code's normal permissions still apply.
 
 ## Models, tokens and caching
 
+In the registered small-task comparison, Sonnet and Opus each completed 6/6
+trials with the same selected fault detections. Sonnet cost 52.55% less and took
+41.05% less mean native time. A Sonnet workflow with Haiku implementation also
+passed 6/6, but saved only 2.11%; it remains opt-in. Whole-workflow Haiku passed
+1/6. These three synthetic tasks repeated twice do not establish general quality
+equivalence. See [all attempts and limitations](validation/MODEL_BENCHMARK.md).
+
 All three roles inherit the session unless an explicit `worker_models` policy is
 configured before begin. Dispatch must match that frozen map; setup repair cannot
 change it. There is no automatic cheaper author/reviewer or mid-task escalation.

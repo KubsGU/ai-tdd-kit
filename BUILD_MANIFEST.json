@@ -56,6 +56,7 @@
     "validation/MODEL_BENCHMARK_PROTOCOL.md",
     "validation/MODEL_BENCHMARK.md",
     "validation/MODEL_BENCHMARK_PILOT_PROTOCOL.md",
-    "validation/MODEL_COST_RESEARCH.md"
+    "validation/MODEL_COST_RESEARCH.md",
+    "validation/MODEL_BENCHMARK_RESULTS.json"
   ]
 }

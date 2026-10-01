@@ -72,6 +72,13 @@ zmienną `AI_TDD_PYTHON` na ścieżkę do jego pliku wykonywalnego. Node musi by
 
 ## Modele, tokeny i cache
 
+W zarejestrowanym porównaniu małych zadań Sonnet i Opus zaliczyły po 6/6 prób
+z tymi samymi wykryciami wybranych usterek. Sonnet kosztował o 52,55% mniej,
+a średni czas był o 41,05% krótszy. Sonnet z Haiku do implementacji też zaliczył
+6/6, ale oszczędził tylko 2,11%; pozostaje opcją. Cały workflow na Haiku zaliczył
+1/6. Trzy sztuczne zadania powtórzone dwa razy nie dowodzą ogólnej równości
+jakości. Zobacz [wszystkie próby i ograniczenia](validation/MODEL_BENCHMARK.md).
+
 Role dziedziczą model sesji, chyba że przed begin jawnie skonfigurujesz
 `worker_models`. Hook wymaga zgodności z zamrożoną mapą; naprawa konfiguracji nie
 pozwala jej zmienić. Nie ma automatycznego tańszego autora/reviewera ani eskalacji

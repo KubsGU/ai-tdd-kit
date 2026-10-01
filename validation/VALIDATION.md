@@ -25,6 +25,44 @@ implementation routing, kept author/verifier inherited, rejected forced-model
 and setup-repair bypasses, preserved failed-attempt evidence and denied silent
 escalation. These are qualitative instruction checks, not quality equivalence.
 
+The complete native revision-2 comparison used Claude Code 2.1.286 and the frozen
+source/protocol at `f6931d2`: eighteen attempts across three synthetic Python
+tasks and two repetitions/model. Opus 5.5 and Sonnet 5.5 each passed all six
+workflow, external-oracle, exact-model, usage and test-strength checks. Each
+detected 24 selected fault executions (twelve distinct patterns repeated twice),
+after accepting two independently validated correct implementations with the
+same test inventory. Sonnet's reported API-equivalent outlay was $5.7623923,
+versus Opus $12.1433844: 52.55% lower, with mean native time 41.05% lower.
+Whole-workflow Haiku 4.5 passed only one of six; all failures are retained and
+two timeout costs are unavailable. This narrow sample does not prove general
+quality equality, production bug-rate improvement or matched reasoning budgets.
+
+A separate pre-registered Sonnet/Haiku-implementer profile passed all six paired
+trials and the same 24 fault executions. Cost was $5.64096105: 2.11% lower than
+all-Sonnet, cheaper in only three pairs, with mean native time 2.22% longer.
+Concurrency differed between experiments; the difference does not establish a
+robust advantage. The ordinary default remains Sonnet. See the
+[complete comparison](MODEL_BENCHMARK.md) and [curated data](MODEL_BENCHMARK_RESULTS.json).
+
+A separate final native mixed feature/resume integration passed: DONE, six
+required IDs and six adequacy assessments, preserved original regression,
+current evidence, actual Ruff lint/source format/strict Mypy, the six-case
+external oracle, both correct controls and four selected faults. Response
+metadata showed Sonnet coordinator/author/verifier and Haiku implementer,
+matching the frozen policy. The first session took 33 turns and 171.6 native
+seconds; reported API-equivalent cost was $0.67039505. A separate resume session
+preserved exact DONE state, reported $0.096459, and made no feature changes.
+Reported input cache-read fractions were 93.559% and 91.382% respectively;
+these are not bill-savings percentages. Both costs are separate from the
+33 registered comparison/pilot attempts. The fixture does not configure a
+security scanner or dependency audit, and format/type checks cover source only.
+
+The release allowlist contains 57 source files plus generated CHECKSUMS.json.
+Public data contain numeric/model/outcome observations, not raw transcripts,
+configuration, state or account data. Six CI jobs passed for the frozen code
+[before the trials](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36883350096).
+Final commit CI and installation results are recorded on the release/PR.
+
 ## 1.3.1 validation — 2026-10-01
 
 **141 tests ran in 62.8 seconds: 140 passed, one local directory-symlink permission

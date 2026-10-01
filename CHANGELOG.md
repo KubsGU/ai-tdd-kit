@@ -18,6 +18,10 @@
   for regrading. Preserve the stopped pilot and its uncontrolled-score limitation.
 - Clarify model-specific cache prefixes, Haiku cache minimums, native effort
   differences and API-equivalent estimates versus subscription invoices.
+- Publish all eighteen corrected comparison attempts and six mixed-role attempts.
+  Sonnet meets the narrow registered gates at 52.55% lower cost than Opus;
+  mixed Haiku implementation saves only 2.11% and remains optional. Whole-Haiku
+  completes 1/6. Preserve unavailable costs and the stopped pilot.
 - Finish/archive active tasks with their original plugin before updating.
 
 ## 1.3.1 — 2026-10-01
