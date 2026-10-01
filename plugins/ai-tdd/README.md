@@ -9,9 +9,16 @@ claude plugin install ai-tdd@ai-tdd-kit --scope user
 ```
 
 Start a new session with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` set in its
-environment, then use `/ai-tdd:feature <description>`. This enforces foreground
+environment and `claude --model opus`, then use `/ai-tdd:feature <description>`. This enforces foreground
 workers; see the repository README for PowerShell and Unix launch examples.
 Resume an interrupted task with `/ai-tdd:resume`.
+
+All workers explicitly inherit the selected session model. Native prompt caching
+stays enabled; preflight detects cache-disable flags and forced worker models.
+Compact controller output avoids repeated evidence, with full state on disk and
+`--full` before the command for diagnostics. Tests are always executed afresh.
+The optional repository launcher defaults to Opus and keeps normal user settings.
+See [models and efficiency](references/efficiency.md) for launch options and limits.
 
 Requires Python 3.10+, Node.js on PATH, and your project's working test runner.
 The controller verifies the actual hook before beginning. It stores private
@@ -34,4 +41,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.1.0.
+MIT license. Version 1.2.0.

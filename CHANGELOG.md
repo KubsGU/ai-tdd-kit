@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.2.0 — 2026-10-01
+
+- Explicit `model: inherit` for test-author, implementer and verifier; active-task
+  dispatch rejects per-invocation model changes. No automatic cheaper role profile.
+- Optional launcher defaults to Opus and selects the feature project. It enables
+  foreground workers and clears cache-disable/forced worker-model environment
+  variables only for the child process, preserving ordinary settings/permissions.
+- Claude preflight detects disabled prompt caching and forced worker-model
+  overrides. Provider-native cache TTL and normal configured effort are retained.
+- Compact JSON decision views for state-returning CLI commands, preserving phase,
+  runner budget, relevant failures and review limitations. Full immutable receipts
+  remain on disk. Existing JSON consumers can use `--full` before the command.
+- Ordered artifact-based handoffs avoid repeated history/hashes/passing logs,
+  without truncating relevant requirements or skipping test executions.
+- Real-Claude evaluation reports requested/observed role models, final whole-tree
+  token/cache totals, estimated API cost and independent behavioral checks.
+  Missing metrics stay unavailable; resume usage is separate.
+- Reproducible response-byte measurement, model/environment tests and documented
+  distinctions between cache reuse and comparative token/cost/time savings.
+- Upgrade: finish and archive active tasks before updating protected plugin files.
+
 ## 1.1.0 — 2026-10-01
 
 - Phase-aware dispatch of fresh plugin-qualified agents. Reject worker delegation,

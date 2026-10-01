@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "files": [
     "README.md", "README.pl.md", "LICENSE", ".gitignore", ".gitattributes", "BUILD_MANIFEST.json",
     "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "ROADMAP.md", "requirements-dev.txt",
@@ -14,6 +14,7 @@
     "plugins/ai-tdd/skills/feature/SKILL.md",
     "plugins/ai-tdd/skills/resume/SKILL.md",
     "plugins/ai-tdd/references/protocol.md",
+    "plugins/ai-tdd/references/efficiency.md",
     "plugins/ai-tdd/templates/config.unittest.json",
     "plugins/ai-tdd/templates/config.pytest.json",
     "plugins/ai-tdd/templates/spec.example.json",
@@ -23,7 +24,9 @@
     "plugins/ai-tdd/scripts/pytest_runner.py",
     "plugins/ai-tdd/scripts/hook-launcher.cjs",
     "plugins/ai-tdd/tests/test_controller.py",
+    "plugins/ai-tdd/tests/test_efficiency.py",
     "scripts/build_zip.py", "scripts/check_install.py", "scripts/smoke_demo.py",
-    "scripts/evaluate_claude.py", "validation/VALIDATION.md"
+    "scripts/evaluate_claude.py", "scripts/launch_claude.py", "scripts/measure_context.py",
+    "validation/VALIDATION.md"
   ]
 }

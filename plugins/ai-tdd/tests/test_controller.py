@@ -688,3 +688,82 @@ class ForegroundRuntimeTests(unittest.TestCase):
     def test_explicit_foreground_setting_passes_the_real_hook_health_check(self):
         with mock.patch.dict(os.environ, {'CLAUDECODE': '1', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1'}):
             self.assertEqual(tdd.hook_health()['hook_health'], 'pass')
+
+    def test_claude_with_disabled_caching_cannot_begin_silently(self):
+        for name in ('DISABLE_PROMPT_CACHING', 'DISABLE_PROMPT_CACHING_OPUS', 'DISABLE_PROMPT_CACHING_SONNET', 'DISABLE_PROMPT_CACHING_HAIKU', 'DISABLE_PROMPT_CACHING_FABLE'):
+            with self.subTest(name=name), mock.patch.dict(os.environ, {'CLAUDECODE': '1', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1', name: '1'}):
+                with self.assertRaisesRegex(tdd.TddError, 'caching'):
+                    tdd.hook_health()
+
+    def test_forced_lower_worker_model_cannot_override_inheritance(self):
+        with mock.patch.dict(os.environ, {'CLAUDECODE': '1', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1', 'CLAUDE_CODE_SUBAGENT_MODEL_FORCE': '1', 'CLAUDE_CODE_SUBAGENT_MODEL': 'haiku'}):
+            with self.assertRaisesRegex(tdd.TddError, 'inherit'):
+                tdd.hook_health()
+
+
+class CompactOutputTests(Fixture, unittest.TestCase):
+    def cli(self, command, full=False):
+        args = ['--full'] if full else []
+        result = subprocess.run([sys.executable, '-B', str(PLUGIN/'scripts/tdd.py'), '--root', str(self.root), *args, command], capture_output=True, encoding='utf-8')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout), len(result.stdout.encode('utf-8'))
+
+    def test_default_status_preserves_decisions_without_echoing_hashes(self):
+        self.ready_green()
+        before = self.c.state_path.read_bytes()
+        summary, size = self.cli('status')
+        full, full_size = self.cli('status', full=True)
+        self.assertEqual(summary['view'], 'compact')
+        for name in ('task_id', 'phase', 'cycle', 'spec_version', 'receipt_current', 'increment'):
+            self.assertEqual(summary[name], full[name])
+        self.assertEqual(summary['green_receipt']['id'], full['green_receipt']['id'])
+        self.assertEqual(summary['required_test_count'], len(full['required_ids']))
+        self.assertEqual(summary['runner_budget']['used'], full['runner_runs'])
+        self.assertEqual(summary['artifacts']['state'], '.ai-tdd/state.json')
+        self.assertNotIn('frozen', summary)
+        self.assertLess(size, full_size // 2)
+        self.assertEqual(self.c.state_path.read_bytes(), before)
+
+    def test_phase_changes_also_return_compact_receipt_references(self):
+        summary, _ = self.cli('begin')
+        self.assertEqual(summary['phase'], 'TEST')
+        self.assertEqual(summary['view'], 'compact')
+        receipt = summary['baseline_receipt']
+        self.assertEqual(receipt['executed_count'], 1)
+        self.assertTrue((self.root/receipt['path']).is_file())
+        self.assertIn('protected', self.state()['baseline_receipt'])
+
+    def test_compact_red_retains_failure_reason_and_does_not_reexecute(self):
+        self.ready_red()
+        before = set((self.root/'.ai-tdd/runs').iterdir())
+        summary, _ = self.cli('status')
+        failed = summary['red_receipt']['nonpassing_tests']
+        self.assertEqual(failed[0]['id'], 'test_fee.FeeTests.test_threshold')
+        self.assertEqual(failed[0]['exception'], 'AssertionError')
+        self.assertTrue(failed[0]['detail'])
+        self.assertEqual(set((self.root/'.ai-tdd/runs').iterdir()), before)
+
+    def test_agent_model_override_is_denied_even_for_a_valid_role(self):
+        self.c.begin()
+        payload = {'cwd': str(self.root), 'tool_name': 'Agent', 'tool_input': {'subagent_type': 'ai-tdd:test-author', 'model': 'haiku'}}
+        self.assertIsNotNone(tdd.guard(payload))
+        payload['tool_input']['model'] = 'inherit'
+        self.assertIsNone(tdd.guard(payload))
+
+    def test_compact_done_preserves_review_limitations(self):
+        self.ready_green()
+        self.c.verify()
+        self.review(limitations=['External services were not exercised'])
+        self.c.finish()
+        summary, _ = self.cli('status')
+        self.assertIn('review', summary)
+        self.assertEqual(summary['review']['limitations'], ['External services were not exercised'])
+
+    def test_compact_setup_repair_retains_exact_unlocked_paths(self):
+        self.ready_red()
+        self.c.reconfigure(reason='Repair declared runner input', paths=['requirements.txt'])
+        summary, _ = self.cli('status')
+        self.assertIn('reconfigure', summary)
+        self.assertEqual(summary['reconfigure']['paths'], ['requirements.txt'])
+        self.assertEqual(summary['reconfigure']['reason'], 'Repair declared runner input')
+        self.assertNotIn('stable', summary['reconfigure'])

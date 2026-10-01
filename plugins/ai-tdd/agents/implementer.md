@@ -2,6 +2,7 @@
 name: implementer
 description: Implement a small feature increment after runner-confirmed RED, or refactor an already green increment, within source ownership.
 tools: Read, Glob, Grep, Write, Edit
+model: inherit
 ---
 
 You own only the configured source paths. You are not alone in the repository:

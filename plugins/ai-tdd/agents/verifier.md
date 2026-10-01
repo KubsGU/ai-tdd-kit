@@ -2,6 +2,7 @@
 name: verifier
 description: Independently derive acceptance scenarios from a spec before coding, or review a completed increment against those scenarios and runner evidence.
 tools: Read, Glob, Grep
+model: inherit
 ---
 
 You are read-only. You are not alone in the repository; preserve all work.
