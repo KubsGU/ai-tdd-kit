@@ -10,6 +10,13 @@ AI_TDD_PYTHON can specify an actual interpreter executable (not a shell alias).
 Use the same interpreter for controller calls and hooks. The controller has no
 third-party dependencies. pytest/Jest/etc remain dependencies of the host project.
 
+Start Claude with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` in its environment.
+This forces foreground subagents, including interactive sessions where fork mode
+can otherwise choose background execution. Set it before launching Claude; keep
+the same value when resuming. `doctor` and CLI `begin` reject an active Claude
+runtime without this setting. Outside Claude, standalone controller checks do
+not require it. See the main README for PowerShell and Unix launch examples.
+
 The main Claude conversation is the coordinator. Use the plugin's named agents
 through Agent, sequentially. Their allowlists omit Bash, other execution tools,
 MCP tools and further delegation. Do not run them as the main agent. Pass only
@@ -24,6 +31,11 @@ No active state means the plugin is quiescent. DONE also releases the workflow
 guard, so a historical completion receipt does not certify later edits.
 Use synchronous agent calls. Wait for an active worker to finish, or cancel its
 task through Claude's lifecycle control, before changing phase or owner.
+The hook accepts only fresh plugin-qualified named agents allowed in the current
+phase. Resumed workers, explicit background/isolation requests, foreign plugin
+roles, worker delegation and agent dispatch during a controller run are denied.
+This is a role/phase boundary, not a per-agent lifecycle lease: the coordinator
+must still finish the worker before transitioning to another cycle.
 
 These are workflow safeguards, not OS security. The user controls settings and
 can disable hooks; a malicious executable test can modify its own process, forge
@@ -79,13 +91,18 @@ or command chaining. Keep rationale text plain without shell metacharacters.
 | verify | Fresh GREEN and all AC IDs mapped → VERIFY. Mapping completeness still requires semantic review. |
 | finish | Fresh GREEN, current accepting review, zero findings and final full passing execution → DONE. |
 | amend --reason "independent evidence" --ac AC... | Unlocks test/spec ownership → AMEND; spec.version must increase by one and impacted AC evidence is invalidated. Old test IDs cannot disappear. |
-| retry --reason "new diagnosis" | BLOCKED → IMPLEMENT with an audited new attempt budget. Not an automatic infinite loop. |
+| retry --reason "new diagnosis" | BLOCKED → IMPLEMENT with an audited new per-increment attempt budget; the task-wide runner limit does not reset. |
 | reconfigure --reason "diagnosis" [--paths FILE...] | IMPLEMENT/GREEN/VERIFY/BLOCKED → RECONFIGURE; only coordinator may edit config.json and named existing protected setup files. Source/tests, path ownership, protected inventory and permission/instruction files remain locked. |
 | rebase [--expect AssertionError] | RECONFIGURE; re-execute the full existing inventory with unchanged feature artifacts → fresh IMPLEMENT/RED or GREEN. No required test ID may disappear. |
 
 The configured timeout bounds each runner invocation, not the total LLM runtime.
 max_attempts bounds GREEN invocations in an increment, including refactor reruns.
-The coordinator must bound repeated diagnosis/retry cycles itself. Permission
+`max_runner_runs` bounds all runner invocations in one task (default 100, integer
+1..10000). The baseline counts as the first run. Attempts count before execution,
+including timeouts, malformed reports, setup repairs and the final completion
+check. Retry and reconfigure cannot raise the limit frozen at begin. Choose a
+sufficient limit during setup; exhausted tasks cannot produce new evidence.
+This is not a model-token, spending or total wall-clock budget. Permission
 denials, unavailable environments and unknown requirements should be reported
 honestly; do not fabricate evidence to complete a task.
 If protected artifacts were changed outside their owner flow, restore their
@@ -113,12 +130,22 @@ Built-in unittest JSON adapter supports ordinary tests and subtests. Failed
 subtests count against their parent ID. Skips, expectedFailure and fixture/discovery
 errors cannot certify a pass. Whole-suite inventory is the acceptance unit.
 
-For pytest use templates/config.pytest.json, adapt roots and use JUnit IDs
-`classname.name` (not pytest node IDs). A `<failure>` without an explicit type is
-treated as AssertionError by the JUnit adapter convention; `<error>` is a runner
-error. Other runners must emit standard JUnit with stable unique testcase IDs,
-consistent declared counts and exit 0 for pass/1 for failure. They are an extension
-point, not a claim that every language/framework has been integration-tested.
+For pytest use templates/config.pytest.json, adapt roots and use actual pytest
+node IDs, such as `tests/test_fee.py::FeeTests::test_threshold`. The bundled JSON
+runner captures the exception type through public pytest hooks, aggregates setup,
+call and teardown, and retains deselected tests as skipped evidence. Skip, xfail,
+xpass and incomplete execution cannot certify the workflow. xdist parallel runs
+are unsupported; use a serial runner. pytest remains a project dependency.
+
+Generic JUnit uses stable `classname.name` IDs. All declared suite/root tests,
+failures, errors and skipped counts must match actual cases; contradictory case
+outcomes are rejected. RED requires an explicit compatible failure `type`.
+A typeless `<failure>` is `UnknownFailure`, never an inferred AssertionError;
+`<error>` represents an execution error. Plain pytest JUnit does not reliably
+carry actual exception types, so use the bundled pytest JSON adapter instead.
+Other runners must emit consistent JUnit or JSON, with exit 0 for pass/1 for
+failure. They are extension points, not evidence of tested support for every
+language/framework.
 
 Alternatively emit JSON:
 
@@ -167,7 +194,12 @@ Never publish either state directory by default. Moving to another computer requ
 new environment-bound baseline; moving the plugin ZIP does not require moving
 project state or any credentials.
 
-## Primary format references (checked 2026-09-30)
+In DONE, `status` checks the final completion receipt and the actual review-file
+hash. Editing/removing that review invalidates freshness without rewriting state.
+Finish and archive active tasks before updating the plugin: its protected runtime
+and protocol hashes intentionally invalidate receipts from another version.
+
+## Primary format references (checked 2026-10-01)
 
 - [Plugin layout](https://code.claude.com/docs/en/plugins-reference)
 - [Skills and substitutions](https://code.claude.com/docs/en/skills)
@@ -175,3 +207,4 @@ project state or any credentials.
 - [Hooks, exec arguments and role fields](https://code.claude.com/docs/en/hooks)
 - [Local marketplace installation](https://code.claude.com/docs/en/plugin-marketplaces)
 - [Node main-module path handling](https://nodejs.org/api/cli.html#--preserve-symlinks-main)
+- [pytest hook API](https://docs.pytest.org/en/stable/reference/reference.html#pytest.hookspec.pytest_runtest_makereport)

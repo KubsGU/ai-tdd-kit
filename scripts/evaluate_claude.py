@@ -38,6 +38,7 @@ def main():
                 "--allowedTools", "Read,Glob,Grep,Write,Edit,Agent,Bash(python *),Bash(python3 *)"]
         env = os.environ.copy()
         env.pop("CLAUDECODE", None)
+        env["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
         started = time.monotonic()
         with (root / "claude-output.jsonl").open("wb") as output, (root / "claude-errors.log").open("wb") as errors:
             process = subprocess.Popen(argv, cwd=root, env=env, stdout=output, stderr=errors)

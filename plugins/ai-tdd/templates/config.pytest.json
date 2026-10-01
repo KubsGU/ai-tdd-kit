@@ -5,8 +5,9 @@
   "protected_paths": ["pyproject.toml", "pytest.ini", "setup.cfg", "conftest.py", "requirements.txt", "requirements-dev.txt", "uv.lock", "poetry.lock", ".claude"],
   "timeout_seconds": 120,
   "max_attempts": 3,
+  "max_runner_runs": 100,
   "runner": {
-    "format": "junit",
-    "argv": ["{python}", "-B", "-m", "pytest", "tests", "--junitxml={report}", "-q"]
+    "format": "json",
+    "argv": ["{python}", "-B", "{plugin}/scripts/pytest_runner.py", "--report", "{report}", "--", "tests", "-q"]
   }
 }

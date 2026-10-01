@@ -353,8 +353,8 @@ class ControllerTests(Fixture, unittest.TestCase):
         self.assertIn("hook", result.stderr.lower())
 
     @unittest.skipUnless(importlib.util.find_spec("pytest"), "optional pytest integration")
-    def test_real_pytest_junit_red_green(self):
-        self.config["runner"] = {"format": "junit", "argv": ["{python}", "-B", "-m", "pytest", "tests", "--junitxml={report}", "-q"]}
+    def test_real_pytest_json_red_green(self):
+        self.config["runner"] = json.loads((PLUGIN / "templates/config.pytest.json").read_text())["runner"]
         self.save(".ai-tdd/config.json", self.config)
         baseline = self.c.begin()
         target = baseline["required_ids"][0].replace("test_regular", "test_threshold")
@@ -362,6 +362,46 @@ class ControllerTests(Fixture, unittest.TestCase):
         self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="Independent expected threshold")
         self.write("src/fee.py", "def fee(cents): return 0 if cents >= 10000 else 799\n")
         self.assertEqual(self.c.green()["phase"], "GREEN")
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "optional pytest integration")
+class PytestEvidenceTests(Fixture, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.config["runner"] = json.loads((PLUGIN / "templates/config.pytest.json").read_text())["runner"]
+        self.save(".ai-tdd/config.json", self.config)
+        self.c = tdd.Controller(self.root)
+
+    def test_missing_module_in_test_body_cannot_certify_red(self):
+        baseline = self.c.begin()
+        target = baseline["required_ids"][0].replace("test_regular", "test_threshold")
+        self.new_test("import ai_tdd_missing_module_73ef")
+        with self.assertRaisesRegex(tdd.TddError, "exception differs"):
+            self.c.red(tests=[target], ac=["AC1"], expect="AssertionError", because="AC1 should fail on its assertion")
+        self.assertEqual(self.state()["phase"], "TEST")
+
+    def test_parameterized_ids_are_actual_pytest_node_ids(self):
+        self.write("tests/test_fee.py", "import pytest\n@pytest.mark.parametrize('n', [1, 2])\ndef test_parameter(n):\n    assert n > 0\n")
+        self.assertEqual(set(self.c.begin()["required_ids"]), {"tests/test_fee.py::test_parameter[1]", "tests/test_fee.py::test_parameter[2]"})
+
+    def test_teardown_failure_cannot_be_hidden_by_passing_body(self):
+        self.write("tests/test_fee.py", "import pytest\n@pytest.fixture\ndef resource():\n    yield\n    raise RuntimeError('broken teardown')\ndef test_resource(resource):\n    assert True\n")
+        with self.assertRaises(tdd.TddError):
+            self.c.begin()
+        self.assertFalse(self.c.state_path.exists())
+
+    def test_deselected_tests_cannot_certify_baseline(self):
+        self.new_test("self.assertEqual(fee(1), 799)")
+        self.config["runner"]["argv"].extend(["-k", "regular"])
+        self.save(".ai-tdd/config.json", self.config)
+        self.c = tdd.Controller(self.root)
+        with self.assertRaisesRegex(tdd.TddError, "Skipped"):
+            self.c.begin()
+
+    def test_xpass_cannot_certify_baseline(self):
+        self.write("tests/test_fee.py", "import pytest\n@pytest.mark.xfail(reason='known issue', strict=False)\ndef test_xpass():\n    assert True\n")
+        with self.assertRaisesRegex(tdd.TddError, "Skipped"):
+            self.c.begin()
 
 
 class GuardTests(Fixture, unittest.TestCase):
@@ -470,3 +510,181 @@ class ReportTests(unittest.TestCase):
         with mock.patch("shutil.which", return_value=None):
             with self.assertRaises(tdd.TddError):
                 tdd.hook_health()
+
+
+class JunitConsistencyTests(unittest.TestCase):
+    setUp = ReportTests.setUp
+
+    def test_declared_failure_cannot_become_a_passed_case(self):
+        self.path.write_text('<testsuite tests="1" failures="1"><testcase name="x"/></testsuite>')
+        with self.assertRaises(tdd.TddError):
+            tdd.parse_report(self.path, "junit")
+
+    def test_missing_exception_type_is_not_an_assertion(self):
+        self.path.write_text('<testsuite tests="1"><testcase name="x"><failure message="ModuleNotFoundError"/></testcase></testsuite>')
+        _, results = tdd.parse_report(self.path, "junit")
+        self.assertEqual(results[0]["exception"], "UnknownFailure")
+
+    def test_declared_error_cannot_become_a_passed_case(self):
+        self.path.write_text('<testsuite tests="1" errors="1"><testcase name="x"/></testsuite>')
+        with self.assertRaises(tdd.TddError):
+            tdd.parse_report(self.path, "junit")
+
+    def test_testsuites_root_inventory_must_match(self):
+        self.path.write_text('<testsuites tests="2"><testsuite tests="1"><testcase name="x"/></testsuite></testsuites>')
+        with self.assertRaises(tdd.TddError):
+            tdd.parse_report(self.path, "junit")
+
+    def test_aggregate_skips_cannot_be_hidden(self):
+        self.path.write_text('<testsuites skipped="1"><testsuite><testcase name="x"/></testsuite></testsuites>')
+        with self.assertRaises(tdd.TddError):
+            tdd.parse_report(self.path, "junit")
+
+    def test_inconsistent_case_outcomes_are_rejected(self):
+        self.path.write_text('<testsuite><testcase name="x"><skipped/><failure/></testcase></testsuite>')
+        with self.assertRaises(tdd.TddError):
+            tdd.parse_report(self.path, "junit")
+
+    def test_invalid_counts_raise_controlled_report_error(self):
+        for count in ('-1', 'many', '1.5'):
+            with self.subTest(count=count):
+                self.path.write_text('<testsuite tests="' + count + '"><testcase name="x"/></testsuite>')
+                with self.assertRaises(Exception) as caught:
+                    tdd.parse_report(self.path, "junit")
+                self.assertIsInstance(caught.exception, tdd.TddError)
+
+    def test_nested_aggregate_reports_preserve_real_outcomes(self):
+        self.path.write_text('<testsuites tests="2" failures="1" errors="0" skipped="0"><testsuite tests="2" failures="1"><testsuite tests="1"><testcase name="a"/></testsuite><testcase name="b"><failure type="AssertionError"/></testcase></testsuite></testsuites>')
+        collected, results = tdd.parse_report(self.path, "junit")
+        self.assertEqual(collected, ['a', 'b'])
+        self.assertEqual([item['status'] for item in results], ['passed', 'failed'])
+
+
+class DispatchBoundaryTests(Fixture, unittest.TestCase):
+    def dispatch(self, role, **extra):
+        return {"cwd": str(self.root), "tool_name": "Agent", "tool_input": {"subagent_type": role, "prompt": "One behavior increment", **extra}}
+
+    def test_arbitrary_agent_cannot_inherit_managed_work(self):
+        self.c.begin()
+        self.assertIsNotNone(tdd.guard(self.dispatch('general-purpose')))
+
+    def test_implementer_cannot_start_before_red(self):
+        self.c.begin()
+        self.assertIsNotNone(tdd.guard(self.dispatch('ai-tdd:implementer')))
+
+    def test_workers_cannot_delegate_to_another_agent(self):
+        self.c.begin()
+        payload = self.dispatch('ai-tdd:verifier')
+        payload.update(agent_id='author-1', agent_type='ai-tdd:test-author')
+        self.assertIsNotNone(tdd.guard(payload))
+
+    def test_resumed_or_explicit_background_workers_are_rejected(self):
+        self.c.begin()
+        for extra in ({'resume': 'previous-agent'}, {'run_in_background': True}, {'isolation': 'worktree'}):
+            with self.subTest(extra=extra):
+                self.assertIsNotNone(tdd.guard(self.dispatch('ai-tdd:test-author', **extra)))
+
+    def test_agent_dispatch_waits_for_active_controller(self):
+        self.c.begin()
+        with tdd.lock(self.root):
+            self.assertIsNotNone(tdd.guard(self.dispatch('ai-tdd:test-author')))
+
+    def test_fresh_phase_owner_and_readonly_verifier_are_allowed(self):
+        self.c.begin()
+        self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:test-author')))
+        self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:verifier')))
+        self.new_test()
+        self.c.red(tests=['test_fee.FeeTests.test_threshold'], ac=['AC1'], expect='AssertionError', because='AC1')
+        self.assertIsNone(tdd.guard(self.dispatch('ai-tdd:implementer')))
+        self.assertIsNotNone(tdd.guard(self.dispatch('ai-tdd:test-author')))
+
+    def test_foreign_plugin_cannot_borrow_implementer_identity(self):
+        self.ready_red()
+        payload = {"cwd": str(self.root), "tool_name": "Edit", "tool_input": {"file_path": str(self.root/'src/fee.py')}, "agent_id": "foreign-1", "agent_type": "other-plugin:implementer"}
+        self.assertIsNotNone(tdd.guard(payload))
+
+
+class CompletionIntegrityTests(Fixture, unittest.TestCase):
+    def status(self):
+        p = subprocess.run([sys.executable, '-B', str(PLUGIN/'scripts/tdd.py'), '--root', str(self.root), 'status'], capture_output=True, encoding='utf-8')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return json.loads(p.stdout)
+
+    def test_done_review_edit_invalidates_completion_freshness(self):
+        self.ready_green()
+        self.c.verify()
+        self.review()
+        self.c.finish()
+        self.assertTrue(self.status()['receipt_current'])
+        self.review(findings=[{'id': 'F1', 'impact': 'Unresolved wrong behavior'}])
+        before = (self.root/'.ai-tdd/state.json').read_bytes()
+        self.assertFalse(self.status()['receipt_current'])
+        self.assertEqual((self.root/'.ai-tdd/state.json').read_bytes(), before)
+
+    def test_missing_done_review_invalidates_completion_freshness(self):
+        self.ready_green()
+        self.c.verify()
+        self.review()
+        self.c.finish()
+        (self.root/'.ai-tdd/review.json').unlink()
+        self.assertFalse(self.status()['receipt_current'])
+
+
+class TaskBudgetTests(Fixture, unittest.TestCase):
+    def start_with_limit(self, limit):
+        self.config['max_runner_runs'] = limit
+        self.save('.ai-tdd/config.json', self.config)
+        self.c = tdd.Controller(self.root)
+        self.ready_red()
+
+    def test_task_budget_survives_retry_and_prevents_another_execution(self):
+        self.start_with_limit(3)
+        with self.assertRaises(tdd.TddError):
+            self.c.green()
+        self.assertEqual(self.state()['phase'], 'BLOCKED')
+        before = set((self.root/'.ai-tdd/runs').iterdir())
+        with self.assertRaises(tdd.TddError):
+            self.c.retry(reason='A different diagnosis cannot extend the task budget')
+        with self.assertRaises(tdd.TddError):
+            self.c.green()
+        self.assertEqual(set((self.root/'.ai-tdd/runs').iterdir()), before)
+        self.assertEqual(self.state()['runner_runs'], 3)
+
+    def test_reconfiguration_cannot_increase_the_frozen_task_budget(self):
+        self.start_with_limit(2)
+        self.c.reconfigure(reason='Repair test runner configuration', paths=[])
+        self.config['max_runner_runs'] = 500
+        self.save('.ai-tdd/config.json', self.config)
+        with self.assertRaises(tdd.TddError):
+            self.c.rebase()
+        self.assertEqual(self.state()['runner_runs'], 2)
+        self.assertEqual(self.state()['runner_run_limit'], 2)
+
+    def test_budget_includes_the_final_completion_check(self):
+        self.start_with_limit(3)
+        self.write('src/fee.py', 'def fee(cents): return 0 if cents >= 10000 else 799\n')
+        self.c.green()
+        self.c.verify()
+        self.review()
+        with self.assertRaises(tdd.TddError):
+            self.c.finish()
+        self.assertNotEqual(self.state()['phase'], 'DONE')
+
+    def test_invalid_budget_cannot_create_a_task(self):
+        for value in (0, -1, True, '100', 10001):
+            with self.subTest(value=value):
+                self.config['max_runner_runs'] = value
+                self.save('.ai-tdd/config.json', self.config)
+                with self.assertRaises(tdd.TddError):
+                    tdd.Controller(self.root)
+
+
+class ForegroundRuntimeTests(unittest.TestCase):
+    def test_claude_without_serial_setting_is_rejected_before_task_work(self):
+        with mock.patch.dict(os.environ, {'CLAUDECODE': '1', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '0'}):
+            with self.assertRaises(tdd.TddError):
+                tdd.hook_health()
+
+    def test_explicit_foreground_setting_passes_the_real_hook_health_check(self):
+        with mock.patch.dict(os.environ, {'CLAUDECODE': '1', 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1'}):
+            self.assertEqual(tdd.hook_health()['hook_health'], 'pass')

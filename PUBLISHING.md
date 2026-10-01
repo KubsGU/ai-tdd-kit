@@ -28,6 +28,10 @@ use a private project's git history as this repository's initial history.
 Users can run `claude plugin update ai-tdd@ai-tdd-kit`; the plugin version must
 change for the new copy to be installed. Automatic update is a user-side
 marketplace setting.
+Finish and archive active tasks before updating because their receipts bind
+protected plugin files. Version 1.1.0 requires launching Claude with
+`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`; include that launch instruction in
+release notes. Ordinary standalone install checks do not run a Claude task.
 
 ## Anthropic directory
 

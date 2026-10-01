@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
+  "version": "1.1.0",
   "files": [
     "README.md", "README.pl.md", "LICENSE", ".gitignore", ".gitattributes", "BUILD_MANIFEST.json",
-    "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "requirements-dev.txt",
+    "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "ROADMAP.md", "requirements-dev.txt",
     ".github/workflows/ci.yml",
     ".claude-plugin/marketplace.json",
     "plugins/ai-tdd/.claude-plugin/plugin.json",
@@ -20,6 +20,7 @@
     "plugins/ai-tdd/templates/review.example.json",
     "plugins/ai-tdd/scripts/tdd.py",
     "plugins/ai-tdd/scripts/unittest_runner.py",
+    "plugins/ai-tdd/scripts/pytest_runner.py",
     "plugins/ai-tdd/scripts/hook-launcher.cjs",
     "plugins/ai-tdd/tests/test_controller.py",
     "scripts/build_zip.py", "scripts/check_install.py", "scripts/smoke_demo.py",

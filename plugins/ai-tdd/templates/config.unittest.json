@@ -5,6 +5,7 @@
   "protected_paths": ["pyproject.toml", "pytest.ini", "setup.cfg", "conftest.py", "requirements.txt", "requirements-dev.txt", "uv.lock", "poetry.lock", "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "tsconfig.json", "vitest.config.ts", "jest.config.js", ".claude"],
   "timeout_seconds": 120,
   "max_attempts": 3,
+  "max_runner_runs": 100,
   "runner": {
     "format": "json",
     "argv": ["{python}", "-B", "{plugin}/scripts/unittest_runner.py", "--start-dir", "tests", "--report", "{report}"]
