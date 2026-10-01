@@ -25,6 +25,22 @@ establish OS isolation or freedom from malicious filesystem races.
 The allowlist has 48 source files plus generated CHECKSUMS.json. Earlier 1.3.0
 quality, model and cache integration results below remain specific to that version.
 
+**A fresh real Claude Code 2.1.286 trial of 1.3.1 passed:** DONE, five required
+test IDs and five adequacy assessments, the original test file preserved, current
+completion evidence, actual Ruff lint/formatter check and strict Mypy in three
+batches, and a six-case external oracle. The coordinator and every named role
+used actual `claude-opus-5-5`. A separate resume session preserved exact DONE state.
+The review named the limited F lint rules, source-only format/type scope, and
+absent security scanner, lockfile audit and CI configuration in this fixture.
+
+The first session took 32 turns and 274.6 seconds. Reported whole-tree totals were
+86 ordinary input, 100,172 cache-write input, 1,173,621 cache-read input and 25,944
+output tokens: **92.13% of reported input read from cache**, estimated API-equivalent
+cost $1.4254392. Separate resume used 8 ordinary input, 19,799 cache-write input,
+95,169 cache-read input and 1,837 output tokens; estimated $0.2141978. These are
+observed integration results, not subscription invoices, comparative savings,
+a quality benchmark or proof of a minimum test count.
+
 ## 1.3.0 validation — 2026-10-01
 
 **137 controller/integration/helper tests ran in 68.4 seconds: 136 passed, one
