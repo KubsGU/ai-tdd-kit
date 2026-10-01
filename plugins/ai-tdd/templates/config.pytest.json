@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "source_roots": ["src"],
+  "test_roots": ["tests"],
+  "protected_paths": ["pyproject.toml", "pytest.ini", "setup.cfg", "conftest.py", "requirements.txt", "requirements-dev.txt", "uv.lock", "poetry.lock", ".claude"],
+  "timeout_seconds": 120,
+  "max_attempts": 3,
+  "runner": {
+    "format": "junit",
+    "argv": ["{python}", "-B", "-m", "pytest", "tests", "--junitxml={report}", "-q"]
+  }
+}

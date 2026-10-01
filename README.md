@@ -1,0 +1,142 @@
+# AI TDD Kit
+
+A Claude Code plugin that turns a feature request into verified, incremental TDD.
+
+Clarify behavior → versioned acceptance criteria → separate test author →
+**executed RED** → separate implementer → **executed GREEN** → independent review.
+A Python controller owns phase transitions and execution evidence. Claude Code
+hooks and role tool lists check who may change each artifact.
+
+[Polska instrukcja](README.pl.md) · [Protocol](plugins/ai-tdd/references/protocol.md)
+· [Validation](validation/VALIDATION.md) · [MIT license](LICENSE)
+
+## Install
+
+Requirements: Claude Code, Python **3.10+**, Node.js on PATH, and Git for fetching
+this marketplace. Use a supported Node LTS release. Your project's test runner
+and application dependencies remain project dependencies.
+
+Run in your terminal:
+
+```text
+claude plugin marketplace add KubsGU/ai-tdd-kit
+claude plugin install ai-tdd@ai-tdd-kit --scope user
+```
+
+Start a new Claude Code session in your project, then:
+
+```text
+/ai-tdd:feature Add a loyalty discount of 10%. Amounts are integer cents. It cannot be combined with a promotion.
+```
+
+The coordinator inspects existing APIs and tests, asks about behavior-changing
+ambiguities, records the acceptance contract, and delegates each small increment.
+Routine implementation decisions do not need approval rounds. If you ask for
+no questions, it records reasonable assumptions; a genuinely unresolved behavior
+decision remains a blocker.
+
+After interruption or a context reset:
+
+```text
+/ai-tdd:resume
+```
+
+If Python is outside PATH, set `AI_TDD_PYTHON` to its executable. Node must be
+available on PATH. The `doctor` check verifies the actual Node → Python hook
+before a task can begin. Claude Code's normal permissions still apply.
+
+## What happens during a task
+
+1. **Clarify:** inspect repository instructions, existing interfaces and the full
+   regression suite. Record examples, AC IDs and assumptions.
+2. **Plan verification:** the verifier derives scenarios from the contract before
+   the new implementation exists. Establish a real passing baseline.
+3. **RED:** a fresh test author writes one behavior increment. The coordinator
+   executes it and checks the failure reason and prior passing tests.
+4. **GREEN:** a fresh implementer changes declared source files. The controller
+   reruns the required suite and checks frozen test/configuration artifacts.
+5. **Review:** a separate verifier reviews the contract, code, test adequacy,
+   boundaries and interactions. Findings lead to further small test cycles.
+6. **DONE:** the controller requires a current accepting review with no open
+   findings and executes the complete required suite again.
+
+Refactor only when useful, then rerun the suite. A test that already passes is
+recorded as existing-behavior coverage, without manufacturing a RED phase.
+
+The test author and implementer have separate contexts and write ownership.
+Workers have no shell, MCP or further delegation tools. The coordinator executes
+tests through the controller. Import failures, collection errors, skips, missing
+required test IDs and stale results cannot stand in for behavioral RED or GREEN.
+
+An incorrect test has an evidence-based, versioned `amend` flow. A demonstrated
+runner configuration problem has `reconfigure` and `rebase`. Both invalidate old
+evidence and require new execution; the implementer cannot weaken its own tests.
+
+## Project setup and scope
+
+The coordinator creates `.ai-tdd/` with the contract, configuration, state and
+local execution evidence. One checkout supports one active task. Before another
+feature it archives a completed task into `.ai-tdd-history/`, preserving evidence,
+source and tests. Keep these local state directories private.
+
+Use the repository's existing runner. Built-in adapters support unittest JSON
+and JUnit XML; unittest and pytest integrations were exercised. See the
+[configuration examples](plugins/ai-tdd/templates/) and the
+[execution protocol](plugins/ai-tdd/references/protocol.md) for ownership roots,
+protected helpers/configuration, test reports and controller commands.
+
+The passing baseline must include the real regression scope. Repositories with
+existing failures or skipped tests need baseline work before starting. Narrow
+source/test roots and correct protection of helpers, fixtures, lockfiles and
+runner inputs matter. Small cosmetic changes may not justify this workflow.
+
+## Evidence and limitations
+
+The [validation report](validation/VALIDATION.md) records 56 passing controller
+and integration tests, a deterministic demo with three RED/GREEN cycles and two
+selected mutation probes, and a real Claude Code run through DONE followed by a
+successful second-session resume. The instruction-only baseline already handled
+the cases tested; no measured prompt improvement is claimed.
+
+Separate contexts reduce direct expectation drift, but models can share the
+same mistaken interpretation. Hashes and test counts do not establish semantic
+correctness. The hook protects workflow boundaries; it is not an OS sandbox.
+A malicious test process can undermine runner evidence, and tests in the same
+repository are not a secret holdout.
+
+The initial local validation used Windows, Python 3.12.10 and Claude Code 2.1.285.
+GitHub CI exercises Windows and Linux with Python 3.10 and 3.12; inspect its
+actual results for each commit. One small feature does not establish comparative
+superiority, large-repository effectiveness, or a favorable cost/time tradeoff.
+The complete workflow targets **Claude Code**, with local hooks and execution.
+
+## Update or uninstall
+
+```text
+claude plugin update ai-tdd@ai-tdd-kit
+claude plugin uninstall ai-tdd@ai-tdd-kit
+```
+
+Automatic updates for a custom marketplace depend on the user's marketplace
+settings. See [Claude Code's distribution documentation](https://code.claude.com/docs/en/plugins/publish).
+
+## Develop and verify
+
+From this repository:
+
+```text
+python -m pip install -r requirements-dev.txt
+python -B -m unittest discover -s plugins/ai-tdd/tests -v
+python -B scripts/smoke_demo.py
+python -B scripts/build_zip.py
+```
+
+The plugin itself uses Python's standard library. The development pytest
+dependency enables the JUnit integration test. The demo simulates role edits and
+does not call a model. An optional real-Claude evaluation uses normal account
+usage: `python -B scripts/evaluate_claude.py --output validation/local-claude.json --resume-check`.
+
+ZIPs are built from `BUILD_MANIFEST.json`, with a generated `CHECKSUMS.json`.
+Local task states, raw model logs and evaluation JSON are excluded. See
+[contributing](CONTRIBUTING.md), [releases](CHANGELOG.md) and
+[publishing](PUBLISHING.md).

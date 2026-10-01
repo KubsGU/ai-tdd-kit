@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "goal": "Calculate delivery fee in integer cents.",
+  "scope": "Pure function shipping_fee(cents, member=False), no payment or network calls.",
+  "acceptance": [
+    {"id": "AC1", "description": "Non-member cart below 10000 cents costs 799 cents.", "examples": [{"input": [9999, false], "expected": 799}]},
+    {"id": "AC2", "description": "Cart at or above 10000 cents has free delivery.", "examples": [{"input": [10000, false], "expected": 0}]},
+    {"id": "AC3", "description": "Member with a nonnegative cart has free delivery.", "examples": [{"input": [0, true], "expected": 0}]},
+    {"id": "AC4", "description": "Negative cart raises ValueError for both member states.", "examples": [{"input": [-1, true], "exception": "ValueError"}]}
+  ],
+  "assumptions": [{"text": "Inputs are integer cents; validation of other types is outside this task.", "impact": "Other types have no acceptance guarantee.", "basis": "Explicit example scope"}],
+  "open_questions": []
+}

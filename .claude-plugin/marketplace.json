@@ -1,0 +1,16 @@
+{
+  "name": "ai-tdd-kit",
+  "description": "Portable AI TDD workflow for Claude Code with deterministic phase gates.",
+  "owner": {"name": "KubsGU"},
+  "plugins": [
+    {
+      "name": "ai-tdd",
+      "source": "./plugins/ai-tdd",
+      "description": "Clarify requirements, verify RED, implement with separate agents, and independently review results.",
+      "version": "1.0.1",
+      "homepage": "https://github.com/KubsGU/ai-tdd-kit",
+      "repository": "https://github.com/KubsGU/ai-tdd-kit",
+      "license": "MIT"
+    }
+  ]
+}

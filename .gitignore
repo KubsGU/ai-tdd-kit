@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+dist/
+validation/*.json
+CHECKSUMS.json
+.ai-tdd/
+.ai-tdd-history/

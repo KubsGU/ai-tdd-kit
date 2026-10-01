@@ -1,0 +1,28 @@
+{
+  "version": "1.0.1",
+  "files": [
+    "README.md", "README.pl.md", "LICENSE", ".gitignore", ".gitattributes", "BUILD_MANIFEST.json",
+    "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "requirements-dev.txt",
+    ".github/workflows/ci.yml",
+    ".claude-plugin/marketplace.json",
+    "plugins/ai-tdd/.claude-plugin/plugin.json",
+    "plugins/ai-tdd/README.md",
+    "plugins/ai-tdd/hooks/hooks.json",
+    "plugins/ai-tdd/agents/test-author.md",
+    "plugins/ai-tdd/agents/implementer.md",
+    "plugins/ai-tdd/agents/verifier.md",
+    "plugins/ai-tdd/skills/feature/SKILL.md",
+    "plugins/ai-tdd/skills/resume/SKILL.md",
+    "plugins/ai-tdd/references/protocol.md",
+    "plugins/ai-tdd/templates/config.unittest.json",
+    "plugins/ai-tdd/templates/config.pytest.json",
+    "plugins/ai-tdd/templates/spec.example.json",
+    "plugins/ai-tdd/templates/review.example.json",
+    "plugins/ai-tdd/scripts/tdd.py",
+    "plugins/ai-tdd/scripts/unittest_runner.py",
+    "plugins/ai-tdd/scripts/hook-launcher.cjs",
+    "plugins/ai-tdd/tests/test_controller.py",
+    "scripts/build_zip.py", "scripts/check_install.py", "scripts/smoke_demo.py",
+    "scripts/evaluate_claude.py", "validation/VALIDATION.md"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "receipt_id": "REPLACE_WITH_CURRENT_GREEN_RECEIPT_ID",
+  "checked_ac": ["AC1", "AC2", "AC3", "AC4"],
+  "findings": [],
+  "limitations": ["List actual unchecked risks; this example is not evidence."],
+  "recommendation": "accept"
+}

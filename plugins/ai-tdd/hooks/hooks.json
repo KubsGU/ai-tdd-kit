@@ -1,0 +1,17 @@
+{
+  "description": "Enforce phase and role write boundaries in an active AI TDD task.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["--preserve-symlinks-main", "${CLAUDE_PLUGIN_ROOT}/scripts/hook-launcher.cjs"],
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
