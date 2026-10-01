@@ -36,15 +36,13 @@ def run_demo(root):
     for index, (name, ac, assertion, implementation) in enumerate(steps):
         if index:
             c.next()
-        with tests.open("a") as stream:
-            stream.write(f"\n    def test_{name}(self):\n        {assertion}\n")
-        c.red(tests=["test_fee.FeeTests.test_" + name], ac=[ac], expect="AssertionError", because="Literal independent example from " + ac)
+        (root / f"tests/test_{name}.py").write_text(f"import unittest\nfrom src.fee import shipping_fee\n\nclass FeeTests(unittest.TestCase):\n    def test_{name}(self):\n        {assertion}\n")
+        c.red(tests=[f"test_{name}.FeeTests.test_{name}"], ac=[ac], expect="AssertionError", because="Literal independent example from " + ac)
         source.write_text(implementation)
         c.green()
     c.next()
-    with tests.open("a") as stream:
-        stream.write("\n    def test_lower_boundary(self):\n        self.assertEqual(shipping_fee(9999), 799)\n")
-    c.cover(tests=["test_fee.FeeTests.test_lower_boundary"], ac=["AC1"], because="Independent lower-boundary example already holds")
+    (root / "tests/test_lower_boundary.py").write_text("import unittest\nfrom src.fee import shipping_fee\n\nclass FeeTests(unittest.TestCase):\n    def test_lower_boundary(self):\n        self.assertEqual(shipping_fee(9999), 799)\n")
+    c.cover(tests=["test_lower_boundary.FeeTests.test_lower_boundary"], ac=["AC1"], because="Independent lower-boundary example already holds")
     correct = source.read_text()
     mutants = {
         "exclusive_threshold": correct.replace("cents >= 10000", "cents > 10000"),
@@ -62,7 +60,15 @@ def run_demo(root):
         source.write_text(correct)
     c.verify()
     review = {"receipt_id": c.state["green_receipt"]["id"], "checked_ac": [item["id"] for item in spec["acceptance"]],
-              "findings": [], "limitations": ["Synthetic pure function; deterministic role simulation; two selected mutants, no completeness claim"], "recommendation": "accept"}
+              "findings": [], "limitations": ["Synthetic pure function; deterministic role simulation; two selected mutants, no completeness claim"], "recommendation": "accept",
+              "quality_receipt_id": c.state["quality_receipt"]["id"],
+              "quality_limitations": ["This stdlib behavior demo configures no lint, format, type or security tool"],
+              "repo_conventions": "Retains the fee API, four-space indentation, unittest and literal cent-based examples",
+              "test_assessment": [
+                  {"test_id": "test_threshold.FeeTests.test_threshold", "detects": "exclusive rather than inclusive free-shipping threshold", "oracle": "AC2 explicitly makes 10000 cents free", "why_needed": "covers the exact inclusive boundary"},
+                  {"test_id": "test_member.FeeTests.test_member", "detects": "membership discount ignored", "oracle": "AC3 grants free shipping to members at zero cents", "why_needed": "isolates membership from the threshold"},
+                  {"test_id": "test_negative_member.FeeTests.test_negative_member", "detects": "membership branch bypasses validation", "oracle": "AC4 rejects negative carts for either flag", "why_needed": "tests validation and discount interaction"},
+                  {"test_id": "test_lower_boundary.FeeTests.test_lower_boundary", "detects": "free shipping starts one cent early", "oracle": "AC1 charges 799 cents below 10000", "why_needed": "covers the other side of the threshold"}]}
     (root / ".ai-tdd/review.json").write_text(json.dumps(review))
     result = c.finish()
     return {"phase": result["phase"], "red_cycles": 3, "existing_coverage_cycles": 1,

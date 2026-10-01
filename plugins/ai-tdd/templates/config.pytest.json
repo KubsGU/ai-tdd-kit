@@ -6,6 +6,8 @@
   "timeout_seconds": 120,
   "max_attempts": 3,
   "max_runner_runs": 100,
+  "max_quality_runs": 20,
+  "quality_checks": [],
   "runner": {
     "format": "json",
     "argv": ["{python}", "-B", "{plugin}/scripts/pytest_runner.py", "--report", "{report}", "--", "tests", "-q"]

@@ -1,7 +1,18 @@
 {
   "receipt_id": "REPLACE_WITH_CURRENT_GREEN_RECEIPT_ID",
+  "quality_receipt_id": "REPLACE_WITH_LATEST_PRE_REVIEW_QUALITY_RECEIPT_ID",
   "checked_ac": ["AC1", "AC2", "AC3", "AC4"],
   "findings": [],
   "limitations": ["List actual unchecked risks; this example is not evidence."],
+  "quality_limitations": ["Replace with actual scope and each unchecked lint, format, typecheck or security category, even if another check passed. With no checks, state that none of these tools were executed."],
+  "repo_conventions": "Replace with factual convention evidence from repository instructions, neighboring code, CI and tool configuration.",
+  "test_assessment": [
+    {
+      "test_id": "REPLACE_WITH_EXECUTED_TEST_ID",
+      "detects": "Describe a concrete faulty implementation this test detects.",
+      "oracle": "Justify the expected value independently from the acceptance contract or example.",
+      "why_needed": "Explain its distinct defect contribution; include every added and AC-mapped ID, without inventing IDs."
+    }
+  ],
   "recommendation": "accept"
 }

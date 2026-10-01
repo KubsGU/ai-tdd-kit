@@ -9,98 +9,75 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Agent, AskUserQuestion, Bash(pytho
 
 User request: $ARGUMENTS
 
-You coordinate; dedicated agents write tests and source. Read
-[the execution protocol](../../references/protocol.md) before the first run.
-Plugin path: `${CLAUDE_PLUGIN_ROOT}`. Controller:
-`python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" --root "." <command>`
-(use `python3` if that is the available Python 3.10+ executable).
-Use forward slashes in command paths, quote spaces and use one direct command
-per Bash call. Do not chain commands, redirect output or run another shell.
-Dispatch agents synchronously; do not use background or concurrent workers.
+You coordinate; named agents own tests and source. Read
+[the execution protocol](../../references/protocol.md) before starting, and
+[quality guidance](../../references/quality.md) for tool setup and test assessment.
+Controller: `python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" --root "." <command>`
+(use `python3` if needed; Python 3.10+). Use forward slashes, quote spaces and one
+direct command per Bash call. No chaining, redirection or another shell. Dispatch
+fresh agents synchronously, without background or concurrent workers.
 
-## Clarify and prepare
+## Prepare the contract and repository
 
-Read repo instructions and existing APIs/tests. Preserve dirty work. Ask concrete
-behavior questions only where different answers change acceptance: show an input
-and plausible outputs. Resolve routine implementation decisions yourself.
-Respect existing authorization; do not add ceremonial approval rounds. If the user
-requests no questions, document reasonable assumptions and their impact. A genuine
-unresolved behavior decision belongs in open_questions and prevents `begin`.
+Read instructions, neighboring APIs/tests, CI/scripts, tool configuration and
+lockfiles. Preserve dirty work. Ask behavior questions only when plausible outputs
+change acceptance; resolve routine implementation choices yourself. Honor prior
+authorization. If questions are declined, document assumptions and impacts.
+Unresolved behavior decisions in open_questions prevent begin.
 
-Run `doctor` to confirm that the real hook works. If a prior task exists, inspect
-`status`: resume an active task; use `archive` for DONE to retain its evidence
-before starting this new feature. Run `init`, adapt config to existing conventions,
-and write `.ai-tdd/spec.json`
-with version, goal, acceptance IDs/descriptions/examples, assumptions and
-open_questions. Protect all test fixtures/helpers/config/lockfiles and runner
-inputs, including initially absent files. Keep source/test roots disjoint and
-narrow. The runner command must run the required suite, not just the newest test.
-Do not replace an existing suite with a convenient smaller one.
+Run doctor and inspect any existing task with status; resume active work or archive
+DONE before a new feature. Run init, adapt narrow disjoint roots and protect all
+fixtures/helpers/config/runner inputs, including relevant absent files. The runner
+must preserve the full required suite. Before begin, record factual conventions
+and existing read-only quality commands in `.ai-tdd/repo-profile.json`, configure
+applicable quality_checks and budgets, and write `.ai-tdd/spec.json`.
 
-Delegate PLAN to `ai-tdd:verifier` using only the spec and existing interface
-constraints. Save its scenarios in `.ai-tdd/review-plan.json`. This precedes the
-new patch. Run `begin` to establish an actual passing baseline. Greenfield code
-may use explicit `begin --allow-empty` after creating a discoverable test folder
-and minimal interface stubs; document that waiver. Never delete user code to
-recreate a staged TDD history.
+Delegate PLAN to `ai-tdd:verifier` with the spec and existing interface constraints;
+save scenarios in `.ai-tdd/review-plan.json`. Run begin for actual passing test and
+configured quality baselines. Greenfield setup permits only interface stubs and
+an explicit documented begin --allow-empty waiver. Never delete user code to
+recreate a TDD history.
 
-## One increment at a time
+## One behavior at a time
 
-1. Read `status`. In TEST, dispatch `ai-tdd:test-author` in a fresh context with
-   the agreed spec, one small behavior, paths and baseline. Do not send an
-   implementation plan, a proposed patch or the previous implementer's rationale.
-2. Run `red --tests <exact-IDs> --ac <AC-IDs> --because "<oracle basis>"`.
-   Only an executed behavior failure authorizes implementation. For an explicit
-   interface stub use `--expect NotImplementedError`. Import/collection errors,
-   zero tests, skips, timeout or missing regressions require diagnosis, not handoff.
-   If the new test is already green, run `cover` with the same test/AC/rationale
-   arguments; retain it as existing-behavior coverage without fake RED.
-3. In IMPLEMENT, dispatch `ai-tdd:implementer` in a separate fresh context with
-   the spec, frozen tests, source paths, state and RED receipt. Do not implement
-   source yourself. Run `green`; relay actual failure evidence for a bounded fix.
-   After GREEN, refactor only if useful and rerun `green` after any source edit.
-4. Use `next` for the next small increment. Keep prior test IDs and regressions.
-   Continue until every AC is meaningfully exercised, not merely mapped to an ID.
+1. Read status. In TEST, dispatch `ai-tdd:test-author` with the spec, profile,
+   one behavior, paths and baseline. It creates a new test file; files present at
+   begin/next are frozen. Give no candidate implementation or implementer's rationale.
+2. Run red --tests <exact-IDs> --ac <AC-IDs> --because "<independent oracle>".
+   Only executed behavior failure authorizes source edits. An explicit stub can
+   use --expect NotImplementedError. Infrastructure errors, skips or zero tests
+   need diagnosis. Already passing new tests use cover with the same arguments.
+3. In IMPLEMENT, dispatch fresh `ai-tdd:implementer` with contract, profile,
+   frozen tests, source ownership and RED receipt. Run green; relay actual failure
+   evidence for bounded repair. Useful refactoring in GREEN requires another green.
+4. Use next for another increment. Retain every required ID. Complete meaningful
+   behavioral coverage of every AC; counts and mapping alone do not show adequacy.
 
-Workers cannot execute a shell. The coordinator runs tests exclusively through
-the controller. Hook checks supplement worker tool allowlists. Do not disable
-hooks, loosen tools or edit `.ai-tdd/state.json` to progress.
+Workers have no shell. Run tests and quality tools through the controller. Keep
+hooks, role tools and state intact.
 
-## Verify and complete
+## Review and finish
 
-Run `verify`. Dispatch fresh `ai-tdd:verifier` in REVIEW mode with the original
-plan, full spec, code, tests and current GREEN receipt. Its review must examine
-boundary/interaction cases and test adequacy. Execute proposed regression cases
-through new test-author cycles (`next`), then request fresh review. An additional
-test in this repository is not a hidden holdout. Use real mutation/property or
-integration checks where useful and supported; do not fabricate their results.
+Run verify; it executes configured quality tools if evidence is stale. The optional
+quality command in GREEN/VERIFY gives explicit evidence when useful. Avoid duplicate
+pre-review runs. Dispatch fresh verifier REVIEW with plan, contract, profile,
+source/tests and current GREEN/quality receipts. Review independent oracles,
+distinct defect value, conventions and actual tool diagnostics. Execute proposed
+regressions through new test-author cycles, then request fresh review.
 
-Write `.ai-tdd/review.json` exactly from the verifier's findings, checked ACs,
-limitations, recommendation and current receipt ID. Preserve every open finding
-across fixes; close it only after its concrete reproduction is rechecked. Run
-`finish`, which reruns the full required suite and permits DONE only with current
-evidence and no unresolved findings. Report behavior, tests executed, material
-limitations and assumptions. A model's summary never substitutes for DONE.
+Write `.ai-tdd/review.json` from its complete review object, including per-test
+assessment and quality limitations. Preserve open findings until their concrete
+reproductions are rechecked. Run finish: a fresh quality batch then full tests must
+pass before DONE. Report behavior, executed checks, assumptions and material gaps;
+not_configured is not a quality-tool pass. DONE does not authorize publication.
 
-## Corrections, budgets and resume
+## Correction and recovery
 
-An incorrect test needs an independent contract/example justification. Use
-`amend --reason "<evidence>" --ac <impacted-ACs>`, delegate correction to the
-test author, increment spec.version, then obtain fresh RED or honest coverage.
-The implementer cannot adjust expectations for its own patch.
-
-For a demonstrated runner/dependency setup defect, use `reconfigure --reason
-"<diagnosis>" [--paths <declared-config-files>]`. Only the coordinator edits the
-unlocked config files; source, tests, ownership and permissions stay protected.
-Run `rebase` to re-execute the full inventory and obtain fresh RED or GREEN.
-Never restore an old receipt after a setup change. An already tampered artifact
-must first be restored to its recorded version; do not hide the change.
-
-After the attempt limit, classify and diagnose the failure before `retry --reason
-"<new diagnosis>"`. Repeated identical failure must change the diagnosis/context,
-not reset the budget endlessly. If an external blocker remains, report incomplete.
-
-On resume, read state and actual artifacts instead of restarting or trusting
-conversation memory. A stale GREEN needs rerunning. A completed task becomes
-quiescent; use `archive` before preparing a different feature. Never merge,
-publish or deploy merely because DONE passed.
+Use amend only for an independently demonstrated contract/test error. You manage
+spec.version +1; the test author corrects existing tests in AMEND while retaining
+IDs, then red/cover supplies fresh evidence. The implementer cannot adjust its own
+expectations. Follow protocol reconfigure/rebase for diagnosed setup defects and
+retry for a new diagnosis after attempt exhaustion. Frozen quality definitions
+and task budgets cannot be weakened. Resume from state/artifacts; rerun stale
+evidence. Finish/archive active legacy tasks with their original plugin before
+upgrading. Report genuine blockers as incomplete.

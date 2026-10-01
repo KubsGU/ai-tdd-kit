@@ -7,6 +7,8 @@ For model selection, compact handoffs and native cache checks, follow
 session model; omit per-invocation model overrides. There is no automatic cheaper
 test-author/reviewer. The bundled launch helper defaults to Opus; a direct Claude
 launch uses the model you choose. Normal provider/organization rules still apply.
+For repository profiling, test oracles and tool scope, follow
+[the quality guidance](quality.md).
 
 Tested Claude Code: 2.1.285 and 2.1.286. Use a compatible current release;
 older hook/subagent behavior is not validated. Python 3.10+ and Node.js must be
@@ -31,8 +33,9 @@ Do not pass a candidate implementation to the test author as design guidance.
 
 During an active task the global PreToolUse hook limits writes by role and phase.
 Coordinator Bash is limited to a direct bundled controller invocation; unknown
-execution/mutation tools are denied. The coordinator writes setup before begin
-and review during VERIFY. Test/source edits are delegated to their owner roles.
+execution/mutation tools are denied. The coordinator writes setup before begin,
+the agreed spec correction in AMEND and review during VERIFY. Test/source edits
+are delegated to their owner roles.
 No active state means the plugin is quiescent. DONE also releases the workflow
 guard, so a historical completion receipt does not certify later edits.
 Use synchronous agent calls. Wait for an active worker to finish, or cancel its
@@ -59,6 +62,16 @@ with an independently configured sandbox. No hidden-test isolation is claimed.
   must be empty before begin.
 - `review-plan.json`: `{"scenarios":[{"ac":"AC1","case":"concrete scenario"}]}`;
   cover every AC before baseline/implementation. It stays frozen during the run.
+- `repo-profile.json`: factual convention evidence from instructions, neighboring
+  code, CI/scripts, tool configuration and lockfiles; record existing read-only
+  quality commands and gaps before begin. The controller fingerprints this file
+  whether present or absent; it does not validate the truth of the profile.
+
+Prepare the profile and quality configuration before an active task starts.
+Preserve established naming, errors, types, formatting and API conventions.
+Do not introduce a formatter, global style change or unrelated restyling merely
+to satisfy the kit. Include applicable repository CI checks that can run locally
+without modifying managed files; describe unavailable checks as limitations.
 
 Adapt the template to the existing project. Do not configure the entire repository
 as a source root. Include all executed test roots and all external expected data.
@@ -88,15 +101,16 @@ or command chaining. Keep rationale text plain without shell metacharacters.
 | init | Creates config template without overwriting any existing config. |
 | doctor | Executes the actual Node/Python hook with a sentinel input and validates its structured denial response. No task or source changes. |
 | archive | DONE only; moves .ai-tdd into a unique project-local .ai-tdd-history/task-id without overwriting old evidence or changing feature files. |
-| begin [--allow-empty] | Validated spec/plan, passing full baseline → TEST. |
+| begin [--allow-empty] | Validated spec/plan, passing full test and configured quality baselines; checkpoint existing test files → TEST. |
 | status | Recomputes freshness and returns the compact decision view with receipt paths; never changes state. Put --full before status for the complete diagnostic state. |
 | red --tests ID... --ac AC... --because "basis" [--expect AssertionError] | TEST/AMEND; unchanged source, exactly target behavior failures, old regressions pass → IMPLEMENT. Only AssertionError/explicit stub NotImplementedError accepted. |
 | cover --tests ID... --ac AC... --because "basis" | New tests already pass with unchanged source → GREEN without claiming a RED cycle. |
 | green | IMPLEMENT/GREEN; immutable tests/config, every required ID executes and passes → GREEN. Also used after a justified refactor. |
-| next | Fresh GREEN/VERIFY → TEST for another small increment. |
-| verify | Fresh GREEN and all AC IDs mapped → VERIFY. Mapping completeness still requires semantic review. |
-| finish | Fresh GREEN, current accepting review, zero findings and final full passing execution → DONE. |
-| amend --reason "independent evidence" --ac AC... | Unlocks test/spec ownership → AMEND; spec.version must increase by one and impacted AC evidence is invalidated. Old test IDs cannot disappear. |
+| next | Fresh GREEN/VERIFY; checkpoint all current test files → TEST for another increment in a new file. |
+| quality | Fresh GREEN/VERIFY; execute the configured read-only quality batch and record actual evidence. Optional before review. |
+| verify | Fresh GREEN and all AC IDs mapped; refresh stale quality evidence → VERIFY. Mapping completeness still requires semantic review. |
+| finish | Fresh GREEN, current accepting review, zero findings; freshly execute quality batch then full required tests → DONE. |
+| amend --reason "independent evidence" --ac AC... | AMEND; coordinator manages spec.version +1 and test author corrects agreed tests. Impacted AC evidence is invalidated; required IDs remain. |
 | retry --reason "new diagnosis" | BLOCKED → IMPLEMENT with an audited new per-increment attempt budget; the task-wide runner limit does not reset. |
 | reconfigure --reason "diagnosis" [--paths FILE...] | IMPLEMENT/GREEN/VERIFY/BLOCKED → RECONFIGURE; only coordinator may edit config.json and named existing protected setup files. Source/tests, path ownership, protected inventory and permission/instruction files remain locked. |
 | rebase [--expect AssertionError] | RECONFIGURE; re-execute the full existing inventory with unchanged feature artifacts → fresh IMPLEMENT/RED or GREEN. No required test ID may disappear. |
@@ -111,6 +125,15 @@ sufficient limit during setup; exhausted tasks cannot produce new evidence.
 This is not a model-token, spending or total wall-clock budget. Permission
 denials, unavailable environments and unknown requirements should be reported
 honestly; do not fabricate evidence to complete a task.
+
+`max_quality_runs` independently bounds configured quality batches for the whole
+task (default 20, integer 1..10000). One batch counts once even with several
+commands, including failed or timed-out batches; configured baseline and fresh
+finish batches count. No configured commands produce a not_configured receipt
+without consuming this budget. Quality definitions and limit are frozen at begin;
+reconfigure/rebase/retry cannot drop checks, weaken arguments or raise the limit.
+Reserve budget for completion rather than repeating unchanged pre-review checks.
+
 If protected artifacts were changed outside their owner flow, restore their
 recorded contents before opening amendment/setup repair. reconfigure unlocks
 named regular files already in protected_paths, not new source ownership or
@@ -120,6 +143,14 @@ settings to bypass a denied command. Revalidation binds subsequent receipts to
 the new declared setup; review must be repeated.
 
 ## Test evidence and adapters
+
+Normal TEST adds a new file. Every test file present at begin or the most recent
+next is frozen by hook denial and checkpoint hashes, including tests/helpers not
+selected for that increment. New files can be edited repeatedly during the same
+TEST cycle. Neither appending to a frozen file nor retaining its IDs while changing
+assertions is permitted. Only controlled AMEND allows the test author to correct
+an existing file, with independent evidence and spec.version +1 managed by the
+coordinator. Initial and subsequently required test IDs cannot disappear.
 
 The controller executes argv without a shell, with a unique fresh report path.
 No manual receipt command exists. It verifies exit/report consistency, exact
@@ -165,13 +196,75 @@ that tests excluded before baseline ever existed; correct suite configuration an
 independent review remain necessary. A report is not a defense against compromised
 test execution.
 
+## Executed quality checks
+
+Optional config quality_checks is a list of at most 20 commands. Each has a unique
+safe lowercase name (kebab-case, at most 64 characters), kind (lint, format,
+typecheck, security or custom), nonempty argv, timeout_seconds (default 120,
+positive and at most 3600) and inputs (repository-relative configuration paths).
+The inputs are automatically protected, including initially absent files. Source
+and test roots are already fingerprinted and cannot overlap inputs. See the
+[minimal configuration example](quality.md#existing-quality-tools).
+
+Commands execute as actual subprocesses without a shell, from the project root;
+argv supports {python}, {root} and {plugin}. Use existing tools in read-only/check
+mode. No --fix, --exit-zero, ignored type errors, disabled rules or similar gate
+weakening. The kind label does not prove the argv performs that kind of check:
+the profile and independent reviewer must assess command scope and diagnostics.
+Normal tool caches are allowed; final commands still execute afresh.
+
+Each batch retains a unique .quality.json receipt, actual exit/timeout/error
+results, stdout/stderr log paths and hashes, plus unexecuted command names after
+the first failure. Fingerprints reject changes to source, tests, protected setup,
+environment, state or review. A failing tool returns the task to GREEN for bounded
+repair. A source-only mutating formatter is also rejected and returns to GREEN;
+source must be repaired by its owner, green rerun, and review repeated. Mutating
+protected artifacts does not become an authorized setup repair.
+
+begin requires passing configured quality checks. verify refreshes stale evidence;
+quality can explicitly run in GREEN/VERIFY when useful. No checks produce
+not_configured, never a lint/format/type/security pass. The review must state this
+limitation. finish always performs a fresh batch before full tests, even when the
+review's evidence was current. Its new receipt ID is completion evidence; review
+continues to reference the latest pre-review ID for unchanged reviewed artifacts.
+These safeguards do not sandbox hostile tools or fully fingerprint installed
+packages, external services and every environment variable.
+The reviewer must name each unchecked lint/format/type/security category even
+when another category or a custom command passed; the controller does not infer
+category coverage from command names or require tools for every category.
+
 ## Review and defects
 
 Review schema:
 
 ```json
-{"receipt_id":"current GREEN id","checked_ac":["AC1"],"findings":[],"limitations":[],"recommendation":"accept"}
+{
+  "receipt_id": "current GREEN id",
+  "quality_receipt_id": "latest pre-review quality id",
+  "checked_ac": ["AC1"],
+  "findings": [],
+  "limitations": [],
+  "quality_limitations": ["Actual tool scope or missing checks"],
+  "repo_conventions": "Factual convention evidence from this repository",
+  "test_assessment": [{
+    "test_id": "executed test id",
+    "detects": "Concrete faulty behavior",
+    "oracle": "Independent contract basis for expected value",
+    "why_needed": "Distinct defect contribution"
+  }],
+  "recommendation": "accept"
+}
 ```
+
+test_assessment must cover every added ID and every AC-mapped ID, with no duplicate
+or unexecuted IDs. For each, give a concrete faulty implementation, independently
+justified expected behavior and distinct contribution; do not use a test count or
+coverage quota. quality_receipt_id must be the current pre-review ID. Every quality
+limitation is a nonempty string; the array must be nonempty when no tools are
+configured. repo_conventions must give factual evidence, not generic praise.
+The controller checks schema, ID coverage and freshness. It cannot prove the
+semantic truth of assessment strings, test oracles or repository consistency.
+The verifier makes that judgment using code, contract and real execution evidence.
 
 A finding needs id, ac, case, expected, actual and impact. If found, keep its exact
 reproduction in coordinator context/artifacts, use next for a new test-author
@@ -181,7 +274,8 @@ an empty current finding list; semantic truth of that review remains the verifie
 responsibility. Required IDs retain newly added regression reproductions.
 
 For an actual wrong test, amend before changing it, record independent evidence,
-increment the spec version and re-execute. Do not use amend for an implementation
+let the coordinator increment the spec version and the test author correct the
+test, then re-execute. Do not use amend for an implementation
 that simply fails correct requirements. Keep AC IDs stable for the task; new scope
 should normally be a new task. Security/performance/integration requirements need
 appropriate executable checks, not solely unit assertions or an LLM's confidence.
@@ -204,6 +298,9 @@ In DONE, `status` checks the final completion receipt and the actual review-file
 hash. Editing/removing that review invalidates freshness without rewriting state.
 Finish and archive active tasks before updating the plugin: its protected runtime
 and protocol hashes intentionally invalidate receipts from another version.
+An active 1.2 task without test_checkpoint cannot be resumed by 1.3. Finish and
+archive using the original plugin first. Do not infer a checkpoint from current
+files or edit state to migrate an active task.
 
 ## Primary format references (checked 2026-10-01)
 

@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "files": [
     "README.md", "README.pl.md", "LICENSE", ".gitignore", ".gitattributes", "BUILD_MANIFEST.json",
-    "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "ROADMAP.md", "requirements-dev.txt",
+    "CHANGELOG.md", "CONTRIBUTING.md", "PUBLISHING.md", "ROADMAP.md", "requirements-dev.txt", "pyproject.toml",
     ".github/workflows/ci.yml",
     ".claude-plugin/marketplace.json",
     "plugins/ai-tdd/.claude-plugin/plugin.json",
@@ -15,18 +15,22 @@
     "plugins/ai-tdd/skills/resume/SKILL.md",
     "plugins/ai-tdd/references/protocol.md",
     "plugins/ai-tdd/references/efficiency.md",
+    "plugins/ai-tdd/references/quality.md",
     "plugins/ai-tdd/templates/config.unittest.json",
     "plugins/ai-tdd/templates/config.pytest.json",
     "plugins/ai-tdd/templates/spec.example.json",
     "plugins/ai-tdd/templates/review.example.json",
     "plugins/ai-tdd/scripts/tdd.py",
+    "plugins/ai-tdd/scripts/quality.py",
     "plugins/ai-tdd/scripts/unittest_runner.py",
     "plugins/ai-tdd/scripts/pytest_runner.py",
     "plugins/ai-tdd/scripts/hook-launcher.cjs",
     "plugins/ai-tdd/tests/test_controller.py",
     "plugins/ai-tdd/tests/test_efficiency.py",
+    "plugins/ai-tdd/tests/test_quality.py",
+    "plugins/ai-tdd/tests/test_quality_gates.py",
     "scripts/build_zip.py", "scripts/check_install.py", "scripts/smoke_demo.py",
-    "scripts/evaluate_claude.py", "scripts/launch_claude.py", "scripts/measure_context.py",
-    "validation/VALIDATION.md"
+    "scripts/evaluate_claude.py", "scripts/launch_claude.py", "scripts/measure_context.py", "scripts/test_strength_demo.py",
+    "validation/VALIDATION.md", "validation/RESEARCH.md"
   ]
 }

@@ -44,9 +44,9 @@ supplied. Deterministic bookkeeping stays in Python.
 ## Small, faithful handoffs
 
 Controller commands return a compact decision view by default: phase, cycle,
-current increment, AC mapping, runner budget, receipt IDs/paths, actual nonpassing
-test reasons, and completed review limitations. Full state and receipts remain
-on disk. Use `--full` before the command for diagnostic output:
+current increment, AC mapping, runner/quality budgets, receipt IDs/paths, actual
+nonpassing test/tool reasons, and completed review limitations. Full state and
+receipts remain on disk. Use `--full` before the command for diagnostic output:
 
 ```text
 python -B /path/to/ai-tdd/scripts/tdd.py --root /project --full status
@@ -55,10 +55,12 @@ python -B /path/to/ai-tdd/scripts/tdd.py --root /project --full status
 Dispatch briefs contain these parts in order:
 
 1. Role/mode, phase/cycle and the one behavior/affected ACs.
-2. Spec/plan paths and the relevant interface/source/test paths and ownership.
-3. Current receipt ID/path and concrete failures or findings relevant to the work.
+2. Spec/plan/profile paths and relevant interface/source/test paths and ownership,
+   including frozen test files and the new file allowed for this TEST cycle.
+3. Current GREEN/quality receipt IDs/paths and concrete failures or findings.
 4. Required return facts: exact test IDs/oracle for the author, changed paths/gaps
-   for implementation, or the review object for verification.
+   for implementation, or the complete review object and test assessments for
+   verification.
 
 Workers read the referenced contract and relevant real code, expanding to callers,
 dependencies, fixtures and full evidence when needed. This is a navigation brief,
@@ -67,6 +69,14 @@ limitation. Repository instructions and all applicable acceptance criteria still
 apply. Avoid repeated full hash inventories, whole histories, unchanged file
 contents and raw passing logs in prompts. No fixed token cap truncates relevant
 requirements or failure evidence. Workers remain fresh and sequential.
+
+Choose checks by distinct contract defects and the repository's existing commands,
+not by a test quota. Combine redundant examples when no meaningful fault detection
+is lost. Verify refreshes stale quality evidence; an extra quality call is useful
+only when it resolves a concrete question. Finish always reruns the configured
+quality commands and full required tests. Native incremental tool caches are
+allowed, but old receipts never replace those fresh invocations. Consult
+[quality guidance](quality.md) for oracles, tool scope and limitations.
 
 ## Native cache, measured rather than assumed
 

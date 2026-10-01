@@ -5,7 +5,7 @@
 Przenośny workflow: opis zadania → doprecyzowanie → kontrakt akceptacji → osobny
 autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależny review.
 Kontroler w Pythonie egzekwuje fazy na podstawie wykonanych testów. Hook i ograniczenia
-narzędzi agentów pilnują właścicieli zmian. Wersja 1.2.0, licencja MIT.
+narzędzi agentów pilnują właścicieli zmian. Wersja 1.3.0, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -44,7 +44,7 @@ na PATH; dla Node wybierz wspieraną wersję LTS. Plugin nie wymaga dodatkowych
 bibliotek Pythona. Zależności aplikacji
 i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.2.0.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.3.0.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -98,7 +98,7 @@ dostępne. Każde wymagane wykonanie testów nadal się odbywa; wyników runnera
 cachujemy. Pełny JSON dla diagnostyki lub skryptów otrzymasz przez `--full` przed
 poleceniem kontrolera, np. `tdd.py --root /projekt --full status`.
 
-W demonstratorze odpowiedź DONE była o 88,4% mniejsza w bajtach. W dwóch rzeczywistych
+W wersji 1.2 odpowiedź DONE demonstratora była o 88,4% mniejsza w bajtach. W dwóch rzeczywistych
 próbach Opusa 92,1–92,6% raportowanych tokenów wejściowych odczytano z cache, łącznie
 z agentami. To nie jest dowód obniżenia całego rachunku, czasu lub liczby tokenów
 o taki procent. Pomiar obejmuje rzeczywiste modele i końcowe liczniki wszystkich
@@ -139,6 +139,8 @@ Plugin nie wykonuje automatycznie merge, publikacji ani deployu.
   workera, jawny tryb w tle, osobny worktree i role z innych pluginów.
 - Implementer zapisuje wyłącznie zadeklarowany kod. Testy, oczekiwania, konfiguracja,
   zależności i stan kontrolera są chronione.
+- Zwykły przyrost powstaje w nowym pliku testowym. Wcześniejsze pliki są zamrożone;
+  korekta wymaga jawnego, uzasadnionego `amend`.
 - RED wymaga rzeczywistej porażki wybranych testów z powodu zachowania. Błąd importu,
   pominięte testy lub samo zapewnienie modelu nie otwierają implementacji.
 - GREEN wymaga wykonania wszystkich wcześniej wymaganych identyfikatorów testów.
@@ -147,6 +149,13 @@ Plugin nie wykonuje automatycznie merge, publikacji ani deployu.
   problem runnera ma osobne `reconfigure` i `rebase`, z ponownym wykonaniem testów.
 - DONE wymaga aktualnego review bez otwartych uwag i końcowego pełnego wykonania.
   Zmiana lub usunięcie review unieważnia aktualność wyniku w `status`.
+- Review ocenia każdy nowy lub przypisany do AC test: wykrywany defekt, niezależną
+  oczekiwaną odpowiedź i przydatność przypadku. Kontroler sprawdza kompletność
+  tej oceny; jej prawdziwość nadal wymaga merytorycznej weryfikacji.
+- Polecenia lintowania, formatowania, kontroli typów i bezpieczeństwa z danego repo
+  wykonują się rzeczywiście przez kontroler, również ponownie przed DONE. Błędy
+  blokują zakończenie; brak konfiguracji jest jawnym ograniczeniem. Domyślny limit
+  to 20 takich zestawów poleceń na zadanie.
 - Łączny limit uruchomień runnera wynosi domyślnie 100 na zadanie. Obejmuje baseline,
   timeouty, naprawy konfiguracji i sprawdzenie końcowe; retry go nie resetuje.
   Ten limit nie ogranicza zużycia modelu ani wydatków.
@@ -160,13 +169,34 @@ typu porażki nie daje wystarczającego dowodu RED. pytest uruchamiamy sekwencyj
 Szczegóły konfiguracji, polecenia, granice i format raportów:
 [protokół wykonania](plugins/ai-tdd/references/protocol.md).
 
+## Mniej pustych testów i spójność z repo
+
+Nie ma celu „napisz jak najwięcej testów” ani wymogu 100% mutation score.
+Dobry przypadek odróżnia poprawne zachowanie od konkretnego, wiarygodnego błędu.
+Oczekiwany wynik pochodzi z kontraktu, a nie z tej samej implementacji. Wywołanie
+mocka dowodzi interakcji; samo nie dowodzi poprawności zwróconej wartości.
+
+Przed rozpoczęciem koordynator zapisuje profil repo: istniejące instrukcje,
+nazewnictwo, błędy/API, przykłady sąsiedniego kodu, CI i reguły narzędzi.
+`quality_checks` używa tych poleceń w trybie sprawdzającym. Nie narzucamy wszystkim
+projektom jednego formattera ani nie wyłączamy reguł, żeby dostać zielony wynik.
+Szczegóły i przykłady: [polityka jakości](plugins/ai-tdd/references/quality.md).
+
+[Przegląd badań](validation/RESEARCH.md) opisuje TDFlow, EvalPlus, mutation testing,
+własności i niezależną ocenę, wraz z ich ograniczeniami. Demonstrator
+`scripts/test_strength_demo.py` pokazuje na czterech celowych usterkach, jak
+zestawy o tej samej liczbie testów mogą dawać bardzo różne dowody. To konkretne
+przykłady, a nie benchmark modeli ani gwarancja braku błędów.
+
 ## Weryfikacja paczki
 
 Z katalogu `ai-tdd-kit`:
 
 ```text
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
+python -m ruff check .
 python -B scripts/smoke_demo.py
+python -B scripts/test_strength_demo.py
 python -B scripts/measure_context.py
 ```
 

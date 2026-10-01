@@ -8,8 +8,10 @@ Use Python 3.10+ and a supported Node LTS on PATH. From the repository root:
 
 ```text
 python -m pip install -r requirements-dev.txt
+python -m ruff check .
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -B scripts/smoke_demo.py
+python -B scripts/test_strength_demo.py
 python -B scripts/measure_context.py
 ```
 
@@ -18,6 +20,10 @@ evaluation. Changes to skills or agent prompts should also be exercised with
 real Claude Code; `scripts/evaluate_claude.py` creates a synthetic temporary
 project and uses normal account usage. Report that separately from deterministic
 tests. Do not call a role-edit simulation an agent benchmark.
+
+CI runs for pull requests and main, with six OS/Python combinations. Superseded
+runs are canceled; pinned package downloads use setup-python's pip cache. Actual
+lint, tests and demos still run. Open a PR or use workflow_dispatch for branch CI.
 
 Efficiency changes must preserve behavioral evidence and full regression scope.
 The byte measurement is not a token/cost/time benchmark. Real comparisons need
@@ -29,6 +35,12 @@ Preserve regressions and justified test expectations. Do not bypass failing
 checks by removing test IDs, weakening the runner, adding skips, editing task
 state or resetting retry limits indefinitely. Correct bad expectations from the
 contract, and record the new evidence.
+
+Use the repository's established tool configuration and conventions. Review
+cases by the concrete faults they distinguish and their independently justified
+oracles, rather than count or coverage quotas. Quality-tool failures, missing
+tools and skipped checks must remain explicit. A model's prose assessment is not
+execution evidence; deliberately constructed fault demos are not LLM benchmarks.
 
 Use synthetic examples in issues and pull requests. Share sanitized summaries
 instead of `.ai-tdd/`, `.ai-tdd-history/` or raw model transcripts. Explain the
