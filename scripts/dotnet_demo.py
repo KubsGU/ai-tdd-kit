@@ -68,6 +68,55 @@ def fixture_directory():
         shutil.rmtree(root)
 
 
+def setup_diagnostics(root):
+    """Capture bounded metadata from this generated public fixture only.
+
+    No environment dump, source contents, account state or credentials are
+    included. The executable project inputs and NuGet configuration here were
+    authored above exclusively for the synthetic fixture.
+    """
+    root = Path(root).resolve()
+    data = {"schema": 1, "scope": "generated-public-dotnet-fixture", "projects": [], "unsafe_inputs": []}
+    fields = ("Identity", "FullPath", "DefiningProjectFullPath", "Link", "Version", "VersionOverride")
+    for project in sorted(root.rglob("*.csproj"))[:10]:
+        if any(part in {"bin", "obj"} for part in project.relative_to(root).parts):
+            continue
+        try:
+            metadata = SETUP.evaluate(project, root=root)
+            packages = SETUP._packages(metadata)
+        except (SETUP.DotnetError, OSError, ValueError) as error:
+            data["projects"].append({"project": project.relative_to(root).as_posix(), "evaluation_error": type(error).__name__})
+            continue
+        record = {"project": project.relative_to(root).as_posix(),
+                  "properties": {key: str(metadata["Properties"].get(key, ""))[:1024] for key in SETUP.PROPERTIES}, "items": {}}
+        for kind in SETUP.ITEMS:
+            record["items"][kind] = [{key: str(item[key])[:1024] for key in fields if key in item}
+                                      for item in metadata["Items"].get(kind, [])[:100]]
+            if kind not in {"Compile", "ProjectReference", "None", "Content"}:
+                continue
+            for item in metadata["Items"].get(kind, [])[:100]:
+                name = item.get("FullPath") or item.get("Identity", "")
+                path = None
+                try:
+                    path = (project.parent / SETUP.msbuild_path(name)).absolute()
+                    SETUP._relative(root, path)
+                except (SETUP.DotnetError, OSError, ValueError):
+                    allowed = path is not None and kind in {"None", "Content"} and SETUP._package_input(metadata, packages, path, item)
+                    if not allowed and len(data["unsafe_inputs"]) < 20:
+                        data["unsafe_inputs"].append({"project": record["project"], "kind": kind,
+                            "item": {key: str(item[key])[:1024] for key in fields if key in item}, "package_allowed": False})
+        data["projects"].append(record)
+    path = root / ".ai-tdd/setup-diagnostics.json"
+    value = json.dumps(data, ensure_ascii=False, indent=2)
+    if len(value.encode("utf-8")) > 250_000:
+        data = {"schema": 1, "scope": data["scope"], "unsafe_inputs": data["unsafe_inputs"], "truncated": True}
+        value = json.dumps(data, ensure_ascii=False, indent=2)
+    path.write_text(value + "\n", encoding="utf-8")
+    print("Synthetic setup diagnostics retained at " + str(path), file=sys.stderr)
+    if data["unsafe_inputs"]:
+        print(json.dumps({"synthetic_unsafe_inputs": data["unsafe_inputs"]}, ensure_ascii=False), file=sys.stderr)
+
+
 def fixture(root, framework, linked_source=False, configure=True):
     source = root / "src/Demo"
     tests = root / "tests/Demo.Tests"
@@ -98,14 +147,22 @@ def fixture(root, framework, linked_source=False, configure=True):
     if restore.returncode:
         raise RuntimeError("Public isolated fixture restore failed; no user packages were changed")
     if configure:
-        config = SETUP.configure(root)
+        try:
+            config = SETUP.configure(root)
+        except SETUP.DotnetError:
+            setup_diagnostics(root)
+            raise
         (root / ".ai-tdd/config.json").write_text(json.dumps(config), encoding="utf-8")
     return source, tests
 
 
 def native(root):
     path = root / ".ai-tdd" / ("native-" + uuid.uuid4().hex + ".json")
-    code = RUNNER.run(root, path)
+    try:
+        code = RUNNER.run(root, path)
+    except RUNNER.DotnetError:
+        setup_diagnostics(root)
+        raise
     return code, json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -217,7 +274,11 @@ def packaged_plugin(root, executable):
 def workflow_demo(root, framework, linked_source=False, facade=None):
     source, tests = fixture(root, framework, linked_source, configure=facade is None)
     folder = root / ".ai-tdd"
-    controller = FacadeController(root, *facade) if facade else TDD.Controller(root)
+    try:
+        controller = FacadeController(root, *facade) if facade else TDD.Controller(root)
+    except (RuntimeError, SETUP.DotnetError):
+        setup_diagnostics(root)
+        raise
     (folder / "spec.json").write_text(json.dumps({"version": 1, "goal": "Free delivery at 10000 cents",
         "acceptance": [{"id": "AC1", "description": "Fee is zero for a 10000-cent cart"}], "open_questions": []}), encoding="utf-8")
     (folder / "review-plan.json").write_text(json.dumps({"scenarios": [{"ac": "AC1", "case": "Literal boundary 10000 cents"}]}), encoding="utf-8")

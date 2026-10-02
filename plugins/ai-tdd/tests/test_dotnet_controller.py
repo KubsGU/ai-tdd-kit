@@ -11,6 +11,22 @@ from test_controller import Fixture, PLUGIN, tdd
 
 
 class DotnetControllerTests(Fixture, unittest.TestCase):
+    def test_directory_alias_for_cwd_preserves_controller_root_and_hook_behavior(self):
+        alias = self.root / 'cwd-alias'
+        try:
+            alias.symlink_to(self.root, target_is_directory=True)
+        except OSError:
+            self.skipTest('Directory symlink privilege unavailable')
+        self.addCleanup(alias.unlink)
+        prefix = 'node "' + (PLUGIN / 'scripts/tdd-launcher.cjs').as_posix() + '" --root "' + alias.as_posix() + '" status'
+        self.assertTrue(tdd.controller_command(prefix, alias, PLUGIN))
+        payload = {'cwd': str(alias), 'tool_name': 'Read', 'tool_input': {'file_path': 'src/fee.py'}}
+        result = subprocess.run([shutil.which('node'), '--preserve-symlinks', '--preserve-symlinks-main',
+                                 str(PLUGIN / 'scripts/hook-launcher.cjs')], input=json.dumps(payload),
+                                env=dict(os.environ, PATH='', AI_TDD_PYTHON=str(self.root / 'missing')),
+                                capture_output=True, encoding='utf-8', timeout=20)
+        self.assertEqual(result.stdout, '', result.stderr)
+
     def test_native_setup_without_csharp_projects_returns_actionable_error(self):
         with self.assertRaisesRegex(tdd.TddError, 'No C# .csproj'):
             tdd.dotnet_configuration(self.root)

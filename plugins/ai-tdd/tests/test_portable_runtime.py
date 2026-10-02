@@ -433,7 +433,8 @@ class PackagedRuntimeSmokeTests(unittest.TestCase):
         self.assertIn("ai-tdd-runtime-LICENSES.txt", archive.toc,
                       "Downloadable executable must contain its runtime license notices")
         embedded = archive.extract("ai-tdd-runtime-LICENSES.txt")
-        sidecar = binary.with_name(binary.stem + ".LICENSES.txt")
+        basename = binary.name[:-4] if binary.name.endswith(".exe") else binary.name
+        sidecar = binary.with_name(basename + ".LICENSES.txt")
         self.assertEqual(embedded, sidecar.read_bytes())
         self.assertIn(b"CPython", embedded)
         self.assertIn(b"PyInstaller", embedded)
@@ -447,7 +448,7 @@ class PackagedRuntimeSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="ai-tdd-native-") as temporary:
             sandbox = Path(temporary).resolve()
             plugin, project, executables = sandbox / "plugin", sandbox / "project", sandbox / "bin"
-            shutil.copytree(PLUGIN / "scripts", plugin / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(PLUGIN, plugin, ignore=shutil.ignore_patterns(".runtime", "__pycache__"))
             project.mkdir()
             executables.mkdir()
             node = executables / ("node.exe" if os.name == "nt" else "node")

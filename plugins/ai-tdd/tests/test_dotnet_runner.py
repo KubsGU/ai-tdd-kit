@@ -2,7 +2,8 @@
 import copy
 import importlib.util
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import posixpath
 import tempfile
 import unittest
 from unittest import mock
@@ -142,7 +143,7 @@ class DotnetSetupTests(unittest.TestCase):
         loader.loader.exec_module(self.setup)
         self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-dotnet-contract-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         for relative in ("src/Demo/Demo.csproj", "tests/Demo.Tests/Demo.Tests.csproj", "Directory.Packages.props", "NuGet.config"):
             path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,6 +241,28 @@ class DotnetSetupTests(unittest.TestCase):
             return value
         with mock.patch.object(self.setup, "evaluate", side_effect=linked), self.assertRaises(self.setup.DotnetError):
             self.setup.configure(self.root)
+
+    def test_msbuild_default_backslashes_are_owned_paths_on_posix(self):
+        class PosixModel(PurePosixPath):
+            def resolve(self):
+                return PosixModel(posixpath.normpath(str(self)))
+        project = PosixModel("/fixture/src/Demo/Demo.csproj")
+        metadata = {"Properties": {"BaseOutputPath": "bin\\", "OutputPath": "bin\\Debug\\net8.0\\",
+                    "BaseIntermediateOutputPath": "obj\\", "IntermediateOutputPath": "obj\\Debug\\net8.0\\",
+                    "MSBuildProjectExtensionsPath": "/fixture/src/Demo/obj/"}}
+        try:
+            self.setup._output_paths(project, metadata)
+        except self.setup.DotnetError as error:
+            self.fail("Default SDK output paths must remain owned on POSIX: " + str(error))
+        for value in ("..\\outside\\", "bin\\..\\..\\outside\\"):
+            metadata["Properties"]["OutputPath"] = value
+            with self.subTest(value=value), self.assertRaises(self.setup.DotnetError):
+                self.setup._output_paths(project, metadata)
+
+    def test_msbuild_package_and_item_backslashes_are_normalized_consistently(self):
+        self.assertTrue(callable(getattr(self.setup, "msbuild_path", None)), "MSBuild path normalization is missing")
+        self.assertEqual(self.setup.msbuild_path("obj\\Debug\\net8.0\\"), "obj/Debug/net8.0/")
+        self.assertEqual(self.setup.msbuild_path("..\\..\\src\\Demo\\Demo.csproj"), "../../src/Demo/Demo.csproj")
 
 
 if __name__ == "__main__":

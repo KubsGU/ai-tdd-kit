@@ -85,6 +85,13 @@ def _relative(root, path):
     return path.relative_to(root).as_posix()
 
 
+def msbuild_path(value):
+    """MSBuild accepts both separators on every supported host."""
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise DotnetError("MSBuild must return a nonempty evaluated file path")
+    return value.replace("\\", "/")
+
+
 def _walk(root):
     for current, directories, files in os.walk(root, followlinks=False):
         exclusions = SKIP_DIRS | ({"bin", "obj"} if any(Path(name).suffix.lower() == ".csproj" for name in files) else set())
@@ -116,7 +123,7 @@ def _output_paths(project, metadata):
         value = props.get(name, "")
         if not value:
             continue
-        path = (project.parent / value).resolve()
+        path = (project.parent / msbuild_path(value)).resolve()
         base = project.parent / ("obj" if name in {"BaseIntermediateOutputPath", "IntermediateOutputPath", "MSBuildProjectExtensionsPath"} else "bin")
         if path != base and base not in path.parents:
             raise DotnetError("Custom " + name + " is unsupported: use the project's own bin/ and obj/ output directories")
@@ -148,12 +155,12 @@ def _package_input(metadata, packages, path, item):
     defining = item.get("DefiningProjectFullPath", "")
     if not package_root or not defining:
         return False
-    defining = Path(defining).resolve()
+    defining = Path(msbuild_path(defining)).resolve()
     path = Path(os.path.abspath(path))
     if path.resolve() != path:
         return False
     for name, version in packages.items():
-        package = Path(package_root).resolve() / name / version
+        package = Path(msbuild_path(package_root)).resolve() / name / version
         if package in path.parents and package in defining.parents:
             return True
     return False
@@ -222,13 +229,14 @@ def configure(root):
                     name = item.get("FullPath") or item.get("Identity", "")
                     if not name:
                         raise DotnetError("MSBuild input lacks a file path")
-                    input_path = (project.parent / name).absolute()
+                    input_path = (project.parent / msbuild_path(name)).absolute()
                     try:
                         _relative(root, input_path)
-                    except DotnetError:
+                    except DotnetError as error:
                         if kind in {"None", "Content"} and _package_input(evaluated, tfm_packages, input_path, item):
                             continue
-                        raise
+                        raise DotnetError("Unsafe evaluated " + kind + " input in " + relative
+                                          + "; require in-root ownership or the resolved package's own imported assets") from error
                     input_path = Path(os.path.abspath(input_path))
                     if any(part in {".ai-tdd", ".git"} or part.startswith(".env") for part in input_path.relative_to(root).parts):
                         raise DotnetError("Private/control paths cannot be evaluated project inputs")

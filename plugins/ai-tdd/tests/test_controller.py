@@ -20,7 +20,7 @@ class Fixture:
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-test-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / ".ai-tdd").mkdir()
         (self.root / "src").mkdir()
         (self.root / "tests").mkdir()

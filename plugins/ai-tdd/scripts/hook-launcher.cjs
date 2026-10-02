@@ -7,8 +7,10 @@ const fs = require('fs');
 function needsRuntime(payload) {
   if (payload.tool_name === 'AI_TDD_SELFTEST') return true;
   if (typeof payload.cwd !== 'string' || !payload.cwd.trim()) throw new Error('Missing hook cwd');
-  let cursor = path.resolve(payload.cwd);
   const realpath = fs.realpathSync.native || fs.realpathSync;
+  // Match the controller's canonical project root (e.g. macOS /var or Windows
+  // short directory names), then reject redirection of .ai-tdd itself.
+  let cursor = realpath(path.resolve(payload.cwd));
   while (true) {
     const folder = path.join(cursor, '.ai-tdd');
     try {

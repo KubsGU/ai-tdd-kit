@@ -831,7 +831,7 @@ def controller_command(command, root, plugin_root, cwd=None):
         path = Path(args.root)
         if not path.is_absolute():
             path = Path(cwd or root) / path
-        return args.command != "init" and path.resolve() == root
+        return args.command != "init" and path.resolve() == Path(root).resolve()
     except (ValueError, IndexError, SystemExit):
         return False
 

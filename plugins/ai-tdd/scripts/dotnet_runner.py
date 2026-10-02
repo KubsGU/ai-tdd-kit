@@ -303,8 +303,8 @@ def _nunit_target(project, tfm, artifacts, root):
         raise DotnetError("Cannot evaluate NUnit discovery output directory")
     try:
         props = json.loads(process.stdout)["Properties"]
-        target = Path(props["TargetDir"]).resolve()
-        filename = props["TargetFileName"]
+        target = Path(SETUP.msbuild_path(props["TargetDir"])).resolve()
+        filename = SETUP.msbuild_path(props["TargetFileName"])
     except (ValueError, KeyError, TypeError) as error:
         raise DotnetError("Unsupported NUnit output metadata") from error
     if target != artifacts and artifacts not in target.parents or not filename or Path(filename).name != filename:
