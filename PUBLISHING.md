@@ -10,8 +10,13 @@ From the standalone plugin repository:
 
 1. Update the version in `.claude-plugin/marketplace.json`,
    `plugins/ai-tdd/.claude-plugin/plugin.json` and `BUILD_MANIFEST.json`, plus
-   README/plugin README, `runtime-manifest.json` and CHANGELOG.md. Keep plugin
+   README/plugin README and CHANGELOG.md. Keep plugin
    and marketplace names stable.
+   Interpreter and plugin versions are independent. A source-only patch can
+   retain the pinned runtime manifest if its interpreter/import inventory is
+   compatible; verify actual new source execution with those published binaries.
+   Preserve historical build provenance. Change `runtime-manifest.json` and
+   rebuild/revalidate native assets when releasing a new interpreter.
 2. Run repository Ruff checks, controller tests, `scripts/smoke_demo.py` and
    `scripts/test_strength_demo.py`. For runtime/prompt changes,
    also run the opt-in real-Claude evaluation and record its exact scope.

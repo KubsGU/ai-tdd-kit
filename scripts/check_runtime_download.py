@@ -16,7 +16,11 @@ NODE_FLAGS = ["--preserve-symlinks", "--preserve-symlinks-main"]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--project-count", type=int, default=0,
+                        help="Also exercise actual init/MSBuild evaluation on a large synthetic solution")
     args = parser.parse_args()
+    if args.project_count < 0 or args.project_count == 1:
+        raise ValueError("Setup fixture needs at least two projects, or zero to skip it")
     if args.output.exists() or args.output.is_symlink():
         raise ValueError("Bootstrap output must be fresh")
     node = shutil.which("node")
@@ -25,6 +29,7 @@ def main():
     platform = subprocess.check_output([node, "-p", "process.platform+'-'+process.arch"], text=True).strip()
     manifest = json.loads((PLUGIN / "runtime-manifest.json").read_text(encoding="utf-8"))
     asset = manifest["platforms"][platform]
+    setup_evidence = {}
     with tempfile.TemporaryDirectory(prefix="ai-tdd-public-runtime-") as temporary:
         root = Path(temporary).resolve()
         plugin = root / "plugin"
@@ -61,9 +66,43 @@ def main():
             raise ValueError("Downloaded runtime bytes differ from the pinned release")
         if call(["--root", str(root), "doctor"], 30).get("hook_health") != "pass":
             raise ValueError("Downloaded runtime doctor and nested hook did not pass")
+        if args.project_count:
+            dotnet = shutil.which("dotnet")
+            if not dotnet:
+                raise ValueError("Actual .NET SDK is required for the setup fixture")
+            environment["PATH"] += os.pathsep + str(Path(dotnet).resolve().parent)
+            if any(shutil.which(name, path=environment["PATH"]) for name in ("python", "python3", "py")):
+                raise ValueError("Large setup child PATH must exclude Python")
+            solution = root / "solution"
+            expected = {}
+            for index in range(args.project_count):
+                is_test = index % 2 == 1
+                name = "Project" + str(index) + (".Tests" if is_test else "")
+                relative = ("tests/" if is_test else "src/") + name + "/" + name + ".csproj"
+                path = solution / relative
+                path.parent.mkdir(parents=True)
+                packages = ('<ItemGroup><PackageReference Include="xunit" Version="2.9.3" />'
+                            '<PackageReference Include="xunit.runner.visualstudio" Version="3.0.0" />'
+                            '<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" /></ItemGroup>') if is_test else ""
+                path.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework>'
+                                '<IsTestProject>' + str(is_test).lower() + '</IsTestProject></PropertyGroup>'
+                                + packages + '</Project>', encoding="utf-8")
+                expected[relative] = (is_test, path.read_bytes())
+            call(["--root", str(solution), "init"], 600)
+            config = json.loads((solution / ".ai-tdd/config.json").read_text(encoding="utf-8"))
+            if set(config["dotnet"]["projects"]) != set(expected):
+                raise ValueError("Large native init lost a project")
+            if {item["project"] for item in config["dotnet"]["modules"]} != {
+                    name for name, (is_test, _) in expected.items() if is_test}:
+                raise ValueError("Large native init lost a test module")
+            if any((solution / name).read_bytes() != original for name, (_, original) in expected.items()):
+                raise ValueError("Native init changed a project file")
+            setup_evidence = {"setup_projects": args.project_count, "setup_test_modules": len(config["dotnet"]["modules"]),
+                              "setup_files_unchanged": True, "sdk_version": config["dotnet"]["sdk"]["version"],
+                              "scope": "Actual MSBuild evaluation/init only; packages are not restored and tests are not executed"}
     result = {"schema": 1, "ok": True, "version": manifest["version"], "platform": platform,
               "url": asset["url"], "sha256": asset["sha256"], "size": asset["size"],
-              "anonymous_download": True, "python_on_child_path": False, "hook_health": "pass"}
+              "anonymous_download": True, "python_on_child_path": False, "hook_health": "pass", **setup_evidence}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(result))

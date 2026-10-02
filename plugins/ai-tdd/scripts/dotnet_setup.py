@@ -222,8 +222,6 @@ def configure(root):
     projects = [path for path in files if path.suffix.lower() == ".csproj"]
     if not projects:
         raise DotnetError("No C# .csproj projects found below the selected root")
-    if len(projects) > 50:
-        raise DotnetError("Native .NET setup supports at most 50 explicit projects")
     global_path = root / "global.json"
     if global_path.is_file():
         try:

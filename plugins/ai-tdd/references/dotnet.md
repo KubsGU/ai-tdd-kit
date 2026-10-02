@@ -58,6 +58,10 @@ Actual native CI smoke results establish only their tested host scope; this
 local attempt does not prove Python-free use under strict Application Control.
 
 The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
+Plugin and interpreter versions are independent: plugin 1.5.1 reuses the pinned
+1.5.0 interpreter, which executes the installed external controller sources.
+Its historical build metadata describes the original build inputs; the new
+plugin source is covered by the source ZIP/checksums and task fingerprints.
 Each native release binary has `.json` build metadata with source hashes and
 tool versions, and a `.LICENSES.txt` sidecar with bundled component notices.
 These are provenance and integrity records, not an author signature or proof
@@ -75,6 +79,14 @@ It is not an arbitrary project Python environment: pytest and custom `{python}`
 runner/quality commands still need their real interpreter and dependencies.
 
 ## Supported native test paths
+
+The preset has no fixed project-count limit. It evaluates every discovered
+project and retains every configured test module; 70/128-project regressions
+also check exact ownership/output inventory and rejection of overlapping layouts.
+Large solutions can take longer to evaluate and execute. Select the repository's
+`timeout_seconds` before `begin` if the default 600 seconds is insufficient
+(supported maximum 3600); the task freezes it. A larger repository does not
+relax ownership, reporter, inventory or quality checks.
 
 | Path | Existing package requirements | Evidence used |
 | --- | --- | --- |

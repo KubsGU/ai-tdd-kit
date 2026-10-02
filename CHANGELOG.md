@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.1 — 2026-10-02
+
+- Remove the arbitrary 50-project native .NET init limit. Preserve every evaluated
+  project/test module, disjoint ownership, protected inputs and complete evidence.
+  Regressions cover 70/128 projects and rejection of overlapping large layouts.
+- Reuse the unchanged pinned controller interpreter from runtime 1.5.0. It executes
+  the installed plugin's external sources; this patch adds no interpreter imports
+  or binary changes. Historical runtime build metadata remains unchanged.
+- Verify actual 70-project init/MSBuild evaluation with the published runtime on
+  native CI hosts, with Python absent from the controller PATH. This setup fixture
+  does not restore its packages or claim full test execution of 70 projects.
+
 ## 1.5.0 — 2026-10-02
 
 - Add a stable Node facade and explicit, version-pinned bundled controller

@@ -1,5 +1,22 @@
 # Validation report — AI TDD Kit
 
+## 1.5.1 project-count correction — 2026-10-02
+
+The native preset's arbitrary 50-project rejection is removed. New 70/128-project
+regressions verify the complete project/test-module, source/test root, protected
+project and generated-output inventories. A separate large overlapping layout
+must still fail on ownership. Three regression assertions failed on the old
+limit; all 21 native setup/parser methods then passed after the two-line removal.
+The large unit fixtures mock external MSBuild metadata; native released-runtime
+CI additionally evaluates actual 70-project init on Windows/Linux/macOS. Its
+exact results and final full-suite/install/CI checks belong in the
+[1.5.1 release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.5.1).
+
+Plugin 1.5.1 reuses the unchanged pinned interpreter 1.5.0, which executes current
+external sources. Historical build/source metadata and 1.5 validation below stay
+unchanged; they do not claim the modified setup source was part of the old build.
+No new interpreter imports, binary replacement or paid model calls are needed.
+
 ## 1.5.0 validation — 2026-10-02
 
 **All 13 CI jobs passed** at runtime-source candidate `26f3332`: six source/

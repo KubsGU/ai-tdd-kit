@@ -7,7 +7,7 @@ autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależ
 Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
 tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
 dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
-Wersja 1.5.0, licencja MIT.
+Wersja 1.5.1, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -53,7 +53,7 @@ Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements)
 Na innych platformach potrzebny jest Python 3.10+.
 Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.5.0.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.5.1.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
