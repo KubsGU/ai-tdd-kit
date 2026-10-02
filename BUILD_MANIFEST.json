@@ -74,6 +74,8 @@
     "scripts/measure_runtime.py",
     "scripts/dotnet_demo.py",
     "scripts/launch_claude.cjs",
-    "validation/dotnet-native-fixtures.json"
+    "validation/dotnet-native-fixtures.json",
+    "scripts/check_runtime_download.py",
+    "validation/DOTNET_VALIDATION.md"
   ]
 }

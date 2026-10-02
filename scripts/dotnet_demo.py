@@ -101,7 +101,7 @@ def setup_diagnostics(root):
                     path = (project.parent / SETUP.msbuild_path(name)).absolute()
                     SETUP._relative(root, path)
                 except (SETUP.DotnetError, OSError, ValueError):
-                    allowed = path is not None and kind in {"None", "Content"} and SETUP._package_input(metadata, packages, path, item)
+                    allowed = path is not None and kind in {"None", "Content"} and SETUP._package_input(metadata, packages, path, item, project=project)
                     if not allowed and len(data["unsafe_inputs"]) < 20:
                         data["unsafe_inputs"].append({"project": record["project"], "kind": kind,
                             "item": {key: str(item[key])[:1024] for key in fields if key in item}, "package_allowed": False})

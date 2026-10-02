@@ -1,5 +1,25 @@
 # Validation report — AI TDD Kit
 
+## 1.5.0 candidate validation — 2026-10-02
+
+**Final release validation is pending.** Native candidate `78b7531` passed the
+Linux x64/macOS arm64 bundled-runtime jobs, including controller execution with
+Python absent from PATH and full xUnit/NUnit DONE demonstrations. Linux .NET
+jobs also passed with SDK 8.0.100 and 10.0.301. All three Windows native/.NET
+jobs failed on standard testhost package-owned Content provenance; the fix
+and final rerun remain outstanding. See the
+[bounded .NET/runtime evidence](DOTNET_VALIDATION.md) and
+[candidate native CI](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36988224953).
+
+The demonstrations execute actual installed SDK/frameworks with isolated
+synthetic projects and simulate role edits/review; they do not call a model.
+Native MSTest/MTP support and universal framework/layout coverage are not
+claimed. The local unsigned bundle was blocked by Windows Application Control;
+that is not a successful Python-free runtime check. Final source/asset hashes,
+all 13 CI outcomes, actual fresh-process hook timings, public installation and
+any real-Claude .NET integration must be recorded before declaring the release
+verified. Historical model benchmark results below remain scoped to 1.4.
+
 ## 1.4.0 validation — 2026-10-01
 
 **167 tests ran in 124.1 seconds: 166 passed, one local directory-symlink permission

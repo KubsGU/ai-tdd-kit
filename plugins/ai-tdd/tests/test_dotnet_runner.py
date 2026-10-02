@@ -198,6 +198,35 @@ class DotnetSetupTests(unittest.TestCase):
         self.configure()
         self.assertEqual(path.read_text(encoding="utf-8"), '{"existing": true}')
 
+    def test_preset_binds_creation_of_missing_build_and_test_inputs(self):
+        config = self.configure()
+        folder = self.root / ".ai-tdd"
+        folder.mkdir()
+        (folder / "config.json").write_text(json.dumps(config), encoding="utf-8")
+        loader = importlib.util.spec_from_file_location("native_dotnet_controller", SCRIPTS / "tdd.py")
+        controller_module = importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(controller_module)
+        controller = controller_module.Controller(self.root)
+        before = controller.protected(include_tests=False)
+        controller.state = {"fixed": before}
+        for relative in ("Directory.Build.targets", "global.json", ".editorconfig", "packages.lock.json",
+                         "src/Directory.Build.props", "src/Directory.Packages.props", "src/NuGet.config",
+                         "src/Demo/Directory.Build.targets", "src/Demo/packages.lock.json",
+                         "tests/xunit.runner.json", "tests/Demo.Tests/xunit.runner.json"):
+            with self.subTest(relative=relative):
+                path = self.root / relative
+                self.assertFalse(path.exists())
+                path.write_text("synthetic new configuration", encoding="utf-8")
+                try:
+                    self.assertTrue(before != controller.protected(include_tests=False),
+                                    "Creating a preset input must change the protected fingerprint")
+                    self.assertIn(relative, config["protected_paths"])
+                    self.assertIsNone(before[relative])
+                    with self.assertRaisesRegex(controller_module.TddError, "Changed protected artifacts"):
+                        controller.fixed(include_tests=False)
+                finally:
+                    path.unlink()
+
     def test_setup_freezes_actual_sdk_and_runner_rejects_sdk_drift(self):
         config = self.configure()
         self.assertEqual(config["dotnet"].get("sdk"), {"executable": "fixture-dotnet", "sha256": "a" * 64, "version": "10.0.301"})
@@ -263,6 +292,86 @@ class DotnetSetupTests(unittest.TestCase):
         self.assertTrue(callable(getattr(self.setup, "msbuild_path", None)), "MSBuild path normalization is missing")
         self.assertEqual(self.setup.msbuild_path("obj\\Debug\\net8.0\\"), "obj/Debug/net8.0/")
         self.assertEqual(self.setup.msbuild_path("..\\..\\src\\Demo\\Demo.csproj"), "../../src/Demo/Demo.csproj")
+
+    def test_windows_transitive_testhost_content_requires_exact_restored_provenance(self):
+        cache_temp = tempfile.TemporaryDirectory(prefix="ai-tdd-dotnet-package-contract-")
+        self.addCleanup(cache_temp.cleanup)
+        cache = Path(cache_temp.name).resolve()
+        project = self.root / "tests/Demo.Tests/Demo.Tests.csproj"
+        assets_path = project.parent / "obj/project.assets.json"
+        assets_path.parent.mkdir()
+        host = "Microsoft.TestPlatform.TestHost/17.14.1"
+        package = cache / host.lower()
+        defining_relative = "build/net8.0/Microsoft.TestPlatform.TestHost.props"
+        content_relatives = ["build/net8.0/x64/testhost.exe", "build/net8.0/x64/testhost.dll"]
+        for relative in [defining_relative, *content_relatives]:
+            path = package / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("synthetic package asset", encoding="utf-8")
+        assets = {"version": 4, "packageFolders": {str(cache) + "/": {}},
+                  "project": {"restore": {"projectPath": str(project), "packagesPath": str(cache)}},
+                  "targets": {"net8.0": {
+                      "Microsoft.NET.Test.Sdk/17.14.1": {"type": "package", "dependencies": {"Microsoft.TestPlatform.TestHost": "17.14.1"}},
+                      host: {"type": "package", "build": {defining_relative: {}}}}},
+                  "libraries": {host: {"type": "package", "path": host.lower(), "files": [defining_relative, *content_relatives]}}}
+        original = self.metadata
+
+        def metadata(current, tfm=None, *, root=None):
+            value = original(current, tfm)
+            if current == project:
+                value["Properties"].update(NuGetPackageRoot=str(cache), ProjectAssetsFile=str(assets_path))
+                value["Items"]["Content"] = [
+                    {"Identity": str(package / relative), "FullPath": str(package / relative),
+                     "DefiningProjectFullPath": str(package / defining_relative), "Link": Path(relative).name}
+                    for relative in content_relatives]
+            return value
+
+        sdk = {"executable": "fixture", "sha256": "a" * 64, "version": "10.0.301"}
+        for schema in (3, 4):
+            assets["version"] = schema
+            assets_path.write_text(json.dumps(assets), encoding="utf-8")
+            with self.subTest(schema=schema), mock.patch.object(self.setup, "evaluate", side_effect=metadata), mock.patch.object(
+                    self.setup, "sdk_identity", return_value=sdk):
+                try:
+                    config = self.setup.configure(self.root)
+                except self.setup.DotnetError as error:
+                    self.fail("Standard Windows test-host package assets need exact transitive provenance: " + str(error))
+        self.assertFalse(any("testhost" in relative.lower() for relative in config["protected_paths"]))
+        for mode in ("unlisted-file", "unlisted-import", "different-import", "different-version", "different-tfm",
+                     "missing-sdk-dependency", "outside-assets", "different-owner", "private-content", "wrong-cache"):
+            altered = copy.deepcopy(assets)
+            current_metadata = metadata(project)
+            if mode == "unlisted-file":
+                altered["libraries"][host]["files"].remove(content_relatives[0])
+            elif mode == "unlisted-import":
+                altered["targets"]["net8.0"][host]["build"] = {}
+            elif mode == "different-import":
+                current_metadata["Items"]["Content"][0]["DefiningProjectFullPath"] = str(project)
+            elif mode == "different-version":
+                altered["libraries"][host]["path"] = "microsoft.testplatform.testhost/17.14.0"
+            elif mode == "different-tfm":
+                altered["targets"]["net10.0"] = altered["targets"].pop("net8.0")
+            elif mode == "missing-sdk-dependency":
+                altered["targets"]["net8.0"]["Microsoft.NET.Test.Sdk/17.14.1"]["dependencies"] = {}
+            elif mode == "outside-assets":
+                outside = cache / "project.assets.json"
+                outside.write_text(json.dumps(altered), encoding="utf-8")
+                current_metadata["Properties"]["ProjectAssetsFile"] = str(outside)
+            elif mode == "different-owner":
+                altered["project"]["restore"]["projectPath"] = str(self.root / "src/Demo/Demo.csproj")
+            elif mode == "private-content":
+                current_metadata["Items"]["Content"][0]["FullPath"] = str(cache / "private/testhost.exe")
+            elif mode == "wrong-cache":
+                altered["project"]["restore"]["packagesPath"] = str(cache / "different-cache")
+            assets_path.write_text(json.dumps(altered), encoding="utf-8")
+
+            def rejected(current, tfm=None, *, root=None):
+                return current_metadata if current == project else original(current, tfm)
+
+            with self.subTest(mode=mode), mock.patch.object(self.setup, "evaluate", side_effect=rejected), mock.patch.object(
+                    self.setup, "sdk_identity", return_value=sdk):
+                with self.assertRaises(self.setup.DotnetError):
+                    self.setup.configure(self.root)
 
 
 if __name__ == "__main__":

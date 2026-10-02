@@ -21,9 +21,12 @@ class DotnetError(RuntimeError):
 PROPERTIES = ("TargetFramework", "TargetFrameworks", "IsTestProject", "EnableMSTestRunner",
               "UseMicrosoftTestingPlatformRunner", "TestingPlatformDotnetTestSupport", "IsTestingPlatformApplication",
               "BaseOutputPath", "BaseIntermediateOutputPath", "MSBuildProjectExtensionsPath", "OutputPath",
-              "IntermediateOutputPath", "RunSettingsFilePath", "VSTestTestCaseFilter", "VSTestCliRunSettings", "NuGetPackageRoot")
+              "IntermediateOutputPath", "RunSettingsFilePath", "VSTestTestCaseFilter", "VSTestCliRunSettings", "NuGetPackageRoot", "ProjectAssetsFile")
 ITEMS = ("PackageReference", "PackageVersion", "Compile", "ProjectReference", "None", "Content")
 SKIP_DIRS = {".git", ".ai-tdd", "node_modules", ".venv"}
+PRESET_INPUTS = ("global.json", ".editorconfig", "Directory.Build.props", "Directory.Build.targets",
+                 "Directory.Packages.props", "NuGet.config", "NuGet.Config", "nuget.config",
+                 "packages.lock.json", "xunit.runner.json")
 
 
 def environment():
@@ -145,7 +148,51 @@ def _profile(project, metadata):
     return packages
 
 
-def _package_input(metadata, packages, path, item):
+def _testhost_input(project, metadata, packages, package_root, path, defining):
+    """Bind Windows test-host content to the SDK's exact restored dependency."""
+    try:
+        sdk = packages["microsoft.net.test.sdk"]
+        _version(sdk)
+        assets_path = Path(os.path.abspath(project.parent / msbuild_path(metadata["Properties"]["ProjectAssetsFile"])))
+        if assets_path.resolve() != assets_path or project.parent / "obj" not in assets_path.parents:
+            return False
+        if not assets_path.is_file() or assets_path.stat().st_size > 20_000_000:
+            return False
+        assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+        if assets["version"] not in {3, 4}:
+            return False
+        restore = assets["project"]["restore"]
+        if Path(msbuild_path(restore["projectPath"])).resolve() != project:
+            return False
+        if Path(msbuild_path(restore["packagesPath"])).resolve() != package_root:
+            return False
+        if package_root not in [Path(msbuild_path(name)).resolve() for name in assets["packageFolders"]]:
+            return False
+        target = assets["targets"][metadata["Properties"]["TargetFramework"]]
+        sdk_entry = target["Microsoft.NET.Test.Sdk/" + sdk]
+        if sdk_entry["type"] != "package":
+            return False
+        version = sdk_entry["dependencies"]["Microsoft.TestPlatform.TestHost"]
+        _version(version)
+        identity = "Microsoft.TestPlatform.TestHost/" + version
+        selected = target[identity]
+        library = assets["libraries"][identity]
+        if selected["type"] != "package" or library["type"] != "package" or library["path"] != identity.lower():
+            return False
+        package = package_root / identity.lower()
+        if package not in path.parents or package not in defining.parents:
+            return False
+        asset_name = path.relative_to(package).as_posix()
+        import_name = defining.relative_to(package).as_posix()
+        if not isinstance(library["files"], list) or asset_name not in library["files"] or import_name not in library["files"]:
+            return False
+        build = {**selected.get("build", {}), **selected.get("buildTransitive", {})}
+        return defining.suffix.lower() in {".props", ".targets"} and import_name in build
+    except (DotnetError, KeyError, TypeError, ValueError, OSError):
+        return False
+
+
+def _package_input(metadata, packages, path, item, *, project=None):
     """Allow adapter runtime assets added by the resolved package's own props.
 
     These are ordinary external tool dependencies, never copied to config or
@@ -155,15 +202,16 @@ def _package_input(metadata, packages, path, item):
     defining = item.get("DefiningProjectFullPath", "")
     if not package_root or not defining:
         return False
-    defining = Path(msbuild_path(defining)).resolve()
+    defining = Path(os.path.abspath(msbuild_path(defining)))
     path = Path(os.path.abspath(path))
-    if path.resolve() != path:
+    if path.resolve() != path or defining.resolve() != defining:
         return False
+    package_root = Path(msbuild_path(package_root)).resolve()
     for name, version in packages.items():
-        package = Path(msbuild_path(package_root)).resolve() / name / version
+        package = package_root / name / version
         if package in path.parents and package in defining.parents:
             return True
-    return False
+    return project is not None and _testhost_input(project, metadata, packages, package_root, path, defining)
 
 
 def configure(root):
@@ -233,7 +281,7 @@ def configure(root):
                     try:
                         _relative(root, input_path)
                     except DotnetError as error:
-                        if kind in {"None", "Content"} and _package_input(evaluated, tfm_packages, input_path, item):
+                        if kind in {"None", "Content"} and _package_input(evaluated, tfm_packages, input_path, item, project=project):
                             continue
                         raise DotnetError("Unsafe evaluated " + kind + " input in " + relative
                                           + "; require in-root ownership or the resolved package's own imported assets") from error
@@ -252,6 +300,15 @@ def configure(root):
     for is_test, path in linked_sources:
         if not is_test or not any(root / owned in path.parents for owned in source_roots):
             raise DotnetError("Linked C# Compile inputs must belong to another explicit source project inside the root")
+    for project in projects:
+        directory = project.parent
+        while True:
+            # Bind missing inputs as well as existing ones: adding inherited
+            # configuration during a task must change the protected fingerprint.
+            protected.update(_relative(root, directory / name) for name in PRESET_INPUTS)
+            if directory == root:
+                break
+            directory = directory.parent
     for path in files:
         name = path.name.lower()
         if (path.suffix.lower() in {".csproj", ".sln", ".slnx", ".runsettings", ".props", ".targets"}
