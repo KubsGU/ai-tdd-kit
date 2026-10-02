@@ -175,6 +175,50 @@ class DotnetSetupTests(unittest.TestCase):
         self.assertIn("{report}", config["runner"]["argv"])
         self.assertIn("--dotnet-test", config["runner"]["argv"])
 
+    def large_projects(self, total):
+        expected = {"src/Demo/Demo.csproj": False, "tests/Demo.Tests/Demo.Tests.csproj": True}
+        for index in range(total - 2):
+            is_test = index % 2 == 1
+            name = "Extra" + str(index) + (".Tests" if is_test else "")
+            relative = ("tests/" if is_test else "src/") + name + "/" + name + ".csproj"
+            path = self.root / relative
+            path.parent.mkdir(parents=True)
+            path.write_text("<Project />", encoding="utf-8")
+            expected[relative] = is_test
+        return expected
+
+    def test_large_solution_retains_every_project_module_and_owned_output(self):
+        for total in (70, 128):
+            with self.subTest(projects=total):
+                expected = self.large_projects(total)
+                try:
+                    try:
+                        config = self.configure()
+                    except self.setup.DotnetError as error:
+                        self.fail("A valid large solution must retain every project: " + str(error))
+                    self.assertEqual(set(config["dotnet"]["projects"]), set(expected))
+                    self.assertEqual({item["project"] for item in config["dotnet"]["modules"]},
+                                     {name for name, is_test in expected.items() if is_test})
+                    for is_test, key in ((False, "source_roots"), (True, "test_roots")):
+                        self.assertEqual(set(config[key]), {str(PurePosixPath(name).parent)
+                                         for name, kind in expected.items() if kind == is_test})
+                    self.assertEqual(set(config["generated_roots"]), {str(PurePosixPath(name).parent / output)
+                                     for name in expected for output in ("bin", "obj")})
+                    self.assertTrue(set(expected).issubset(config["protected_paths"]))
+                finally:
+                    for name in expected:
+                        if name not in {"src/Demo/Demo.csproj", "tests/Demo.Tests/Demo.Tests.csproj"}:
+                            (self.root / name).unlink()
+                            (self.root / name).parent.rmdir()
+
+    def test_large_solution_still_rejects_overlapping_project_ownership(self):
+        self.large_projects(70)
+        path = self.root / "src/Demo/Nested/Nested.csproj"
+        path.parent.mkdir()
+        path.write_text("<Project />", encoding="utf-8")
+        with self.assertRaisesRegex(self.setup.DotnetError, "disjoint directory"):
+            self.configure()
+
     def test_old_adapter_mtp_and_custom_output_are_actionable_rejections(self):
         original = self.metadata
         for mode in ("old", "mtp", "output"):

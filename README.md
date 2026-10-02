@@ -16,7 +16,7 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.5.0**.
+Version **1.5.1**.
 
 ## Install
 
