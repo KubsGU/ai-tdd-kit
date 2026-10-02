@@ -130,6 +130,9 @@ For xUnit, discovery uses fresh VSTest `--diag` transport JSON rather than the
 readable `--list-tests` output. It collects `TestDiscovery.TestFound` cases and
 the completion message's `LastDiscoveredTests` tail, requiring non-aborted
 completion, matching totals and a fully discovered source assembly. Native
+discovery transport batches use 100 cases to bound individual messages; this
+does not filter or limit the total test inventory. Discovery warnings/errors
+also prevent acceptance evidence. Native
 `XunitTestCaseUniqueID` values must match the typed execution lifecycle. The
 observed VSTest GUIDs must match TRX definitions, assembly source, class/method,
 execution IDs and outcomes. Exactly one execution per discovered case is

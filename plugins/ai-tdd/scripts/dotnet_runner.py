@@ -475,7 +475,8 @@ def run(root, report, config=None):
                 raise DotnetError("NUnit discovery evidence must be fresh")
             base += ["--artifacts-path", str(artifacts)]
         discovery_log = directory / "discovery.diag.log"
-        discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else ["--diag", str(discovery_log)])
+        discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else
+                                            ["--diag", str(discovery_log), "--", "RunConfiguration.BatchSize=100"])
         discovery_code, discovery = _process(base + discovery_args, root, directory / "discovery.stdout.log", directory / "discovery.stderr.log", timeout)
         if discovery_code:
             raise DotnetError(".NET build/discovery failed; repair compilation or discovery before RED (local logs retained)")
