@@ -1,24 +1,29 @@
 # Validation report — AI TDD Kit
 
-## 1.5.0 candidate validation — 2026-10-02
+## 1.5.0 validation — 2026-10-02
 
-**Final release validation is pending.** Native candidate `78b7531` passed the
-Linux x64/macOS arm64 bundled-runtime jobs, including controller execution with
-Python absent from PATH and full xUnit/NUnit DONE demonstrations. Linux .NET
-jobs also passed with SDK 8.0.100 and 10.0.301. All three Windows native/.NET
-jobs failed on standard testhost package-owned Content provenance; the fix
-and final rerun remain outstanding. See the
+**All 13 CI jobs passed** at runtime-source candidate `26f3332`: six source/
+controller jobs and seven native runtime/.NET jobs. Windows x64, Linux x64 and
+macOS arm64 execute the bundle with Python absent from the controller PATH and
+complete xUnit/NUnit DONE demonstrations. Windows/Linux jobs also exercise
+SDK 8.0.100 and 10.0.301. Released binaries are pinned by their actual SHA256/
+size; metadata source hashes match committed controller and builder bytes.
+The final local suite ran 247 tests in 148.222 seconds, with five environment/
+opt-in skips. Ruff, strict manifests and deterministic gate/strength demos pass.
+See the
 [bounded .NET/runtime evidence](DOTNET_VALIDATION.md) and
-[candidate native CI](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36988224953).
+[native CI](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36989995992) and
+[source/controller CI](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36989996001).
 
 The demonstrations execute actual installed SDK/frameworks with isolated
 synthetic projects and simulate role edits/review; they do not call a model.
 Native MSTest/MTP support and universal framework/layout coverage are not
 claimed. The local unsigned bundle was blocked by Windows Application Control;
-that is not a successful Python-free runtime check. Final source/asset hashes,
-all 13 CI outcomes, actual fresh-process hook timings, public installation and
-any real-Claude .NET integration must be recorded before declaring the release
-verified. Historical model benchmark results below remain scoped to 1.4.
+that is not a successful local Python-free runtime check. CI proves ordinary
+host execution separately. Fresh-process timings show bundled startup overhead;
+they are not cold-cache timings. No new paid model or real-Claude .NET integration
+was run. Post-publication download/bootstrap/install checks are linked in the
+release notes. Historical model benchmark results below remain scoped to 1.4.
 
 ## 1.4.0 validation — 2026-10-01
 

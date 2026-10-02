@@ -1,0 +1,619 @@
+{
+  "schema": 1,
+  "version": "1.5.0",
+  "source_commit": "26f333244ff4fed258e30f340c7ea4ee4e005c19",
+  "native_ci": "https://github.com/KubsGU/ai-tdd-kit/actions/runs/36989995992",
+  "runtime": {
+    "win32-x64": {
+      "build": {
+        "schema": 1,
+        "version": "1.5.0",
+        "platform": "win32-x64",
+        "asset": "ai-tdd-controller-1.5.0-win32-x64.exe",
+        "size": 10050900,
+        "sha256": "ad37e22c7be5904981cd376a4eeec37e85510dd77dbf3baad8c680eef86823d1",
+        "python": "3.12.10",
+        "pyinstaller": "6.22.3",
+        "build_dependencies": {
+          "PyInstaller": "6.22.3",
+          "pyinstaller-hooks-contrib": "2026.8",
+          "altgraph": "0.17.5",
+          "packaging": "26.3"
+        },
+        "hidden_stdlib_imports": [
+          "argparse",
+          "contextlib",
+          "datetime",
+          "hashlib",
+          "importlib.util",
+          "json",
+          "math",
+          "os",
+          "pathlib",
+          "platform",
+          "re",
+          "runpy",
+          "shlex",
+          "shutil",
+          "subprocess",
+          "sys",
+          "unittest",
+          "uuid",
+          "xml.etree.ElementTree"
+        ],
+        "source_sha256": {
+          "plugins/ai-tdd/scripts/runtime_entry.py": "3445dd41fee2317938e574a62b553be42bbfb35919804250f19fea786cf14d16",
+          "plugins/ai-tdd/scripts/tdd.py": "b179868cffcbaead4d60cba49fed91fc3ed13bd18d8b6cfc63b2f4771dc60359",
+          "plugins/ai-tdd/scripts/quality.py": "8174a2a54cb8f35999acc92356dd369304f1cad1e7dfeeef49a7dfc2ed4acff5",
+          "plugins/ai-tdd/scripts/dotnet_runner.py": "7d975c0c4c9a1931aab584b64a6c9b9678eed3de15b8e076e7b285becf815fdf",
+          "plugins/ai-tdd/scripts/dotnet_setup.py": "f075cfa4f1e137770d29e8583e05a2a91d276ffc24010647fcc76576ac5f409a",
+          "plugins/ai-tdd/scripts/unittest_runner.py": "8b6fc92fa8bbc13bb638bf4b63655c7c50a4b12dcbe3d51fe51466e1d7d03280"
+        },
+        "build_script_sha256": "0d6e4d80f539032875e39f6fc6e012208e6fe25f72a3f2e1ae6d885052e36e65",
+        "licenses": {
+          "asset": "ai-tdd-controller-1.5.0-win32-x64.LICENSES.txt",
+          "size": 75255,
+          "sha256": "6097e44c5e84601eaa3cd67e7b86abd6f247313df9dec9abe4dd9d993a63ac10",
+          "embedded_name": "ai-tdd-runtime-LICENSES.txt"
+        }
+      },
+      "source_hashes_match_committed_files": true,
+      "native_workflow": {
+        "fixtures": [
+          {
+            "evidence": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Assertion": "failed",
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          },
+          {
+            "evidence": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Checks.Assertion": "failed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          }
+        ],
+        "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits",
+        "packaged_runtime": {
+          "platform": "win32-x64",
+          "sha256": "ad37e22c7be5904981cd376a4eeec37e85510dd77dbf3baad8c680eef86823d1",
+          "version": "1.5.0",
+          "child_python_available": false
+        }
+      },
+      "fresh_doctor_hook_timings": {
+        "python": {
+          "doctor_seconds": [
+            0.4897895999999946,
+            0.4848961000000145,
+            0.48012890000001107
+          ],
+          "median_seconds": 0.4848961000000145
+        },
+        "bundled": {
+          "doctor_seconds": [
+            1.4257782999999904,
+            1.2302123000000051,
+            1.2082926999999586
+          ],
+          "median_seconds": 1.2302123000000051
+        }
+      }
+    },
+    "linux-x64": {
+      "build": {
+        "schema": 1,
+        "version": "1.5.0",
+        "platform": "linux-x64",
+        "asset": "ai-tdd-controller-1.5.0-linux-x64",
+        "size": 22817992,
+        "sha256": "fbab14f3d2bfc2a9b9973fc83746ed1cc50361e1cf24f30a8a688d3047f30c09",
+        "python": "3.12.10",
+        "pyinstaller": "6.22.3",
+        "build_dependencies": {
+          "PyInstaller": "6.22.3",
+          "pyinstaller-hooks-contrib": "2026.8",
+          "altgraph": "0.17.5",
+          "packaging": "26.3"
+        },
+        "hidden_stdlib_imports": [
+          "argparse",
+          "contextlib",
+          "datetime",
+          "hashlib",
+          "importlib.util",
+          "json",
+          "math",
+          "os",
+          "pathlib",
+          "platform",
+          "re",
+          "runpy",
+          "shlex",
+          "shutil",
+          "subprocess",
+          "sys",
+          "unittest",
+          "uuid",
+          "xml.etree.ElementTree"
+        ],
+        "source_sha256": {
+          "plugins/ai-tdd/scripts/runtime_entry.py": "3445dd41fee2317938e574a62b553be42bbfb35919804250f19fea786cf14d16",
+          "plugins/ai-tdd/scripts/tdd.py": "b179868cffcbaead4d60cba49fed91fc3ed13bd18d8b6cfc63b2f4771dc60359",
+          "plugins/ai-tdd/scripts/quality.py": "8174a2a54cb8f35999acc92356dd369304f1cad1e7dfeeef49a7dfc2ed4acff5",
+          "plugins/ai-tdd/scripts/dotnet_runner.py": "7d975c0c4c9a1931aab584b64a6c9b9678eed3de15b8e076e7b285becf815fdf",
+          "plugins/ai-tdd/scripts/dotnet_setup.py": "f075cfa4f1e137770d29e8583e05a2a91d276ffc24010647fcc76576ac5f409a",
+          "plugins/ai-tdd/scripts/unittest_runner.py": "8b6fc92fa8bbc13bb638bf4b63655c7c50a4b12dcbe3d51fe51466e1d7d03280"
+        },
+        "build_script_sha256": "0d6e4d80f539032875e39f6fc6e012208e6fe25f72a3f2e1ae6d885052e36e65",
+        "licenses": {
+          "asset": "ai-tdd-controller-1.5.0-linux-x64.LICENSES.txt",
+          "size": 52956,
+          "sha256": "4e1ef0a2fe52ae7e9cf07ca703a6d7274d503679967bea6f12f90c4457633888",
+          "embedded_name": "ai-tdd-runtime-LICENSES.txt"
+        }
+      },
+      "source_hashes_match_committed_files": true,
+      "native_workflow": {
+        "fixtures": [
+          {
+            "evidence": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error",
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Assertion": "failed"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          },
+          {
+            "evidence": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Checks.Assertion": "failed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          }
+        ],
+        "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits",
+        "packaged_runtime": {
+          "platform": "linux-x64",
+          "sha256": "fbab14f3d2bfc2a9b9973fc83746ed1cc50361e1cf24f30a8a688d3047f30c09",
+          "version": "1.5.0",
+          "child_python_available": false
+        }
+      },
+      "fresh_doctor_hook_timings": {
+        "python": {
+          "doctor_seconds": [
+            0.2623047399999905,
+            0.26026540099999806,
+            0.2571005289999846
+          ],
+          "median_seconds": 0.26026540099999806
+        },
+        "bundled": {
+          "doctor_seconds": [
+            0.5320399989999771,
+            0.5319669790000034,
+            0.5375879220000002
+          ],
+          "median_seconds": 0.5320399989999771
+        }
+      }
+    },
+    "darwin-arm64": {
+      "build": {
+        "schema": 1,
+        "version": "1.5.0",
+        "platform": "darwin-arm64",
+        "asset": "ai-tdd-controller-1.5.0-darwin-arm64",
+        "size": 9009824,
+        "sha256": "4ee2073cc17e173e4fd97e1b49871013fbe5089554a8fa5de6182874bca785fc",
+        "python": "3.12.10",
+        "pyinstaller": "6.22.3",
+        "build_dependencies": {
+          "PyInstaller": "6.22.3",
+          "pyinstaller-hooks-contrib": "2026.8",
+          "altgraph": "0.17.5",
+          "packaging": "26.3"
+        },
+        "hidden_stdlib_imports": [
+          "argparse",
+          "contextlib",
+          "datetime",
+          "hashlib",
+          "importlib.util",
+          "json",
+          "math",
+          "os",
+          "pathlib",
+          "platform",
+          "re",
+          "runpy",
+          "shlex",
+          "shutil",
+          "subprocess",
+          "sys",
+          "unittest",
+          "uuid",
+          "xml.etree.ElementTree"
+        ],
+        "source_sha256": {
+          "plugins/ai-tdd/scripts/runtime_entry.py": "3445dd41fee2317938e574a62b553be42bbfb35919804250f19fea786cf14d16",
+          "plugins/ai-tdd/scripts/tdd.py": "b179868cffcbaead4d60cba49fed91fc3ed13bd18d8b6cfc63b2f4771dc60359",
+          "plugins/ai-tdd/scripts/quality.py": "8174a2a54cb8f35999acc92356dd369304f1cad1e7dfeeef49a7dfc2ed4acff5",
+          "plugins/ai-tdd/scripts/dotnet_runner.py": "7d975c0c4c9a1931aab584b64a6c9b9678eed3de15b8e076e7b285becf815fdf",
+          "plugins/ai-tdd/scripts/dotnet_setup.py": "f075cfa4f1e137770d29e8583e05a2a91d276ffc24010647fcc76576ac5f409a",
+          "plugins/ai-tdd/scripts/unittest_runner.py": "8b6fc92fa8bbc13bb638bf4b63655c7c50a4b12dcbe3d51fe51466e1d7d03280"
+        },
+        "build_script_sha256": "0d6e4d80f539032875e39f6fc6e012208e6fe25f72a3f2e1ae6d885052e36e65",
+        "licenses": {
+          "asset": "ai-tdd-controller-1.5.0-darwin-arm64.LICENSES.txt",
+          "size": 52956,
+          "sha256": "4e1ef0a2fe52ae7e9cf07ca703a6d7274d503679967bea6f12f90c4457633888",
+          "embedded_name": "ai-tdd-runtime-LICENSES.txt"
+        }
+      },
+      "source_hashes_match_committed_files": true,
+      "native_workflow": {
+        "fixtures": [
+          {
+            "evidence": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Assertion": "failed",
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "xunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          },
+          {
+            "evidence": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "full_inventory": 6,
+              "statuses": {
+                "Demo.Checks.Assertion": "failed",
+                "Demo.Checks.Error": "error",
+                "Demo.Checks.Pass": "passed",
+                "Demo.Checks.Skip": "skipped",
+                "Demo.Cleanup.Body": "error",
+                "Demo.Setup.Body": "error"
+              },
+              "build_failure_rejected": true
+            },
+            "workflow": {
+              "framework": "nunit",
+              "source_mode": "project-reference",
+              "controller_mode": "node-facade",
+              "phase": "DONE",
+              "executed_tests": 2,
+              "red_exception": "AssertionError"
+            }
+          }
+        ],
+        "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits",
+        "packaged_runtime": {
+          "platform": "darwin-arm64",
+          "sha256": "4ee2073cc17e173e4fd97e1b49871013fbe5089554a8fa5de6182874bca785fc",
+          "version": "1.5.0",
+          "child_python_available": false
+        }
+      },
+      "fresh_doctor_hook_timings": {
+        "python": {
+          "doctor_seconds": [
+            0.35709845799999584,
+            0.34417274999998426,
+            0.3950205419999975
+          ],
+          "median_seconds": 0.35709845799999584
+        },
+        "bundled": {
+          "doctor_seconds": [
+            0.5731172499999957,
+            0.6054640840000047,
+            0.653967874999978
+          ],
+          "median_seconds": 0.6054640840000047
+        }
+      }
+    }
+  },
+  "dotnet": {
+    "dotnet-ubuntu-22.04-8.0.100": {
+      "fixtures": [
+        {
+          "evidence": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Assertion": "failed"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        },
+        {
+          "evidence": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Checks.Assertion": "failed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        }
+      ],
+      "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits"
+    },
+    "dotnet-ubuntu-22.04-10.0.301": {
+      "fixtures": [
+        {
+          "evidence": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Assertion": "failed"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        },
+        {
+          "evidence": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Checks.Assertion": "failed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        }
+      ],
+      "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits"
+    },
+    "dotnet-windows-latest-8.0.100": {
+      "fixtures": [
+        {
+          "evidence": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Assertion": "failed",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        },
+        {
+          "evidence": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Checks.Assertion": "failed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        }
+      ],
+      "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits"
+    },
+    "dotnet-windows-latest-10.0.301": {
+      "fixtures": [
+        {
+          "evidence": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Setup.Body": "error",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Assertion": "failed"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "xunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        },
+        {
+          "evidence": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "full_inventory": 6,
+            "statuses": {
+              "Demo.Checks.Assertion": "failed",
+              "Demo.Checks.Error": "error",
+              "Demo.Checks.Pass": "passed",
+              "Demo.Checks.Skip": "skipped",
+              "Demo.Cleanup.Body": "error",
+              "Demo.Setup.Body": "error"
+            },
+            "build_failure_rejected": true
+          },
+          "workflow": {
+            "framework": "nunit",
+            "source_mode": "project-reference",
+            "controller_mode": "python-driver",
+            "phase": "DONE",
+            "executed_tests": 2,
+            "red_exception": "AssertionError"
+          }
+        }
+      ],
+      "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits"
+    }
+  },
+  "method": "Actual no-model synthetic native executions; bounded framework/SDK/host fixtures"
+}

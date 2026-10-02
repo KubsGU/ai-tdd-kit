@@ -1,4 +1,20 @@
 {
   "version": "1.5.0",
-  "platforms": {}
+  "platforms": {
+    "win32-x64": {
+      "url": "https://github.com/KubsGU/ai-tdd-kit/releases/download/v1.5.0/ai-tdd-controller-1.5.0-win32-x64.exe",
+      "sha256": "ad37e22c7be5904981cd376a4eeec37e85510dd77dbf3baad8c680eef86823d1",
+      "size": 10050900
+    },
+    "linux-x64": {
+      "url": "https://github.com/KubsGU/ai-tdd-kit/releases/download/v1.5.0/ai-tdd-controller-1.5.0-linux-x64",
+      "sha256": "fbab14f3d2bfc2a9b9973fc83746ed1cc50361e1cf24f30a8a688d3047f30c09",
+      "size": 22817992
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/KubsGU/ai-tdd-kit/releases/download/v1.5.0/ai-tdd-controller-1.5.0-darwin-arm64",
+      "sha256": "4ee2073cc17e173e4fd97e1b49871013fbe5089554a8fa5de6182874bca785fc",
+      "size": 9009824
+    }
+  }
 }

@@ -36,6 +36,10 @@ From the standalone plugin repository:
    metadata/license sidecars to the GitHub release for that commit. Verify
    anonymous ZIP download and a fresh runtime setup from the public asset URLs
    before declaring the release usable. Failed/unavailable hosts stay explicit.
+   The post-publication bootstrap check runs on all three runtime hosts with
+   `gh workflow run runtime.yml -f release_download=true`; it uses the real
+   anonymous downloader and checks the downloaded bundle's doctor/nested hook
+   with Python absent from its child PATH. Retain its run URL in release notes.
 
 The ZIP contains only the files in BUILD_MANIFEST.json and a generated checksum
 manifest. The git repository should likewise contain public source only. Never

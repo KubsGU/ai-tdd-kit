@@ -76,6 +76,7 @@
     "scripts/launch_claude.cjs",
     "validation/dotnet-native-fixtures.json",
     "scripts/check_runtime_download.py",
-    "validation/DOTNET_VALIDATION.md"
+    "validation/DOTNET_VALIDATION.md",
+    "validation/DOTNET_CI_RESULTS.json"
   ]
 }

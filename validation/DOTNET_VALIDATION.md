@@ -1,16 +1,21 @@
 # .NET and bundled runtime validation — 1.5.0
 
-Status: **candidate evidence; final release validation pending**. This report
+Status: **all 13 controller/native CI jobs passed on 2026-10-02**. This report
 separates actual native execution from synthetic parser fixtures and role-edit
 simulation. It does not claim every .NET framework/layout or Windows policy is
 supported, nor comparative model quality or a production bug-rate reduction.
 
-## Current recorded native CI
+## Recorded native CI
 
-The candidate at `78b7531` was exercised in
-[native run 36988224953](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36988224953).
-The recorded outcomes below apply to that candidate, before the pending Windows
-package-input provenance correction:
+The runtime-source candidate `26f333244ff4fed258e30f340c7ea4ee4e005c19`
+passed all seven jobs in
+[native run 36989995992](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36989995992)
+and all six source/controller jobs in
+[CI run 36989996001](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36989996001).
+The released binaries below come from that successful native run. Their six
+controller-source hashes and builder hash were compared with committed source
+bytes before pinning. Numeric evidence is retained in
+[DOTNET_CI_RESULTS.json](DOTNET_CI_RESULTS.json).
 
 | Job scope | Actual recorded result |
 | --- | --- |
@@ -18,14 +23,18 @@ package-input provenance correction:
 | Runtime / macOS arm64 | Passed native bundled execution with Python absent from the controller PATH, and complete xUnit/NUnit DONE demonstrations. |
 | .NET / Linux / SDK 8.0.100 | Passed native xUnit/NUnit evidence and complete DONE demonstrations. |
 | .NET / Linux / SDK 10.0.301 | Passed native xUnit/NUnit evidence and complete DONE demonstrations. |
-| Runtime / Windows x64 | Failed on standard testhost package-owned Content provenance; repair and rerun pending. |
-| .NET / Windows / SDK 8.0.100 | Failed on the same package-input provenance boundary; repair and rerun pending. |
-| .NET / Windows / SDK 10.0.301 | Failed on the same package-input provenance boundary; repair and rerun pending. |
+| Runtime / Windows x64 | Passed native bundled execution with Python absent from the controller PATH, and complete xUnit/NUnit DONE demonstrations. |
+| .NET / Windows / SDK 8.0.100 | Passed native xUnit/NUnit evidence and complete DONE demonstrations. |
+| .NET / Windows / SDK 10.0.301 | Passed native xUnit/NUnit evidence and complete DONE demonstrations. |
 
-Failures are retained rather than counted as passes. Configuring a job or
-mocking its platform value is not native host evidence. A final candidate must
-pass all six source/controller CI jobs and seven runtime/.NET jobs before the
-release is declared verified.
+Earlier [run 36988224953](https://github.com/KubsGU/ai-tdd-kit/actions/runs/36988224953)
+failed three Windows jobs because a standard transitive TestHost package was
+absent from the direct-package ownership check. The correction binds the exact
+restored selected-TFM dependency graph, owning project/cache, library file list
+and imported build asset. A reproduced regression and ten negative provenance
+cases cover that boundary. Earlier Unix separator and complete-plugin fixture
+defects were also corrected before this successful candidate. Failed attempts
+are not counted as passes; platform mocks are not native host evidence.
 
 ## Native fixture method
 
@@ -81,8 +90,13 @@ setup/cleanup failures remain errors, including suite-level cleanup failures.
 Ordinary MSTest TRX, Microsoft.Testing.Platform, implicit filters/runsettings,
 unsupported output ownership and ambiguous/truncated/missing inventory are
 rejected. No native MSTest/MTP support or silent package migration is claimed.
-Parser/controller regression counts and their final execution results will be
-recorded with the final candidate, separately from the actual framework runs.
+The final local suite ran **247 tests in 148.222 seconds: 242 passed, five
+skipped**. Two bundled execution tests require the real CI artifact; three
+local symlink tests lack privileges. Mandatory native jobs execute the built
+bundle. Actual Windows junction tests, 19 native parser/setup methods, absent
+build-input creation/fingerprint regressions, Ruff, strict Claude marketplace/
+plugin validation, and both deterministic gate/strength demos passed. Those
+counts remain separate from actual SDK/framework executions.
 
 ## Local Windows limitation
 
@@ -115,14 +129,25 @@ measurements**, token savings or .NET test-duration comparisons.
 
 | Release evidence | Final recorded value |
 | --- | --- |
-| Final source commit and all 13 CI job results | Pending |
-| Windows x64 binary size/SHA256 and metadata source-hash match | Pending |
-| Linux x64 binary size/SHA256 and metadata source-hash match | Pending |
-| macOS arm64 binary size/SHA256 and metadata source-hash match | Pending |
-| Actual fresh-process doctor/hook samples by host/backend | Pending |
-| Anonymous release download and fresh explicit setup-runtime | Pending |
-| Allowlisted source ZIP/checksum manifest and isolated installation | Pending |
-| Any final real-Claude .NET feature/resume integration | Pending; separate from these no-model demonstrations |
+| Runtime-source commit and all 13 jobs | `26f3332`; both linked runs passed. Release tag identifies the final packaging/documentation commit. |
+| Windows x64 binary | 10050900 bytes; SHA256 `ad37e22c7be5904981cd376a4eeec37e85510dd77dbf3baad8c680eef86823d1`; committed source hashes match. |
+| Linux x64 binary | 22817992 bytes; SHA256 `fbab14f3d2bfc2a9b9973fc83746ed1cc50361e1cf24f30a8a688d3047f30c09`; committed source hashes match. |
+| macOS arm64 binary | 9009824 bytes; SHA256 `4ee2073cc17e173e4fd97e1b49871013fbe5089554a8fa5de6182874bca785fc`; committed source hashes match. |
+| Anonymous download/bootstrap and isolated installation | Post-publication checks are linked in [the release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.5.0); their actual outcome must be checked separately. |
+| Real-Claude .NET feature/resume integration | Not run for 1.5; no additional paid model calls. The no-model demonstrations do not substitute for this evidence. |
+
+| Actual CI host | Installed Python median | Bundled runtime median |
+| --- | --- | --- |
+| Windows x64 | 0.485 s | 1.230 s |
+| Linux x64 | 0.260 s | 0.532 s |
+| macOS arm64 | 0.357 s | 0.605 s |
+
+Each median uses the three actual fresh-process doctor/nested-hook samples in
+the JSON evidence. The bundle removes a manual Python dependency and adds
+startup overhead in these measurements. An existing Python backend remains
+available without downloading a runtime; switching an active task's backend is
+rejected. These timings do not measure isolated hooks, model latency or every
+host's performance.
 
 The 1.4 model benchmark remains historical evidence for its registered synthetic
 tasks. This change includes no additional paid model benchmark and makes no
