@@ -2,7 +2,7 @@
 name: feature
 description: Use when a user wants a feature or bug fix developed with clarified requirements, independent test authorship and verified TDD, or wants to resume such a task.
 argument-hint: "<feature description>"
-allowed-tools: Read, Glob, Grep, Write, Edit, Agent, AskUserQuestion, Bash(python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *), Bash(python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *)
+allowed-tools: Read, Glob, Grep, Write, Edit, Agent, AskUserQuestion, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" *), Bash(python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *), Bash(python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *)
 ---
 
 # AI TDD coordinator
@@ -12,8 +12,8 @@ User request: $ARGUMENTS
 You coordinate; named agents own tests and source. Read
 [the execution protocol](../../references/protocol.md) before starting, and
 [quality guidance](../../references/quality.md) for tool setup and test assessment.
-Controller: `python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" --root "." <command>`
-(use `python3` if needed; Python 3.10+). Use forward slashes, quote spaces and one
+Controller: `node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" --root "." <command>`.
+Use forward slashes, quote spaces and one
 direct command per Bash call. No chaining, redirection or another shell. Dispatch
 fresh agents synchronously, without background or concurrent workers.
 
@@ -25,11 +25,22 @@ change acceptance; resolve routine implementation choices yourself. Honor prior
 authorization. If questions are declined, document assumptions and impacts.
 Unresolved behavior decisions in open_questions prevent begin.
 
-Run doctor and inspect any existing task with status; resume active work or archive
-DONE before a new feature. Run init, adapt narrow disjoint roots and protect all
+Inspect whether task state already exists. If so, run status with its recorded
+backend and resume active work or archive DONE before a new feature. Otherwise
+probe `node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" --runtime-info`.
+Only if no backend is available on a supported host, run
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" setup-runtime --root "."`
+before init/begin. Hooks never download; do not provision over state/lock or
+replace a corrupt/frozen backend. Unsupported hosts need actual Python 3.10+.
+
+Run init, then doctor. Detected C# projects receive evaluated .NET setup; read
+[the .NET guide](../../references/dotnet.md) for package/layout/evidence limits.
+Do not upgrade packages, migrate framework or change global settings. Adapt
+narrow disjoint roots and protect all
 fixtures/helpers/config/runner inputs, including relevant absent files. The runner
 must preserve the full required suite. Before begin, record factual conventions
-and existing read-only quality commands in `.ai-tdd/repo-profile.json`, configure
+and existing read-only quality commands in `.ai-tdd/repo-profile.json` (for .NET,
+include existing build/analyzers, .editorconfig, format checks and CI), configure
 applicable quality_checks and budgets, and write `.ai-tdd/spec.json`.
 
 Read [model and cache guidance](../../references/efficiency.md) when choosing

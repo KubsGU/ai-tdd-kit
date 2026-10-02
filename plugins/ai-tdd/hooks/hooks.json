@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["--preserve-symlinks-main", "${CLAUDE_PLUGIN_ROOT}/scripts/hook-launcher.cjs"],
+        "args": ["--preserve-symlinks", "--preserve-symlinks-main", "${CLAUDE_PLUGIN_ROOT}/scripts/hook-launcher.cjs"],
             "timeout": 15
           }
         ]

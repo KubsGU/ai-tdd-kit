@@ -6,6 +6,10 @@ flows should include a concrete failure case and real execution evidence.
 
 Use Python 3.10+ and a supported Node LTS on PATH. From the repository root:
 
+These are development requirements. A normal supported .NET plugin installation
+uses Node, the project's .NET SDK/packages and the verified controller bundle;
+it does not require a separate Python installation.
+
 ```text
 python -m pip install -r requirements-dev.txt
 python -m ruff check .
@@ -24,6 +28,21 @@ tests. Do not call a role-edit simulation an agent benchmark.
 CI runs for pull requests and main, with six OS/Python combinations. Superseded
 runs are canceled; pinned package downloads use setup-python's pip cache. Actual
 lint, tests and demos still run. Open a PR or use workflow_dispatch for branch CI.
+
+Runtime releases require actual native builds on every advertised platform,
+Python-free facade/hook execution and matching source-hash metadata. Keep
+PyInstaller a development-only dependency and distribute its/CPython's bundled
+license notices. Never freeze a build or run a managed integration while its
+protected source/instruction files are still being edited. See
+[PUBLISHING.md](PUBLISHING.md) for the release sequence.
+
+.NET changes need actual VSTest discovery/native/TRX evidence, not just hand-made
+XML fixtures. Distinguish body assertions from runtime/constructor/setup/cleanup
+failures; retain native categories/types instead of inferring from prose. Test
+missing/duplicate inventory, unsupported runner selection and generated-output
+ownership. Preserve every project/TFM and existing quality rule. Package migration
+or a universal formatter is not a setup fix. Record bounded host/framework scope
+in the validation report.
 
 Efficiency changes must preserve behavioral evidence and full regression scope.
 The byte measurement is not a token/cost/time benchmark. Real comparisons need

@@ -1,6 +1,6 @@
 {
   "name": "ai-tdd",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "displayName": "AI TDD Kit",
   "description": "AI TDD with versioned acceptance criteria, separate test and implementation agents, deterministic phase gates, and independent verification.",
   "author": {

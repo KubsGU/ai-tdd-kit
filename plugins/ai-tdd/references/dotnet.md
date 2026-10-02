@@ -1,0 +1,195 @@
+# .NET setup and native evidence
+
+Use this guide when configuring an existing C# repository. The kit runs the
+repository's existing tests and tools; it does not migrate its test framework,
+upgrade NuGet packages or change global .NET/Claude settings. Contributor build
+dependencies are separate from end-user setup.
+
+## Normal user path
+
+Install the marketplace/plugin, launch Claude in the solution directory with
+`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, and invoke `/ai-tdd:feature <request>`.
+The coordinator performs these setup steps before `begin`:
+
+1. Inspect whether `.ai-tdd/state.json` already exists. For an existing task,
+   run `status` using its recorded backend, then resume active work or archive
+   DONE. Do not probe/provision a new runtime over existing state or a lock.
+2. For a new task, probe the controller with
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" --runtime-info`.
+3. If no backend is available on a supported host, run
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" setup-runtime --root "/project"`.
+   Do this before a task state or controller lock exists. A resume restores the
+   recorded backend; it never provisions a replacement over an active task.
+4. Run `init`, which auto-detects `.csproj` files only when creating new configuration.
+   Existing configuration is not overwritten. Run `doctor` before `begin`.
+5. Inspect the evaluated configuration, complete the contract/profile and
+   protect relevant helpers, fixture data and absent configuration inputs.
+   Configure the repository's actual quality commands before the baseline.
+
+Controller commands use one direct invocation:
+
+```text
+node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" --root "/project" status
+```
+
+`${CLAUDE_PLUGIN_ROOT}` is Claude Code's plugin substitution. In an ordinary
+terminal, replace it with the installed plugin's actual directory.
+
+## Runtime requirements
+
+Node.js must be on PATH; use a maintained LTS release. The native .NET setup
+requires the project's existing .NET SDK 8+/MSBuild 17.8+ and its test packages.
+The selected SDK and controller backend are bound to task evidence; installing
+or switching SDK/runtime versions mid-task requires diagnosis and fresh evidence.
+
+For Windows x64, Linux x64 and macOS arm64, explicit `setup-runtime` downloads
+the exact GitHub release asset named in `runtime-manifest.json`. The launcher
+checks a pinned size and SHA256, rejects linked cache paths, and verifies the
+binary again before use. Once provisioned, that cached bundle is preferred to
+an installed Python. Corruption is an error, not a fallback to a different
+backend. First setup needs network access and a writable plugin cache.
+
+Windows Application Control blocked the unsigned PyInstaller bundle during the
+local native execution attempt. An already installed Python backend works;
+without Python, that policy requires an approved trusted runtime. Do not weaken
+OS policy to install the kit. A provisioned bundle that is blocked or corrupt
+fails closed. Before provisioning, an existing compatible Python can be used.
+Actual native CI smoke results establish only their tested host scope; this
+local attempt does not prove Python-free use under strict Application Control.
+
+The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
+Each native release binary has `.json` build metadata with source hashes and
+tool versions, and a `.LICENSES.txt` sidecar with bundled component notices.
+These are provenance and integrity records, not an author signature or proof
+against a compromised release publisher. Native host/architecture compatibility
+must match the release; a platform label alone does not prove every OS version.
+
+The hook never downloads anything. Missing runtime during an active task blocks
+managed actions with a diagnostic. Even DONE state must be archived before
+runtime provisioning. Other hosts can use a real Python 3.10+ interpreter;
+`AI_TDD_PYTHON` selects its executable when it is outside PATH. Direct Python
+controller commands remain compatible.
+
+The bundle is an interpreter for the existing standard-library controller.
+It is not an arbitrary project Python environment: pytest and custom `{python}`
+runner/quality commands still need their real interpreter and dependencies.
+
+## Supported native test paths
+
+| Path | Existing package requirements | Evidence used |
+| --- | --- | --- |
+| xUnit + VSTest | `Microsoft.NET.Test.Sdk`, xUnit, `xunit.runner.visualstudio >= 3.0.0` | Separate discovery, structured native xUnit JSON events, and TRX. |
+| NUnit + VSTest | `Microsoft.NET.Test.Sdk`, `NUnit >= 3.14.0`, `NUnit3TestAdapter >= 4.5.0` | Native discovery XML, structured native execution XML, and TRX. |
+| MSTest ordinary TRX | Unsupported | TRX does not preserve sufficient body assertion type evidence. |
+| Microsoft.Testing.Platform | Unsupported | Its reports and runner selection need a separately validated evidence path. |
+
+Package versions must evaluate to exact stable versions. Central package
+management is evaluated through MSBuild; configuration is not inferred only
+from literal XML in `.csproj`. The kit does not silently upgrade an older
+adapter or turn an unsupported report into a passing gate.
+
+The preset evaluates all `.csproj` files below the chosen root and includes
+each test project/TFM in the suite. Each source and test project needs its own
+disjoint subdirectory, for example `src/App/` and `tests/App.Tests/`.
+Root-level, shared or nested project ownership is unsupported. Projects need
+explicit supported `net...` target frameworks, ordinary project-local `bin/`
+and `obj/` output paths, and no implicit runsettings/filter or MTP selection.
+User-authored external or unowned linked inputs need a reviewed custom setup.
+Test-project linked C# sources are accepted only when they belong to an
+independently evaluated source project inside the root, whose source tree is
+fingerprinted. Links into another test project are rejected. Ordinary evaluated
+package-owned adapter assets remain
+tool dependencies; they are not copied into public evidence.
+
+Only the exact evaluated project `bin/` and `obj/` directories are excluded
+from source/test manifests. Exclusions are frozen at `begin`; workers cannot
+write there. C# source, projects, central package files, MSBuild inputs and test
+fixtures remain protected/fingerprinted. A directory called `bin` elsewhere is
+not automatically trusted. Discovery/build/test execution can create normal
+generated output without making the task's source receipt stale.
+
+Every run performs full unfiltered discovery and execution, with fresh report
+locations and reconciliation of native IDs, outcomes and TRX counters. External
+IDs include the project path, TFM and native test display name. Duplicate or
+unstable IDs, missing cases, malformed/truncated events, filters, skips,
+unexecuted cases and inconsistent totals fail closed. The baseline must pass
+the real suite; pre-existing skips or failures need separate resolution.
+
+## What can establish RED
+
+xUnit's generic failure `Cause` is insufficient, especially for v2 tests routed
+through a v3 adapter. The runner requires observed assertion exception types
+from its bounded allowlist plus a stack witness in the actual test body.
+Runtime exceptions and assertions from constructors/setup/disposal cannot
+certify the feature's RED.
+
+NUnit supplies structured assertion outcomes rather than an actual assertion
+exception type. The runner retains that native category and requires an
+assertion result plus a stack witness in the actual test method before
+normalizing a behavioral failure to `AssertionError`. It does not pretend to
+have observed an exception type that XML omits. Errors, invalid/not-runnable
+cases and setup/teardown failures are rejected, including suite-level cleanup
+failures after otherwise passing child tests.
+
+The ordinary controller then applies its unchanged gates: selected behavioral
+failures only, every earlier required test passing, immutable contract/tests/
+configuration, actual GREEN, independent test-quality review, and a fresh full
+execution before DONE. Passing TRX or an LLM's classification alone is not
+evidence of TDD.
+
+## Existing style, build and analyzer checks
+
+The preset leaves `quality_checks` empty because a tool cannot infer each
+repository's quality policy. The coordinator records instructions, neighboring
+code, `.editorconfig`, `Directory.Build.*`, central packages and CI commands in
+the frozen repository profile, then configures applicable read-only checks.
+An empty configuration yields `not_configured`, with explicit review limitations.
+
+For a repository already using these exact commands, entries could be:
+
+```json
+"quality_checks": [
+  {
+    "name": "solution-build",
+    "kind": "custom",
+    "argv": ["dotnet", "build", "App.sln", "--no-restore"],
+    "timeout_seconds": 600,
+    "inputs": ["App.sln", "Directory.Build.props", "Directory.Build.targets", "global.json"]
+  },
+  {
+    "name": "existing-format-check",
+    "kind": "format",
+    "argv": ["dotnet", "format", "App.sln", "--verify-no-changes", "--no-restore"],
+    "timeout_seconds": 600,
+    "inputs": ["App.sln", ".editorconfig", "Directory.Build.props"]
+  }
+]
+```
+
+Replace filenames and arguments with the repository's established commands;
+these are examples, not automatically enabled rules. Restore required packages
+through the normal project setup before the active task. Existing build
+analyzers and warning policy remain the repository's decision. Protect every
+command's actual inputs, including relevant absent files. Do not add `--fix`,
+disable analyzers, lower warning severity or reformat unrelated code to pass.
+See [quality guidance](quality.md) for budgets and final receipts.
+
+## Troubleshooting and limits
+
+An older xUnit adapter, ordinary MSTest TRX, MTP selection, custom output layout,
+implicit filters or ambiguous evidence produces a specific setup/run error.
+Resolve the existing environment separately or retain the task as incomplete;
+do not bypass it with a message regex, a narrowed suite or manual receipts.
+MSBuild/test execution is trusted project code, not a sandbox for hostile code.
+External services, installed package contents and nondeterminism are not fully
+fingerprinted. Framework support is bounded; consult the
+[validation report](../../../validation/VALIDATION.md) for actual executed scope.
+
+Primary references:
+
+- [VSTest dotnet test options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-vstest)
+- [Microsoft.Testing.Platform dotnet test integration](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)
+- [xUnit runsettings/reporters](https://xunit.net/docs/config-runsettings)
+- [NUnit adapter settings](https://docs.nunit.org/articles/vs-test-adapter/Tips-And-Tricks.html)
+- [dotnet format check mode](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format)
+- [PyInstaller operation and host builds](https://pyinstaller.org/en/stable/operating-mode.html)

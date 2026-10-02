@@ -50,7 +50,7 @@ def main():
         if "ai-tdd@ai-tdd-kit" not in listing:
             raise RuntimeError("Installed plugin absent from isolated inventory")
         payload = {"cwd": str(temp), "hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "sample.txt"}}
-        hook = subprocess.run([node, "--preserve-symlinks-main", str(root / "plugins/ai-tdd/scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, encoding="utf-8", env=env, timeout=20)
+        hook = subprocess.run([node, "--preserve-symlinks", "--preserve-symlinks-main", str(root / "plugins/ai-tdd/scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, encoding="utf-8", env=env, timeout=20)
         if hook.returncode or hook.stdout.strip():
             raise RuntimeError("Inactive-project hook failed")
         print(json.dumps({"checksums": "pass", "marketplace_validation": "pass", "plugin_validation": "pass", "isolated_install": "pass", "inactive_hook": "pass", "files": len(checksums), "user_settings_changed": False}))

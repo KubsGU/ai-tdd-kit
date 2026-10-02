@@ -7,6 +7,9 @@ Version 1.3.0 freezes prior test files, requires per-test adequacy assessments
 and executes existing repository quality commands with fresh final receipts.
 Version 1.4.0 adds explicit frozen role routing and a small paired model study;
 it does not establish broad quality equivalence or automatic lossless escalation.
+Version 1.5.0 adds verified bundled controller runtimes and evaluated .NET
+VSTest paths for bounded xUnit/NUnit configurations; unsupported report/layout
+variants remain explicit errors rather than reduced evidence requirements.
 
 | Priority | Gap | Acceptance evidence before shipping |
 | --- | --- | --- |
@@ -15,6 +18,8 @@ it does not establish broad quality equivalence or automatic lossless escalation
 | High | Small synthetic model trials cannot measure whether extra agents justify their cost on real repositories. | Pre-registered varied repository tasks and independent behavioral oracles; repeated runs against single-agent and instruction-only TDD baselines. Publish success, regressions, total model cost, runner invocations, wall-clock time and uncertainty, including failed tasks. |
 | Medium | Explicit role models stay fixed; failed cheap attempts cannot automatically escalate. | A pre-registered escalation policy with strong failure signals, monotonic model choices, persisted decisions and total failed-attempt costs; test interruption/resume and retain all acceptance gates. |
 | Medium | Python adapters do not establish support for JS/TS or other languages. | Integration-test actual Vitest/Jest reports with assertion vs import/collection/setup failures, skips, parameterized cases, missing inventory and nonzero exits. Do not label typeless JUnit failure as an assertion. |
+| Medium | Native .NET setup does not cover ordinary MSTest TRX, MTP, every framework version or custom project layouts. | A validated native extension/report path with independently observed body assertion evidence; actual setup/cleanup/host and missing-inventory regressions. Preserve every project/TFM without forced migrations or message-based assertion heuristics. |
+| Medium | Bundled runtime support is limited to advertised native host/architecture builds. | Build and test on each additional actual host, with Python absent, verified release assets/source provenance, licensing notices and measured hook latency. Do not infer support from a mocked platform value. |
 | Medium | Runtime fingerprints do not capture every dependency, service or source of nondeterminism. | Explicit project-selected dependency/version and service fixtures; prove receipt invalidation for declared inputs, document uncaptured inputs, and measure flakiness without hiding retries. |
 | Medium | Required executed test IDs cannot be dropped, even if later review identifies redundant new cases. | Select the portfolio before RED. Any future retirement flow needs explicit reviewed evidence of preserved baseline and useful defect detection; removing regressions must remain blocked. |
 | Medium | The runner budget is not an AI spending/time limit. The opt-in evaluator now observes final whole-tree usage, but ordinary tasks have no enforced model-spend cap. | Supported live usage/budget handling; stop with a preserved, honest partial result when a configured limit is reached. No estimated cost presented as an enforced cap. |
