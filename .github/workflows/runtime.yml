@@ -82,8 +82,7 @@ jobs:
           if [ "$RUNTIME_PLATFORM" = win32-x64 ]; then suffix=.exe; else suffix=; fi
           python -B scripts/measure_runtime.py --packaged-executable "$PWD/dist/runtime/ai-tdd-controller-1.5.0-${RUNTIME_PLATFORM}${suffix}" --output "dist/runtime/runtime-timing-${RUNTIME_PLATFORM}.json"
       - name: Verify anonymous released-runtime bootstrap
-        if: inputs.release_download == true
-        run: python -B scripts/check_runtime_download.py --project-count 70 --output dist/runtime/bootstrap-${{ matrix.platform }}.json
+        run: python -B scripts/check_runtime_download.py --project-count 70 --native-dotnet --output dist/runtime/bootstrap-${{ matrix.platform }}.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: runtime-${{ matrix.platform }}

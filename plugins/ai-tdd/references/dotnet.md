@@ -58,7 +58,7 @@ Actual native CI smoke results establish only their tested host scope; this
 local attempt does not prove Python-free use under strict Application Control.
 
 The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
-Plugin and interpreter versions are independent: plugin 1.5.1 reuses the pinned
+Plugin and interpreter versions are independent: plugin 1.5.2 reuses the pinned
 1.5.0 interpreter, which executes the installed external controller sources.
 Its historical build metadata describes the original build inputs; the new
 plugin source is covered by the source ZIP/checksums and task fingerprints.
@@ -90,7 +90,7 @@ relax ownership, reporter, inventory or quality checks.
 
 | Path | Existing package requirements | Evidence used |
 | --- | --- | --- |
-| xUnit + VSTest | `Microsoft.NET.Test.Sdk`, xUnit, `xunit.runner.visualstudio >= 3.0.0` | Separate discovery, structured native xUnit JSON events, and TRX. |
+| xUnit + VSTest | `Microsoft.NET.Test.Sdk`, xUnit, `xunit.runner.visualstudio >= 3.0.0` | Separate structured VSTest discovery, native xUnit JSON events, and TRX. |
 | NUnit + VSTest | `Microsoft.NET.Test.Sdk`, `NUnit >= 3.14.0`, `NUnit3TestAdapter >= 4.5.0` | Native discovery XML, structured native execution XML, and TRX. |
 | MSTest ordinary TRX | Unsupported | TRX does not preserve sufficient body assertion type evidence. |
 | Microsoft.Testing.Platform | Unsupported | Its reports and runner selection need a separately validated evidence path. |
@@ -121,11 +121,34 @@ not automatically trusted. Discovery/build/test execution can create normal
 generated output without making the task's source receipt stale.
 
 Every run performs full unfiltered discovery and execution, with fresh report
-locations and reconciliation of native IDs, outcomes and TRX counters. External
-IDs include the project path, TFM and native test display name. Duplicate or
-unstable IDs, missing cases, malformed/truncated events, filters, skips,
-unexecuted cases and inconsistent totals fail closed. The baseline must pass
-the real suite; pre-existing skips or failures need separate resolution.
+locations and reconciliation of native IDs, outcomes and TRX counters. Duplicate
+or unstable IDs, missing cases, malformed/truncated events, filters, skips,
+unexecuted cases and inconsistent totals fail closed. The baseline must pass the
+real suite; pre-existing skips or failures need separate resolution.
+
+For xUnit, discovery uses fresh VSTest `--diag` transport JSON rather than the
+readable `--list-tests` output. It collects `TestDiscovery.TestFound` cases and
+the completion message's `LastDiscoveredTests` tail, requiring non-aborted
+completion, matching totals and a fully discovered source assembly. Native
+`XunitTestCaseUniqueID` values must match the typed execution lifecycle. The
+observed VSTest GUIDs must match TRX definitions, assembly source, class/method,
+execution IDs and outcomes. Exactly one execution per discovered case is
+required; non-serializable theories whose rows are enumerated only at runtime
+remain unsupported.
+
+The external xUnit ID is `project|TFM|xunit:<native-case-ID>`, for example with a
+project prefix of `tests/App.Tests/App.Tests.csproj`. `display_name` is readable
+metadata and may legitimately repeat or differ from a shortened discovery name.
+Long theory data and long fixture paths do not require name-based identity.
+The coordinator reads actual case IDs from the baseline report and each new
+case's RED log/report before selecting tests, mapping ACs or reviewing executed
+cases. Copy the complete reported ID; do not synthesize it from class, method
+or display names.
+
+Native discovery/execution diagnostics remain in fresh local report directories.
+They can contain fixture values, serialized theory data and local paths; retain
+them locally for diagnosis, outside public validation evidence. This evidence
+path requires no dependency, package or project changes.
 
 ## What can establish RED
 
@@ -196,12 +219,16 @@ MSBuild/test execution is trusted project code, not a sandbox for hostile code.
 External services, installed package contents and nondeterminism are not fully
 fingerprinted. Framework support is bounded; consult the
 [validation report](../../../validation/VALIDATION.md) for actual executed scope.
+Finish and archive active tasks with their original plugin before upgrading;
+the existing baseline, RED/GREEN and evidence freshness guards still apply.
 
 Primary references:
 
 - [VSTest dotnet test options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-vstest)
 - [Microsoft.Testing.Platform dotnet test integration](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)
 - [xUnit runsettings/reporters](https://xunit.net/docs/config-runsettings)
+- [xUnit 3.0.0 discovery identities and display names](https://github.com/xunit/visualstudio.xunit/blob/3.0.0/src/xunit.runner.visualstudio/Sinks/VsDiscoverySink.cs)
+- [VSTest 17.14.1 discovery transport and completion](https://github.com/microsoft/vstest/blob/v17.14.1/src/Microsoft.TestPlatform.CommunicationUtilities/TestRequestSender.cs)
 - [NUnit adapter settings](https://docs.nunit.org/articles/vs-test-adapter/Tips-And-Tricks.html)
 - [dotnet format check mode](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format)
 - [PyInstaller operation and host builds](https://pyinstaller.org/en/stable/operating-mode.html)

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -18,6 +19,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--project-count", type=int, default=0,
                         help="Also exercise actual init/MSBuild evaluation on a large synthetic solution")
+    parser.add_argument("--native-dotnet", action='store_true',
+                        help="Run real xUnit/NUnit workflows through the downloaded original runtime")
     args = parser.parse_args()
     if args.project_count < 0 or args.project_count == 1:
         raise ValueError("Setup fixture needs at least two projects, or zero to skip it")
@@ -100,6 +103,12 @@ def main():
             setup_evidence = {"setup_projects": args.project_count, "setup_test_modules": len(config["dotnet"]["modules"]),
                               "setup_files_unchanged": True, "sdk_version": config["dotnet"]["sdk"]["version"],
                               "scope": "Actual MSBuild evaluation/init only; packages are not restored and tests are not executed"}
+        if args.native_dotnet:
+            proof = root / 'native-dotnet.json'
+            demo = Path(__file__).with_name('dotnet_demo.py')
+            subprocess.run([sys.executable, '-B', str(demo), '--packaged-executable', str(binaries[0]),
+                            '--output', str(proof)], check=True, timeout=900)
+            setup_evidence['native_workflows'] = json.loads(proof.read_text(encoding='utf-8'))
     result = {"schema": 1, "ok": True, "version": manifest["version"], "platform": platform,
               "url": asset["url"], "sha256": asset["sha256"], "size": asset["size"],
               "anonymous_download": True, "python_on_child_path": False, "hook_health": "pass", **setup_evidence}

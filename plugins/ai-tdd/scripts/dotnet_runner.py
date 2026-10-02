@@ -38,19 +38,105 @@ def _unique_names(names):
     return names
 
 
-def discovery_names(stdout):
-    lines = stdout.splitlines()
-    marker = "The following Tests are available:"
-    indices = [i for i, line in enumerate(lines) if line.strip() == marker]
-    if len(indices) != 1:
-        raise DotnetError("VSTest full discovery marker is absent/ambiguous; fix SDK, build or discovery errors")
-    names = []
-    for line in lines[indices[0] + 1:]:
-        if line.startswith("    ") and line.strip():
-            names.append(line[4:].strip())
-        elif line.strip() and not line.startswith("[xUnit.net "):
-            raise DotnetError("Unexpected discovery output; full test inventory cannot be proven")
-    return _unique_names(names)
+DISCOVERY_PREFIX = re.compile(r"^TpTrace Verbose: [^\r\n]*, TestRequestSender\.OnDiscoveryMessageReceived: Received message: (.*)$")
+
+
+def _guid(value):
+    try:
+        parsed = uuid.UUID(value)
+    except (ValueError, TypeError, AttributeError) as error:
+        raise DotnetError("Missing/malformed native VSTest ID") from error
+    if not parsed.int:
+        raise DotnetError("Empty native VSTest ID")
+    return str(parsed)
+
+
+def discovery_cases(trace):
+    """Read fresh VSTest transport JSON, never the shortened --list-tests text.
+
+    Stream diagnostic lines so unrelated build/host tracing need not fit in
+    memory. Each native message retains the existing 5 MB evidence bound.
+    Serialization blobs are discarded; only native identity metadata is kept.
+    """
+    cases, vs_ids, completion = {}, set(), None
+    for line in trace.splitlines() if isinstance(trace, str) else trace:
+        if len(line) > 5_000_000:
+            raise DotnetError("Oversized VSTest discovery diagnostic message")
+        match = DISCOVERY_PREFIX.fullmatch(line.rstrip("\r\n"))
+        if not match:
+            continue
+        try:
+            event = json.loads(match[1])
+        except ValueError as error:
+            raise DotnetError("Malformed VSTest discovery transport JSON") from error
+        if not isinstance(event, dict):
+            raise DotnetError("Unsupported VSTest discovery message")
+        version = event.get("Version", 0)
+        if type(version) is not int or version not in range(8):
+            raise DotnetError("Unsupported VSTest discovery transport version")
+        kind, payload = event.get("MessageType"), event.get("Payload")
+        if kind == "TestSession.Message":
+            if not isinstance(payload, dict) or type(payload.get("MessageLevel")) is not int or payload["MessageLevel"] not in (0, 1, 2):
+                raise DotnetError("Malformed VSTest discovery diagnostic")
+            if payload["MessageLevel"] != 0:
+                raise DotnetError("VSTest reported a discovery warning/error; inspect local diagnostic logs")
+            if not isinstance(payload.get("Message"), str) or "Skipping test case with duplicate ID" in payload["Message"]:
+                raise DotnetError("Missing diagnostic text or duplicate xUnit case suppressed by discovery")
+            continue
+        if kind not in {"TestDiscovery.TestFound", "TestDiscovery.Completed"}:
+            continue
+        if completion is not None:
+            raise DotnetError("Duplicate/late VSTest discovery lifecycle message")
+        if kind == "TestDiscovery.Completed":
+            if not isinstance(payload, dict) or payload.get("IsAborted") is not False:
+                raise DotnetError("Incomplete/aborted VSTest discovery")
+            completion = payload
+            rows = payload.get("LastDiscoveredTests")
+            if rows is None:
+                rows = []
+        else:
+            rows = payload
+        if not isinstance(rows, list):
+            raise DotnetError("Missing structured VSTest discovery cases")
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("Properties"), list):
+                raise DotnetError("Missing native xUnit discovery properties")
+            properties = {}
+            for prop in row["Properties"]:
+                if not isinstance(prop, dict) or not isinstance(prop.get("Key"), dict) or "Value" not in prop:
+                    raise DotnetError("Malformed native discovery property")
+                key = _text(prop["Key"], "Id")
+                if key in properties:
+                    raise DotnetError("Duplicate native discovery property")
+                properties[key] = prop.get("Value")
+            if "MSTestDiscoverer.TmiTestId" in properties:
+                raise DotnetError("Unsupported override of native xUnit test ID")
+            # Older wire protocols keep built-in TestCase fields in Properties.
+            fields = {key: row.get(key, properties.get("TestCase." + key)) for key in
+                      ("Id", "Source", "ExecutorUri", "FullyQualifiedName", "DisplayName")}
+            if any(key in row and "TestCase." + key in properties and row[key] != properties["TestCase." + key] for key in fields):
+                raise DotnetError("Conflicting native VSTest discovery identity fields")
+            if version in (0, 1, 3) and any(key in row for key in fields) or version in (2, 4, 5, 6, 7) and any(key not in row for key in fields):
+                raise DotnetError("Unsupported VSTest case layout for the negotiated transport version")
+            case_id, vs_id = _text(properties, "XunitTestCaseUniqueID"), _guid(fields["Id"])
+            if case_id in cases or vs_id in vs_ids:
+                raise DotnetError("Duplicate native xUnit/VSTest discovery ID")
+            source, uri = _text(fields, "Source"), _text(fields, "ExecutorUri")
+            if not uri.startswith("executor://xunit/") or not Path(source).is_absolute():
+                raise DotnetError("Unsupported discovery adapter/source identity")
+            cases[case_id] = {"vstest_id": vs_id, "source": source, "executor_uri": uri,
+                              "method": _text(fields, "FullyQualifiedName"), "display_name": _text(fields, "DisplayName")}
+            vs_ids.add(vs_id)
+    if completion is None or not cases or type(completion.get("TotalTests")) is not int or completion["TotalTests"] != len(cases):
+        raise DotnetError("Missing/inconsistent full VSTest discovery completion and case count")
+    sources = {case["source"] for case in cases.values()}
+    full = completion.get("FullyDiscoveredSources")
+    if len(sources) != 1 or not isinstance(full, list) or len(full) != 1 or not isinstance(full[0], str) or set(full) != sources:
+        raise DotnetError("Discovery must completely enumerate exactly one native test assembly")
+    for key in ("PartiallyDiscoveredSources", "NotDiscoveredSources", "SkippedDiscoverySources"):
+        if completion.get(key) != []:
+            raise DotnetError("VSTest discovery contains incomplete/skipped sources")
+    return cases
 
 
 def _events(stdout):
@@ -124,17 +210,40 @@ def _xml(raw):
         raise DotnetError("Malformed native XML evidence") from error
 
 
-def _trx(raw, outcomes):
+def _trx(raw, outcomes, native=None):
     tree = _xml(raw)
     namespace = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
     if tree.tag != namespace + "TestRun":
         raise DotnetError("TRX needs the native TestRun schema")
     actual = {}
+    executions = set()
     for item in tree.findall(namespace + "Results/" + namespace + "UnitTestResult"):
-        name, outcome = item.get("testName"), item.get("outcome")
+        name, outcome = (_guid(item.get("testId")) if native else item.get("testName")), item.get("outcome")
         if not name or name in actual or outcome not in {"Passed", "Failed", "NotExecuted"}:
             raise DotnetError("TRX contains missing/duplicate/unsupported outcomes")
         actual[name] = outcome
+        if native:
+            execution_id = _guid(item.get("executionId"))
+            if execution_id in executions:
+                raise DotnetError("TRX contains duplicate executions")
+            executions.add(execution_id)
+    if native:
+        definitions = {}
+        result_ids = {_guid(item.get("testId")): item for item in tree.findall(namespace + "Results/" + namespace + "UnitTestResult")}
+        for definition in tree.findall(namespace + "TestDefinitions/" + namespace + "UnitTest"):
+            test_id = _guid(definition.get("id"))
+            methods, runs = definition.findall(namespace + "TestMethod"), definition.findall(namespace + "Execution")
+            if test_id in definitions or test_id not in native or len(methods) != 1 or len(runs) != 1:
+                raise DotnetError("TRX definitions disagree with native discovery identity")
+            method, case = methods[0], native[test_id]
+            if (method.get("className", "") + "." + method.get("name", "") != case["method"]
+                    or method.get("adapterTypeName") != case["executor_uri"]
+                    or Path(method.get("codeBase", "")) != Path(case["source"])
+                    or test_id not in result_ids or _guid(runs[0].get("id")) != _guid(result_ids[test_id].get("executionId"))):
+                raise DotnetError("TRX method/source/execution differs from discovered native test")
+            definitions[test_id] = definition
+        if set(definitions) != set(native):
+            raise DotnetError("TRX is missing native test definitions")
     expected = {name: {"test-passed": "Passed", "test-failed": "Failed", "test-skipped": "NotExecuted", "test-not-run": "NotExecuted"}[outcome]
                 for name, outcome in outcomes.items()}
     if actual != expected:
@@ -157,9 +266,10 @@ def _trx(raw, outcomes):
 
 def reconcile(project, tfm, discovered, stdout, trx):
     """Join full discovered IDs with actual typed lifecycle and fresh TRX."""
-    _unique_names(discovered)
+    if not isinstance(discovered, dict) or not discovered:
+        raise DotnetError("Full structured xUnit discovery is required")
     assembly, completed = None, False
-    cases, finished_cases, tests, terminals, finished_tests = {}, set(), {}, {}, set()
+    cases, case_tests, finished_cases, tests, terminals, finished_tests = {}, {}, set(), {}, {}, set()
     for event in _events(stdout):
         kind = event["$type"]
         if kind == "error-message" or kind.endswith("cleanup-failure"):
@@ -177,13 +287,18 @@ def reconcile(project, tfm, discovered, stdout, trx):
                 raise DotnetError("Duplicate native test case lifecycle")
             _text(event, "TestClassName")
             _text(event, "TestMethodName")
+            if case_id not in discovered or event["TestClassName"] + "." + event["TestMethodName"] != discovered[case_id]["method"]:
+                raise DotnetError("Native execution case/method differs from full discovery")
             cases[case_id] = event
         elif kind == "test-starting":
             test_id, case_id = _text(event, "TestUniqueID"), _text(event, "TestCaseUniqueID")
             if test_id in tests or case_id not in cases or case_id in finished_cases:
                 raise DotnetError("Invalid/duplicate test-starting lifecycle")
             _text(event, "TestDisplayName")
+            if case_id in case_tests:
+                raise DotnetError("Exactly one test per discovered case is required; delayed theory rows/retries are unsupported")
             tests[test_id] = event
+            case_tests[case_id] = test_id
         elif kind in TERMINALS or kind == "test-finished":
             test_id = _text(event, "TestUniqueID")
             if test_id not in tests or test_id in finished_tests or event.get("TestCaseUniqueID") != tests[test_id]["TestCaseUniqueID"]:
@@ -198,7 +313,7 @@ def reconcile(project, tfm, discovered, stdout, trx):
                 terminals[test_id] = event
         elif kind == "test-case-finished":
             case_id = _text(event, "TestCaseUniqueID")
-            members = [test_id for test_id, item in tests.items() if item["TestCaseUniqueID"] == case_id]
+            members = [case_tests[case_id]] if case_id in case_tests else []
             if case_id not in cases or case_id in finished_cases or not members or any(item not in finished_tests for item in members):
                 raise DotnetError("Incomplete/duplicate test case lifecycle")
             _counts(event, [terminals[item]["$type"] for item in members])
@@ -210,20 +325,20 @@ def reconcile(project, tfm, discovered, stdout, trx):
             completed = True
     if not completed:
         raise DotnetError("Missing native assembly completion")
-    names = [item["TestDisplayName"] for item in tests.values()]
-    _unique_names(names)
-    if set(names) != set(discovered):
+    if set(cases) != set(discovered):
         raise DotnetError("Full discovery differs from actual executed inventory; filters/retries/undiscovered theory rows are unsupported")
-    outcomes = {tests[test_id]["TestDisplayName"]: event["$type"] for test_id, event in terminals.items()}
-    _trx(trx, outcomes)
+    outcomes = {discovered[tests[test_id]["TestCaseUniqueID"]]["vstest_id"]: event["$type"] for test_id, event in terminals.items()}
+    _trx(trx, outcomes, {case["vstest_id"]: case for case in discovered.values()})
     results = []
     for test_id, event in terminals.items():
         item = tests[test_id]
-        result = {"id": project + "|" + tfm + "|" + item["TestDisplayName"], "status": TERMINALS[event["$type"]], "exception": "", "detail": event.get("Reason", "")}
+        result = {"id": project + "|" + tfm + "|xunit:" + item["TestCaseUniqueID"], "display_name": item["TestDisplayName"],
+                  "native_case_id": item["TestCaseUniqueID"], "vstest_id": discovered[item["TestCaseUniqueID"]]["vstest_id"],
+                  "status": TERMINALS[event["$type"]], "exception": "", "detail": event.get("Reason", "")}
         if event["$type"] == "test-failed":
             result.update(_failure(event, cases[item["TestCaseUniqueID"]]))
         results.append(result)
-    return {"schema": 1, "collected": [project + "|" + tfm + "|" + name for name in discovered], "results": results}
+    return {"schema": 1, "collected": [project + "|" + tfm + "|xunit:" + case_id for case_id in discovered], "results": results}
 
 
 def _nunit_counts(node, cases):
@@ -359,7 +474,8 @@ def run(root, report, config=None):
             if dump.exists():
                 raise DotnetError("NUnit discovery evidence must be fresh")
             base += ["--artifacts-path", str(artifacts)]
-        discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else [])
+        discovery_log = directory / "discovery.diag.log"
+        discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else ["--diag", str(discovery_log)])
         discovery_code, discovery = _process(base + discovery_args, root, directory / "discovery.stdout.log", directory / "discovery.stderr.log", timeout)
         if discovery_code:
             raise DotnetError(".NET build/discovery failed; repair compilation or discovery before RED (local logs retained)")
@@ -369,7 +485,14 @@ def run(root, report, config=None):
             native_discovery = dump.read_text(encoding="utf-8-sig")
             (directory / "discovery.xml").write_text(native_discovery, encoding="utf-8")
         else:
-            names = discovery_names(discovery)
+            if not discovery_log.is_file() or discovery_log.is_symlink():
+                raise DotnetError("Missing fresh structured VSTest discovery diagnostics")
+            with discovery_log.open(encoding="utf-8-sig") as stream:
+                inventory = discovery_cases(iter(lambda: stream.readline(5_000_001), ""))
+            owned_bin = (root / module["project"]).parent / "bin"
+            native_source = Path(next(iter(inventory.values()))["source"])
+            if owned_bin not in native_source.parents or native_source.resolve() != native_source:
+                raise DotnetError("Native discovery assembly must remain inside its owned project bin directory")
         settings = (["NUnit.TestOutputXml=" + str(directory), "NUnit.DisplayName=FullName"] if nunit else
                     ["xUnit.ReporterSwitch=json", "xUnit.NoAutoReporters=true"])
         code, execution = _process(base + ["--no-build", "--no-restore", "--results-directory", str(directory),
@@ -386,7 +509,7 @@ def run(root, report, config=None):
                 raise DotnetError("Missing fresh NUnit native result XML; VSTest exit status alone is insufficient")
             evidence = reconcile_nunit(module["project"], module["tfm"], native_discovery, native_results.read_text(encoding="utf-8-sig"), path.read_text(encoding="utf-8-sig"))
         else:
-            evidence = reconcile(module["project"], module["tfm"], names, execution, path.read_text(encoding="utf-8-sig"))
+            evidence = reconcile(module["project"], module["tfm"], inventory, execution, path.read_text(encoding="utf-8-sig"))
         failures = any(item["status"] in {"failed", "error"} for item in evidence["results"])
         if code != int(failures):
             raise DotnetError("Native exit status disagrees with executed outcomes")

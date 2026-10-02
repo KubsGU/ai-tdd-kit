@@ -16,7 +16,7 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.5.1**.
+Version **1.5.2**.
 
 ## Install
 
@@ -94,6 +94,13 @@ and `NUnit3TestAdapter >= 4.5.0`. It reconciles separate discovery, native
 framework evidence and TRX results across every configured test project/target
 framework. Assertion evidence needs a test-body stack witness; runtime, setup,
 teardown and missing-inventory failures cannot authorize implementation.
+
+xUnit cases use stable native case IDs; readable display names may be long,
+shortened by the adapter, or repeated. The coordinator reads actual IDs from
+the baseline report and new cases from the RED run's log/report, then uses
+those IDs for acceptance mappings and review. It does not construct IDs from
+test names. The runner requires exactly one execution per discovered case;
+theories whose rows are enumerated only at runtime remain unsupported.
 
 Ordinary MSTest TRX and Microsoft.Testing.Platform are currently unsupported:
 their available evidence is not treated as a typed behavioral RED. Unsupported

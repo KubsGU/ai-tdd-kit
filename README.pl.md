@@ -7,7 +7,7 @@ autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależ
 Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
 tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
 dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
-Wersja 1.5.1, licencja MIT.
+Wersja 1.5.2, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -39,6 +39,7 @@ Następnie wpisz
 `/ai-tdd:feature <opis zadania>`. Wznowienie: `/ai-tdd:resume`.
 Repozytorium pełni jednocześnie rolę publicznego marketplace. Aktualizacja:
 `claude plugin update ai-tdd@ai-tdd-kit`.
+Przed aktualizacją zakończ i zarchiwizuj aktywne zadania w dotychczasowej wersji.
 
 ## Instalacja na drugim komputerze
 
@@ -53,7 +54,7 @@ Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements)
 Na innych platformach potrzebny jest Python 3.10+.
 Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.5.1.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.5.2.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -94,6 +95,14 @@ natywne dowody frameworka i TRX dla wszystkich skonfigurowanych projektów oraz 
 RED wymaga porażki w ciele testu; błąd runtime, setupu, teardownu albo brakujące
 testy nie otwierają implementacji. Zwykły TRX z MSTest i Microsoft.Testing.Platform
 nie dają obecnie obsługiwanego dowodu: setup zgłosi konkretny brak.
+
+xUnit używa stabilnych natywnych identyfikatorów przypadków. Czytelne nazwy mogą
+być długie, skrócone przez adapter albo powtarzać się. Koordynator odczytuje
+rzeczywiste ID z raportu baseline, a ID nowych przypadków z logu/raportu RED;
+tych ID używa w mapowaniu AC i review. Nie tworzy ich z nazw testów. Każdy
+odkryty przypadek musi wykonać się dokładnie raz. Teorie wyliczające wiersze
+dopiero podczas wykonania pozostają nieobsługiwane. Natywne logi diagnostyczne
+mogą zawierać dane fixture i ścieżki; zachowaj je lokalnie, poza publicznymi dowodami.
 
 Koordynator przed `begin` dopasowuje istniejące reguły `.editorconfig`, build,
 analyzery, sprawdzanie formatowania i polecenia CI. Nie narzuca nowego stylu;

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.2 — 2026-10-02
+
+- Reconcile xUnit discovery through fresh VSTest transport JSON and native case
+  IDs. Keep long, shortened or repeated display names as readable metadata.
+- Match complete, non-aborted discovery with typed execution and TRX native
+  identities, source/method definitions and outcomes. Require exactly one
+  execution per discovered case; runtime-enumerated theory rows remain unsupported.
+- Read actual baseline/RED case IDs for mappings and review. Preserve the
+  baseline, RED/GREEN and freshness guards without package or project changes.
+- Keep native diagnostics local because they may contain fixture data and paths.
+  Finish and archive active tasks with their original plugin before upgrading.
+
 ## 1.5.1 — 2026-10-02
 
 - Remove the arbitrary 50-project native .NET init limit. Preserve every evaluated
