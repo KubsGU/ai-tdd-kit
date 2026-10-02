@@ -1,0 +1,35 @@
+{
+  "fixtures": [
+    {
+      "evidence": {
+        "framework": "xunit",
+        "full_inventory": 6,
+        "statuses": {
+          "Demo.Checks.Skip": "skipped",
+          "Demo.Checks.Pass": "passed",
+          "Demo.Checks.Error": "error",
+          "Demo.Setup.Body": "error",
+          "Demo.Cleanup.Body": "error",
+          "Demo.Checks.Assertion": "failed"
+        },
+        "build_failure_rejected": true
+      }
+    },
+    {
+      "evidence": {
+        "framework": "nunit",
+        "full_inventory": 6,
+        "statuses": {
+          "Demo.Checks.Assertion": "failed",
+          "Demo.Checks.Error": "error",
+          "Demo.Checks.Pass": "passed",
+          "Demo.Checks.Skip": "skipped",
+          "Demo.Cleanup.Body": "error",
+          "Demo.Setup.Body": "error"
+        },
+        "build_failure_rejected": true
+      }
+    }
+  ],
+  "note": "Real installed SDK/framework executions; no AI calls, global installation or user-project edits"
+}

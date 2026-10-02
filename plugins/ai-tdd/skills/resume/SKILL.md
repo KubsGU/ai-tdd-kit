@@ -1,11 +1,15 @@
 ---
 name: resume
 description: Use when an AI TDD task was interrupted, its context was reset, or its latest phase and evidence need inspection before continuing.
-allowed-tools: Read, Glob, Grep, Write, Edit, Agent, AskUserQuestion, Bash(python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *), Bash(python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *)
+allowed-tools: Read, Glob, Grep, Write, Edit, Agent, AskUserQuestion, Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" *), Bash(python -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *), Bash(python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/tdd.py" *)
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/feature/SKILL.md` and its execution protocol.
-Run the bundled controller's `status` for the current project. Resume the
+Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/tdd-launcher.cjs" --root "." status`
+for the current project using its recorded backend. Do not run setup-runtime
+over existing state/lock or silently switch controller/.NET SDK versions.
+If that backend is missing or corrupt, report the concrete environment blocker.
+Resume the
 recorded phase with the appropriate named agent and verified artifacts. Preserve
 user changes, open review findings, test checkpoints and previous test IDs.
 In TEST, create new test files; changing any file frozen at begin/next requires

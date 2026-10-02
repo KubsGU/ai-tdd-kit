@@ -4,22 +4,32 @@ A Claude Code plugin that turns a feature request into verified, incremental TDD
 
 Clarify behavior → versioned acceptance criteria → separate test author →
 **executed RED** → separate implementer → **executed GREEN** → independent review.
-A Python controller owns phase transitions and execution evidence. Claude Code
-hooks and role tool lists check who may change each artifact.
+The controller owns phase transitions and execution evidence. A stable Node
+launcher runs its Python implementation using an installed interpreter or a
+verified bundled runtime. Claude Code hooks and role tool lists check who may
+change each artifact.
 
 [Polska instrukcja](README.pl.md) · [Protocol](plugins/ai-tdd/references/protocol.md)
 · [Models and efficiency](plugins/ai-tdd/references/efficiency.md)
 · [Test quality and repo checks](plugins/ai-tdd/references/quality.md)
+· [.NET setup and evidence](plugins/ai-tdd/references/dotnet.md)
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.4.0**.
+Version **1.5.0**.
 
 ## Install
 
-Requirements: Claude Code, Python **3.10+**, Node.js on PATH, and Git for fetching
-this marketplace. Use a supported Node LTS release. Your project's test runner
-and application dependencies remain project dependencies.
+Requirements: Claude Code, Node.js on PATH, and Git for fetching this marketplace.
+Use a supported Node LTS release. For .NET projects, use the project's existing
+.NET SDK and test packages; the native setup requires SDK 8+/MSBuild 17.8+.
+On Windows x64, Linux x64 and macOS arm64, a pinned controller runtime removes
+the separate Python installation step when host policy permits that binary.
+Windows Application Control blocked the unsigned bundle in the local attempt;
+that policy needs an approved trusted runtime or existing Python. See the
+[runtime limits](plugins/ai-tdd/references/dotnet.md#runtime-requirements).
+Other hosts need Python **3.10+**.
+Your application's dependencies remain project dependencies.
 
 Run in your terminal:
 
@@ -62,9 +72,36 @@ After interruption or a context reset:
 /ai-tdd:resume
 ```
 
-If Python is outside PATH, set `AI_TDD_PYTHON` to its executable. Node must be
-available on PATH. The `doctor` check verifies the actual Node → Python hook
+The coordinator probes the controller runtime before setup. If Python is absent
+on a supported host, it runs explicit `setup-runtime` before starting a task.
+That downloads the version-pinned GitHub release binary once and verifies its
+size and SHA256. Cached binaries are verified again before use. Hooks never
+download a runtime. If you use an installed Python outside PATH, set
+`AI_TDD_PYTHON` to its executable. `doctor` verifies the actual hook/backend
 before a task can begin. Claude Code's normal permissions still apply.
+
+## .NET without manual adapters
+
+Install the plugin, launch Claude in your solution directory, and use
+`/ai-tdd:feature <description>`. `init` detects existing C# projects, evaluates
+their MSBuild metadata and configures project ownership, generated output
+directories and the native test runner. It does not upgrade NuGet packages or
+change global settings. Existing configuration is never overwritten.
+
+The built-in VSTest path supports existing xUnit projects with
+`xunit.runner.visualstudio >= 3.0.0`, and NUnit projects with `NUnit >= 3.14.0`
+and `NUnit3TestAdapter >= 4.5.0`. It reconciles separate discovery, native
+framework evidence and TRX results across every configured test project/target
+framework. Assertion evidence needs a test-body stack witness; runtime, setup,
+teardown and missing-inventory failures cannot authorize implementation.
+
+Ordinary MSTest TRX and Microsoft.Testing.Platform are currently unsupported:
+their available evidence is not treated as a typed behavioral RED. Unsupported
+layouts, reporters or filters produce an actionable setup error. The
+coordinator records existing `.editorconfig`, build/analyzer/format rules and
+local CI commands before `begin`; missing quality configuration remains an
+explicit limitation. See [the .NET guide](plugins/ai-tdd/references/dotnet.md)
+for supported layouts, diagnostics and quality command examples.
 
 ## Models, tokens and caching
 
@@ -96,16 +133,18 @@ checks. Profile experiments and limits are recorded in the
 [observed results and limitations](validation/MODEL_BENCHMARK.md) and
 [model/caching research](validation/MODEL_COST_RESEARCH.md).
 
-If you download or clone this repository, its optional helper selects the project,
+If you download or clone this repository, its optional Node helper selects the project,
 defaults to Sonnet, enables foreground workers and removes cache-disable/forced
 worker-model environment variables **only in the child process**:
 
 ```text
-python -B scripts/launch_claude.py --project /path/to/your-project
+node scripts/launch_claude.cjs --project /path/to/your-project
 ```
 
 Use `--effort high` when deeper reasoning is needed, `--model` for an explicit
 choice, and `--dry-run` to inspect launch choices. Extra Claude options follow `--`.
+This helper is optional; direct Claude launches remain supported. The legacy
+Python helper remains available for existing scripts.
 The helper does not edit settings, permissions, authentication or MCP configuration.
 For direct launches, remove cache-disable flags and forced worker-model overrides
 if preflight reports them.
@@ -115,7 +154,7 @@ defaults. Compact controller output and short artifact-based handoffs avoid
 repeating whole histories, hashes and passing logs. Full requirements and evidence
 remain accessible. **Every prescribed test execution still runs.** Scripts needing
 the former full JSON can pass `--full` before the controller command, for example
-`tdd.py --root /project --full status`.
+`node "/path/to/ai-tdd/scripts/tdd-launcher.cjs" --root /project --full status`.
 
 In version 1.2, the deterministic demo's DONE response was 88.4% smaller in bytes. Two real Opus runs
 reported 92.1–92.6% of input tokens read from cache, including subagents; see the
@@ -189,13 +228,20 @@ local execution evidence. One checkout supports one active task. Before another
 feature it archives a completed task into `.ai-tdd-history/`, preserving evidence,
 source and tests. Keep these local state directories private.
 
-Use the repository's existing suite. Bundled JSON adapters support unittest and
+Use the repository's existing suite. The built-in .NET runner is described
+[above](#net-without-manual-adapters). Bundled JSON adapters support unittest and
 serial pytest; pytest records actual exception types and native node IDs.
 Generic JUnit is also supported, but a behavioral RED needs an explicit failure
 type. Typeless failures are rejected as ambiguous. See the
 [configuration examples](plugins/ai-tdd/templates/) and the
 [execution protocol](plugins/ai-tdd/references/protocol.md) for ownership roots,
 protected helpers/configuration, test reports and controller commands.
+
+Python project runners still require their actual interpreter and packages.
+The bundled controller contains standard-library dependencies, not pytest or
+an arbitrary project's Python environment. Existing direct Python controller
+commands remain compatible; `{python}` custom runner/quality commands need a
+real project interpreter.
 
 The passing baseline must include the real regression scope. Repositories with
 existing failures or skipped tests need baseline work before starting. Narrow
@@ -250,7 +296,9 @@ python -B scripts/measure_context.py
 python -B scripts/build_zip.py
 ```
 
-The controller uses Python's standard library. Pinned development dependencies
+These are contributor commands; installing Python and development dependencies
+is not part of the normal .NET user setup. The controller uses Python's standard
+library. Pinned development dependencies
 enable pytest integration, the kit's Ruff lint rules and the real-Claude fixture's
 Ruff/strict Mypy checks. The demo simulates role edits and
 does not call a model. An optional real-Claude evaluation uses normal account

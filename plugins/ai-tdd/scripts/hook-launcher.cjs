@@ -1,27 +1,47 @@
-// No shell parsing: paths with spaces remain one argument on every platform.
+// A quiescent project needs no controller runtime. Active tasks fail closed.
+'use strict';
 const { spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const input = fs.readFileSync(0, 'utf8');
-const candidates = process.env.AI_TDD_PYTHON
-  ? [process.env.AI_TDD_PYTHON]
-  : process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python'];
-let executed = false;
-for (const executable of candidates) {
-  const result = spawnSync(executable, ['-B', path.join(__dirname, 'tdd.py'), 'hook'], {
-    input, encoding: 'utf8', timeout: 12000, windowsHide: true, maxBuffer: 1024 * 1024
-  });
-  if (result.error && result.error.code === 'ENOENT') continue;
-  executed = true;
-  if (!result.error && result.status === 0) {
-    process.stdout.write(result.stdout || '');
-    process.exit(0);
+
+function needsRuntime(payload) {
+  if (payload.tool_name === 'AI_TDD_SELFTEST') return true;
+  if (typeof payload.cwd !== 'string' || !payload.cwd.trim()) throw new Error('Missing hook cwd');
+  const realpath = fs.realpathSync.native || fs.realpathSync;
+  // Match the controller's canonical project root (e.g. macOS /var or Windows
+  // short directory names), then reject redirection of .ai-tdd itself.
+  let cursor = realpath(path.resolve(payload.cwd));
+  while (true) {
+    const folder = path.join(cursor, '.ai-tdd');
+    try {
+      const stats = fs.lstatSync(folder);
+      const canonical = realpath(folder);
+      const same = process.platform === 'win32' ? canonical.toLowerCase() === folder.toLowerCase() : canonical === folder;
+      if (!stats.isDirectory() || stats.isSymbolicLink() || !same) throw new Error('Linked or invalid task state directory');
+      try { fs.lstatSync(path.join(folder, 'state.json')); return true; }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const parent = path.dirname(cursor);
+    if (parent === cursor) return false;
+    cursor = parent;
   }
-  break;
 }
-process.stdout.write(JSON.stringify({hookSpecificOutput: {
-  hookEventName: 'PreToolUse', permissionDecision: 'deny',
-  permissionDecisionReason: executed
-    ? 'AI TDD hook failed. Check Python 3.10+ and the plugin installation.'
-    : 'AI TDD needs Python 3.10+ on PATH; set AI_TDD_PYTHON to its executable if needed.'
-}}));
+
+try {
+  const input = fs.readFileSync(0, 'utf8');
+  const payload = JSON.parse(input);
+  if (needsRuntime(payload)) {
+    const { resolveRuntime, runtimeInvocation } = require('./tdd-launcher.cjs');
+    const invocation = runtimeInvocation(resolveRuntime(), path.join(__dirname, 'tdd.py'), ['hook']);
+    const result = spawnSync(invocation.executable, invocation.args, {
+      input, encoding: 'utf8', timeout: 12000, windowsHide: true, maxBuffer: 1024 * 1024, shell: false
+    });
+    if (result.error || result.status !== 0) throw new Error('Controller hook execution failed');
+    process.stdout.write(result.stdout || '');
+  }
+} catch (error) {
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: {
+    hookEventName: 'PreToolUse', permissionDecision: 'deny',
+    permissionDecisionReason: 'AI TDD hook failed: ' + error.message
+  } }));
+}

@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.5.0 — 2026-10-02
+
+- Add a stable Node facade and explicit, version-pinned bundled controller
+  runtime for Windows x64, Linux x64 and macOS arm64. Verify cached/downloaded
+  binary SHA256 and size; reject linked caches and provisioning over task state
+  or locks. Hooks never download. Existing Python controller calls remain usable.
+- Record the local Windows Application Control block on the unsigned bundle;
+  strict-policy hosts need an approved trusted runtime or existing Python.
+  Native CI smoke evidence applies to its actual hosts, not every OS policy.
+- Add a Node Claude launch helper with the existing Sonnet/foreground/cache
+  policy scoped to its child process, preserving global settings and direct launches.
+- Remove separate Python installation and manually authored adapters from the
+  supported .NET user path while retaining the existing controller implementation.
+  Bundled standard-library dependencies do not replace project Python packages.
+- Detect/evaluate existing C# projects at init, preserving existing config.
+  Configure disjoint project ownership and frozen exact bin/obj exclusions;
+  protect project/package/MSBuild inputs without upgrading NuGet or global settings.
+- Add bounded VSTest evidence paths for xUnit adapter >=3.0.0 and NUnit >=3.14.0
+  with NUnit3TestAdapter >=4.5.0. Reconcile separate full discovery, native events
+  or XML, and TRX across configured projects/TFM; require actual test-body
+  assertion evidence. Reject runtime/setup/teardown, skips and inventory errors.
+- Fail closed for ordinary MSTest TRX, MTP, implicit filters, unsupported layouts
+  or ambiguous reporter evidence instead of inferring assertion failures.
+- Document existing .NET build/analyzer/format and CI configuration, keeping
+  absent quality checks explicit. Preserve full tests, role routing, reviews and
+  final fresh execution. Runtime/native test scope belongs in the validation report.
+- Publish per-platform runtime build metadata/source hashes and bundled component
+  license notices. Finish/archive active tasks with their original plugin before
+  updating; do not migrate receipts by editing state.
+
 ## 1.4.0 — 2026-10-01
 
 - Default ordinary launches to Sonnet, retaining explicit session-model choice.

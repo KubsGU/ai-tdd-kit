@@ -20,7 +20,7 @@ class Fixture:
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-test-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / ".ai-tdd").mkdir()
         (self.root / "src").mkdir()
         (self.root / "tests").mkdir()
@@ -549,7 +549,7 @@ class GuardTests(Fixture, unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node 18+ is a documented plugin dependency")
         payload = self.payload("Write", {"file_path": str(self.root / "tests/test_new.py")}, "test-author")
-        result = subprocess.run([node, "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, text=True)
+        result = subprocess.run([node, "--preserve-symlinks", "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(result.stdout.strip(), "Hook silently allowed a write with no historical test checkpoint")
         decision = json.loads(result.stdout)["hookSpecificOutput"]
@@ -605,7 +605,7 @@ class GuardTests(Fixture, unittest.TestCase):
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node 18+ is a documented plugin dependency")
         payload = self.payload("Write", {"file_path": str(self.root / "tests/test_fee.py")}, "implementer")
-        result = subprocess.run([node, "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, text=True)
+        result = subprocess.run([node, "--preserve-symlinks", "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
 

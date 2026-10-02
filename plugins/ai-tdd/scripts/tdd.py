@@ -105,11 +105,37 @@ def safe_path(root, value):
 
 
 def environment():
-    names = ("PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
-             "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_EFFORT_LEVEL") + CACHE_FLAGS
-    value = {"python": sys.version, "executable": str(Path(sys.executable).resolve()), "platform": platform.platform(),
+    names = ("PATH", "PYTHONPATH", "PYTEST_ADDOPTS", "PYTHONHASHSEED", "NODE_OPTIONS", "NODE_ENV", "CI", "TZ", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+             "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_EFFORT_LEVEL",
+             "DOTNET_ROOT", "DOTNET_ROOT_X64", "DOTNET_ROLL_FORWARD", "DOTNET_ROLL_FORWARD_TO_PRERELEASE",
+             "DOTNET_CLI_HOME", "DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR", "DOTNET_MSBUILD_SDK_RESOLVER_SDKS_DIR",
+             "MSBuildSDKsPath", "MSBUILD_EXE_PATH", "NUGET_PACKAGES", "VSTEST_TESTCASEFILTER", "VSTEST_RUN_SETTINGS",
+             "VSTEST_RUNSETTINGS", "AI_TDD_PYTHON") + CACHE_FLAGS
+    executable = Path(sys.executable).resolve()
+    value = {"python": sys.version, "executable": str(executable), "binary_sha256": digest(executable), "platform": platform.platform(),
              "options": {name: hashlib.sha256(os.environ.get(name, "").encode()).hexdigest() for name in names}}
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def generated_roots(root, config):
+    """Explicit project build outputs, never a blanket bin/obj name exclusion."""
+    values = config.get('generated_roots', [])
+    if not isinstance(values, list) or any(not isinstance(value, str) for value in values) or len(set(values)) != len(values):
+        raise TddError('generated_roots must be a unique list of project bin/obj directories')
+    owned = {safe_path(root, value) for key in ('source_roots', 'test_roots') for value in config[key]}
+    projects = {safe_path(root, value).parent for value in config['protected_paths']
+                if Path(value).suffix.lower() == '.csproj' and safe_path(root, value).is_file()}
+    result = []
+    for value in values:
+        try:
+            path = safe_path(root, value)
+        except TddError as error:
+            raise TddError('Unsafe generated_roots path') from error
+        expected = root / Path(value)
+        if path != expected or path.name not in {'bin', 'obj'} or path.parent not in owned & projects or path.is_file():
+            raise TddError('generated_roots may exclude only bin/obj below an owned, protected .csproj project')
+        result.append(value)
+    return sorted(result)
 
 
 def hook_health():
@@ -125,7 +151,7 @@ def hook_health():
         raise TddError("AI TDD hook requires Node.js on PATH")
     try:
         payload = {"cwd": str(PLUGIN), "hook_event_name": "PreToolUse", "tool_name": "AI_TDD_SELFTEST", "tool_input": {}}
-        result = subprocess.run([node, "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, encoding="utf-8", timeout=15)
+        result = subprocess.run([node, "--preserve-symlinks", "--preserve-symlinks-main", str(PLUGIN / "scripts/hook-launcher.cjs")], input=json.dumps(payload), capture_output=True, encoding="utf-8", timeout=15)
         decision = json.loads(result.stdout).get("hookSpecificOutput", {})
         if result.returncode or decision.get("permissionDecision") != "deny" or decision.get("permissionDecisionReason") != SELFTEST_REASON:
             raise TddError("AI TDD hook self-test failed; repair the runtime before begin")
@@ -221,6 +247,7 @@ class Controller:
         tests = [safe_path(self.root, path) for path in self.config["test_roots"]]
         if any(inside(a, b) or inside(b, a) for a in sources for b in tests):
             raise TddError("source and test roots must not overlap")
+        self.generated_roots = generated_roots(self.root, self.config)
         if not isinstance(self.config.get("max_attempts", 3), int) or not 1 <= self.config.get("max_attempts", 3) <= 20:
             raise TddError("max_attempts must be 1..20")
         budget = self.config.get("max_runner_runs", 100)
@@ -236,6 +263,8 @@ class Controller:
             raise TddError("Unsupported runner format")
         try:
             self.quality_checks = QUALITY.validate_checks(self.config.get("quality_checks", []))
+            self.project_python = QUALITY.project_python() if any('{python}' in arg for arg in
+                [*argv, *(arg for check in self.quality_checks for arg in check['argv'])]) else None
         except ValueError as error:
             raise TddError(str(error)) from error
         quality_limit = self.config.get("max_quality_runs", 20)
@@ -251,6 +280,8 @@ class Controller:
                 raise TddError("Quality inputs are configuration; source/test roots are already fingerprinted")
         self.state = read_json(self.state_path) if self.state_path.exists() else None
         if self.state and self.state.get("phase") != "DONE":
+            if self.state.get('generated_roots', []) != self.generated_roots:
+                raise TddError('Frozen generated_roots changed; setup repair cannot change excluded outputs')
             if "test_checkpoint" not in self.state:
                 raise TddError("Active task lacks test_checkpoint; finish and archive with the previous plugin version, then update. Do not infer a checkpoint from current files")
             checkpoint = self.state["test_checkpoint"]
@@ -273,11 +304,14 @@ class Controller:
 
     def manifest(self, paths):
         result = {}
+        outputs = [safe_path(self.root, value) for value in self.generated_roots]
         for relative in paths:
             path = safe_path(self.root, relative)
             if path.is_dir():
                 result[relative.rstrip("/") + "/"] = "directory"
                 for item in sorted(path.rglob("*")):
+                    if any(inside(item, output) for output in outputs):
+                        continue
                     if any(part in IGNORED for part in item.relative_to(path).parts):
                         continue
                     if item.is_symlink():
@@ -302,6 +336,7 @@ class Controller:
         for name in names:
             result[".ai-tdd/" + name] = digest(self.folder / name)
         for name in ("scripts/tdd.py", "scripts/quality.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
+                     "scripts/tdd-launcher.cjs", "scripts/runtime_entry.py", "scripts/dotnet_runner.py", "scripts/dotnet_setup.py", "runtime-manifest.json", "references/dotnet.md",
                      "agents/test-author.md", "agents/implementer.md", "agents/verifier.md",
                      "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md", "references/quality.md"):
             result["plugin/" + name] = digest(PLUGIN / name)
@@ -315,7 +350,7 @@ class Controller:
     def phase(self, *allowed):
         if not self.state or self.state["phase"] not in allowed:
             raise TddError("Expected phase " + "/".join(allowed))
-        if self.state["environment"] != environment():
+        if self.state["environment"] != self.runtime_environment():
             raise TddError("Environment changed; start a fresh reviewed run")
         if self.state["phase"] != "DONE" and self.state.get("quality_policy") != self.quality_policy:
             raise TddError("Frozen quality definitions/budget changed; setup repair cannot drop or weaken quality checks")
@@ -325,6 +360,13 @@ class Controller:
     def fixed_worker_models(self):
         if self.state.get('worker_models', worker_models({})) != self.worker_models:
             raise TddError('Frozen worker model policy changed; finish and archive this task before selecting another policy')
+
+    def runtime_environment(self):
+        base = environment()
+        if self.project_python and Path(self.project_python).resolve() != Path(sys.executable).resolve():
+            value = {'controller': base, 'project_python': self.project_python, 'sha256': digest(Path(self.project_python))}
+            return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+        return base
 
     def fixed(self, include_tests=True, include_spec=True):
         expected = self.state["frozen"] if include_tests else self.state["fixed"]
@@ -344,7 +386,7 @@ class Controller:
         if runs.is_symlink():
             raise TddError("Runner directory cannot be a symlink")
         report = runs / (run_id + (".xml" if self.config["runner"]["format"] == "junit" else ".json"))
-        replacements = {"{python}": sys.executable, "{plugin}": PLUGIN.as_posix(), "{root}": self.root.as_posix(), "{report}": report.as_posix()}
+        replacements = {"{python}": self.project_python or '', "{plugin}": PLUGIN.as_posix(), "{root}": self.root.as_posix(), "{report}": report.as_posix()}
         argv = []
         for arg in self.config["runner"]["argv"]:
             for key, value in replacements.items():
@@ -367,7 +409,7 @@ class Controller:
             raise TddError("Runner exit/report mismatch or infrastructure failure")
         if any(item["status"] == "skipped" for item in results):
             raise TddError("Skipped tests cannot certify this workflow")
-        receipt = {"id": run_id, "kind": kind, "utc": datetime.now(timezone.utc).isoformat(), "environment": environment(), "protected": before_protected, "source": before_source, "collected": collected, "results": results, "exit_code": process.returncode}
+        receipt = {"id": run_id, "kind": kind, "utc": datetime.now(timezone.utc).isoformat(), "environment": self.runtime_environment(), "protected": before_protected, "source": before_source, "collected": collected, "results": results, "exit_code": process.returncode}
         atomic_json(runs / (run_id + ".receipt.json"), receipt)
         return receipt
 
@@ -386,7 +428,7 @@ class Controller:
     def fresh(self):
         self.fixed()
         receipt = self.state["green_receipt"]
-        if receipt["source"] != self.source() or receipt["environment"] != environment():
+        if receipt["source"] != self.source() or receipt["environment"] != self.runtime_environment():
             raise TddError("Stale GREEN receipt; run green again before continuing")
 
     def run_quality(self, kind):
@@ -396,21 +438,21 @@ class Controller:
             self.state["quality_runs"] += 1
             self.save("quality-started", kind=kind, total_quality_runs=self.state["quality_runs"])
         source, protected = self.source(), self.protected()
-        before_environment = environment()
+        before_environment = self.runtime_environment()
         before_state = digest(self.state_path)
         before_review = digest(self.folder / "review.json")
-        fingerprint = lambda: (self.source(), self.protected(), environment(), digest(self.state_path), digest(self.folder / "review.json"))
+        fingerprint = lambda: (self.source(), self.protected(), self.runtime_environment(), digest(self.state_path), digest(self.folder / "review.json"))
         try:
-            receipt = QUALITY.execute_checks(self.root, self.folder, self.quality_checks, fingerprint)
+            receipt = QUALITY.execute_checks(self.root, self.folder, self.quality_checks, fingerprint, python_executable=self.project_python)
         except ValueError as error:
             if (self.state and self.source() != source and self.protected() == protected
-                    and environment() == before_environment and digest(self.state_path) == before_state
+                    and self.runtime_environment() == before_environment and digest(self.state_path) == before_state
                     and digest(self.folder / "review.json") == before_review):
                 self.state["phase"] = "GREEN"
                 self.state.pop("review", None)
                 self.save("quality-rejected", kind=kind, reason="source modified by a check")
             raise TddError("quality check rejected: " + str(error)) from error
-        receipt.update(kind=kind, utc=datetime.now(timezone.utc).isoformat(), source=source, protected=protected, environment=environment())
+        receipt.update(kind=kind, utc=datetime.now(timezone.utc).isoformat(), source=source, protected=protected, environment=self.runtime_environment())
         for check in receipt["checks"]:
             check["log_hashes"] = {name: digest(safe_path(self.root, check[name])) for name in ("stdout_path", "stderr_path")}
         path = self.folder / "runs" / (receipt["id"] + ".quality.json")
@@ -431,7 +473,7 @@ class Controller:
             return False
         path = self.folder / "runs" / (receipt["id"] + ".quality.json")
         current = (receipt["source"] == self.source() and receipt["protected"] == self.protected()
-                   and receipt["environment"] == environment() and digest(path) == self.state.get("quality_hash"))
+                   and receipt["environment"] == self.runtime_environment() and digest(path) == self.state.get("quality_hash"))
         return current and all(digest(safe_path(self.root, check[name])) == check["log_hashes"][name]
                                for check in receipt["checks"] for name in ("stdout_path", "stderr_path"))
 
@@ -457,10 +499,11 @@ class Controller:
         if baseline["exit_code"] or (not baseline["results"] and not allow_empty):
             raise TddError("Baseline must pass and execute tests; bootstrap needs --allow-empty")
         quality_baseline = self.run_quality("baseline")
-        self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "test_checkpoint": self.test_files(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
+        self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": self.runtime_environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "test_checkpoint": self.test_files(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
         self.state.update(runner_runs=1, runner_run_limit=self.config.get("max_runner_runs", 100))
         self.state.update(initial_required_ids=list(baseline["collected"]), quality_policy=self.quality_policy,
                           worker_models=dict(self.worker_models),
+                          generated_roots=list(self.generated_roots),
                           quality_runs=int(bool(self.quality_checks)), quality_run_limit=self.quality_policy["run_limit"],
                           quality_receipt=quality_baseline, quality_hash=digest(self.folder / "runs" / (quality_baseline["id"] + ".quality.json")))
         return self.save("begin")
@@ -769,16 +812,26 @@ def controller_command(command, root, plugin_root, cwd=None):
         return False
     try:
         parts = shlex.split(command)
-        if len(parts) < 3 or Path(parts[0]).name.lower() not in {"python", "python3", "python.exe", "python3.exe"}:
+        if len(parts) < 3:
             return False
-        offset = 2 if parts[1] == "-B" else 1
-        if Path(parts[offset]).resolve() != (Path(plugin_root) / "scripts/tdd.py").resolve():
+        executable = Path(parts[0]).name.lower()
+        if executable in {'node', 'node.exe'}:
+            offset = 1
+            while parts[offset] in {'--preserve-symlinks', '--preserve-symlinks-main'}:
+                offset += 1
+            script = 'scripts/tdd-launcher.cjs'
+        elif executable in {'python', 'python3', 'python.exe', 'python3.exe'}:
+            offset = 2 if parts[1] == '-B' else 1
+            script = 'scripts/tdd.py'
+        else:
+            return False
+        if Path(parts[offset]).resolve() != (Path(plugin_root) / script).resolve():
             return False
         args = parser().parse_args(parts[offset + 1:])
         path = Path(args.root)
         if not path.is_absolute():
             path = Path(cwd or root) / path
-        return args.command != "init" and path.resolve() == root
+        return args.command != "init" and path.resolve() == Path(root).resolve()
     except (ValueError, IndexError, SystemExit):
         return False
 
@@ -851,6 +904,8 @@ def guard(payload, plugin_root=PLUGIN):
         if role not in {"test-author", "implementer"}:
             return "deny: delegate feature edits to the role that owns the phase"
         protected = [safe_path(root, item) for item in c.config["protected_paths"] + c.quality_inputs]
+        if any(inside(path, safe_path(root, item)) for item in c.generated_roots):
+            return 'deny: generated build outputs are not worker write ownership'
         if inside(path, c.folder) or any(inside(path, item) for item in protected) or any(part.startswith(".env") or part == ".git" for part in Path(relative).parts):
             return "deny: controller, contracts, runner configuration and private paths are protected"
         roots = c.config["test_roots"] if phase in {"TEST", "AMEND"} else c.config["source_roots"] if phase in {"IMPLEMENT", "GREEN"} else []
@@ -886,14 +941,32 @@ def lock(root):
         path.unlink(missing_ok=True)
 
 
+def dotnet_configuration(root):
+    loader = importlib.util.spec_from_file_location('ai_tdd_dotnet_setup', PLUGIN / 'scripts/dotnet_setup.py')
+    module = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(module)
+    try:
+        return module.configure(root)
+    except module.DotnetError as error:
+        raise TddError(str(error)) from error
+
+
 def init(root):
     folder = managed_folder(root)
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "config.json"
     if path.exists():
         raise TddError("Config already exists; will not overwrite it")
-    atomic_json(path, read_json(PLUGIN / "templates/config.unittest.json"))
-    return {"initialized": str(folder), "next": "Adapt config; write spec.json and independent review-plan.json; then begin"}
+    dotnet = False
+    for current, directories, files in os.walk(root, followlinks=False):
+        directories[:] = [name for name in directories if name not in IGNORED | {'bin', 'obj', '.ai-tdd', '.ai-tdd-history'}]
+        if any(name.lower().endswith('.csproj') for name in files):
+            dotnet = True
+            break
+    config = dotnet_configuration(root) if dotnet else read_json(PLUGIN / 'templates/config.unittest.json')
+    atomic_json(path, config)
+    return {'initialized': str(folder), 'next': ('.NET projects detected; review generated ownership and existing repo quality checks; '
+            if dotnet else 'Adapt config; ') + 'write spec.json and independent review-plan.json; then begin'}
 
 
 def main():
@@ -918,7 +991,7 @@ def main():
                 raise TddError("Not started yet")
             if result["phase"] in {"GREEN", "VERIFY", "DONE"}:
                 receipt = result["completion_receipt"] if result["phase"] == "DONE" else result["green_receipt"]
-                current = receipt["source"] == c.source() and result["frozen"] == c.protected() and result["environment"] == environment()
+                current = receipt["source"] == c.source() and result["frozen"] == c.protected() and result["environment"] == c.runtime_environment()
                 if result["phase"] == "DONE":
                     current = current and digest(c.folder / "review.json") == result["review_hash"] and c.quality_current()
                 result = {**result, "receipt_current": current}

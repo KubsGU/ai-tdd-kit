@@ -4,8 +4,10 @@
 
 Przenośny workflow: opis zadania → doprecyzowanie → kontrakt akceptacji → osobny
 autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależny review.
-Kontroler w Pythonie egzekwuje fazy na podstawie wykonanych testów. Hook i ograniczenia
-narzędzi agentów pilnują właścicieli zmian. Wersja 1.4.0, licencja MIT.
+Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
+tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
+dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
+Wersja 1.5.0, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -40,12 +42,18 @@ Repozytorium pełni jednocześnie rolę publicznego marketplace. Aktualizacja:
 
 ## Instalacja na drugim komputerze
 
-Potrzebujesz aktualnego Claude Code (testowano 2.1.285 i 2.1.286), Python 3.10+ i Node.js
-na PATH; dla Node wybierz wspieraną wersję LTS. Plugin nie wymaga dodatkowych
-bibliotek Pythona. Zależności aplikacji
-i jej runnera, np. pytest, pozostają częścią projektu.
+Potrzebujesz aktualnego Claude Code (testowano 2.1.285 i 2.1.286) i Node.js na PATH;
+wybierz wspieraną wersję LTS. W projekcie .NET potrzebny jest jego dotychczasowy SDK
+i pakiety testowe; automatyczny setup wymaga SDK 8+/MSBuild 17.8+. Na Windows x64,
+Linux x64 i macOS arm64 koordynator może przygotować przypięty runtime kontrolera
+bez osobnej instalacji Pythona, jeśli polityka komputera pozwala go uruchomić.
+Lokalna próba na Windows została zablokowana przez Application Control dla
+niepodpisanego pliku. Taka polityka wymaga zatwierdzonego runtime albo istniejącego
+Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements).
+Na innych platformach potrzebny jest Python 3.10+.
+Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.4.0.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.5.0.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -67,8 +75,30 @@ claude --model sonnet --plugin-dir "/pełna/ścieżka/ai-tdd-kit/plugins/ai-tdd"
 ```
 
 Nie kopiuj kluczy API ani konfiguracji konta z tego komputera. Na drugim korzystaj
-ze swojego zwykłego logowania Claude Code. Jeżeli Python jest poza PATH, ustaw
-zmienną `AI_TDD_PYTHON` na ścieżkę do jego pliku wykonywalnego. Node musi być na PATH.
+ze swojego zwykłego logowania Claude Code. Przed rozpoczęciem zadania koordynator
+sprawdza runtime i w razie braku Pythona wykonuje jawny `setup-runtime`. Pobierany
+plik jest przypięty do wersji wydania i sprawdzany przez SHA256 oraz rozmiar,
+także przy ponownym użyciu. Hook nigdy niczego nie pobiera. Jeżeli chcesz używać
+własnego Pythona poza PATH, ustaw `AI_TDD_PYTHON` na jego plik wykonywalny.
+
+## Projekt .NET bez ręcznego adaptera
+
+Uruchom Claude w katalogu solution i wpisz `/ai-tdd:feature <opis zadania>`.
+`init` wykrywa istniejące projekty C#, ocenia ich konfigurację MSBuild i ustawia
+zakres kodu, testów, generowanych plików oraz runnera. Nie podnosi wersji NuGet,
+nie zmienia ustawień globalnych i nie nadpisuje istniejącej konfiguracji pluginu.
+
+Ścieżka VSTest obsługuje xUnit z `xunit.runner.visualstudio >= 3.0.0` oraz NUnit
+`>= 3.14.0` z `NUnit3TestAdapter >= 4.5.0`. Runner porównuje pełne discovery,
+natywne dowody frameworka i TRX dla wszystkich skonfigurowanych projektów oraz TFM.
+RED wymaga porażki w ciele testu; błąd runtime, setupu, teardownu albo brakujące
+testy nie otwierają implementacji. Zwykły TRX z MSTest i Microsoft.Testing.Platform
+nie dają obecnie obsługiwanego dowodu: setup zgłosi konkretny brak.
+
+Koordynator przed `begin` dopasowuje istniejące reguły `.editorconfig`, build,
+analyzery, sprawdzanie formatowania i polecenia CI. Nie narzuca nowego stylu;
+brak skonfigurowanego narzędzia pozostaje jawnym ograniczeniem. Układ projektów,
+diagnoza i przykłady poleceń: [instrukcja .NET](plugins/ai-tdd/references/dotnet.md).
 
 ## Modele, tokeny i cache
 
@@ -100,13 +130,15 @@ stałego profilu zachowaj jako nieukończone zadanie; nie zmieniaj modelu ani ko
 [wyniki i ograniczenia](validation/MODEL_BENCHMARK.md) oraz
 [badania modeli i cache](validation/MODEL_COST_RESEARCH.md).
 
-Po pobraniu ZIP lub sklonowaniu repo możesz skorzystać z launchera. Z katalogu
-paczki wskaż projekt docelowy:
+Po pobraniu ZIP lub sklonowaniu repo możesz opcjonalnie skorzystać z launchera
+Node. Z katalogu paczki wskaż projekt docelowy:
 
 ```text
-python -B scripts/launch_claude.py --project "C:/projekty/moj-projekt"
+node scripts/launch_claude.cjs --project "C:/projekty/moj-projekt"
 ```
 
+Ten pomocniczy skrypt nie jest potrzebny do bezpośredniego uruchomienia Claude.
+Dotychczasowy wariant Pythona pozostaje dostępny dla istniejących skryptów.
 Launcher wybiera Sonneta, wymusza agentów na pierwszym planie i usuwa zmienne
 wyłączające cache lub wymuszające inny model workerów tylko dla tej sesji.
 Nie zmienia ustawień użytkownika, uprawnień, logowania ani MCP. `--dry-run` pokazuje
@@ -119,7 +151,8 @@ Krótkie odpowiedzi kontrolera i przekazywanie ścieżek do artefaktów ogranicz
 powtarzanie historii, hashy i zielonych logów. Wymagania oraz pełne dowody pozostają
 dostępne. Każde wymagane wykonanie testów nadal się odbywa; wyników runnera nie
 cachujemy. Pełny JSON dla diagnostyki lub skryptów otrzymasz przez `--full` przed
-poleceniem kontrolera, np. `tdd.py --root /projekt --full status`.
+poleceniem kontrolera, np.
+`node "/sciezka/ai-tdd/scripts/tdd-launcher.cjs" --root /projekt --full status`.
 
 W wersji 1.2 odpowiedź DONE demonstratora była o 88,4% mniejsza w bajtach. W dwóch rzeczywistych
 próbach Opusa 92,1–92,6% raportowanych tokenów wejściowych odczytano z cache, łącznie
@@ -188,6 +221,9 @@ Plugin nie wykonuje automatycznie merge, publikacji ani deployu.
 Adapter pytest zapisuje rzeczywisty typ wyjątku i identyfikatory node ID. Wykrywa
 testy wyłączone filtrem, xfail/xpass oraz błędy setup/teardown. Zwykły JUnit bez
 typu porażki nie daje wystarczającego dowodu RED. pytest uruchamiamy sekwencyjnie.
+Pakiet runtime kontrolera nie zastępuje środowiska Pythona projektu ani jego
+bibliotek. Własne polecenia runnera z `{python}` nadal wymagają prawdziwego
+interpretera projektu.
 
 Szczegóły konfiguracji, polecenia, granice i format raportów:
 [protokół wykonania](plugins/ai-tdd/references/protocol.md).
@@ -215,6 +251,9 @@ przykłady, a nie benchmark modeli ani gwarancja braku błędów.
 
 Z katalogu `ai-tdd-kit`:
 
+To polecenia dla współtwórców paczki; użytkownik .NET nie musi instalować Pythona
+ani narzędzi deweloperskich pluginu.
+
 ```text
 python -B -m unittest discover -s plugins/ai-tdd/tests -v
 python -m ruff check .
@@ -223,7 +262,7 @@ python -B scripts/test_strength_demo.py
 python -B scripts/measure_context.py
 ```
 
-Pierwsze polecenie sprawdza bramki i próby obejścia procesu. Drugie wykonuje trzy
+Pierwsze polecenie sprawdza bramki i próby obejścia procesu. Demonstrator wykonuje trzy
 realne cykle RED/GREEN oraz dwie wybrane mutacje na sztucznym projekcie, bez AI
 i dostępu do produkcji. Integracyjne testy adaptera pytest wymagają pytest
 w środowisku; bez niego są oznaczane jako pominięte. Zależności testów paczki
@@ -247,7 +286,7 @@ sprawdzić integralność jego zawartości; nie jest podpisem autora.
 | Dowody wykonania i trwały stan ułatwiają audit oraz wznowienie. | Trzeba poprawnie zadeklarować zakres testów, helpery i konfigurację. |
 | Małe cykle ograniczają błąd wczesnej dużej implementacji. | Więcej wywołań modeli i runnera; przy prostym kosmetycznym zadaniu zwykle zbędne. |
 | Korekty mają jawny właściciel i nową weryfikację. | Repo z istniejącymi błędami/skips wymaga osobnego uporządkowania baseline. |
-| Adaptery JSON dla unittest/pytest i obsługa JUnit umożliwiają integrację z istniejącą suite. | pytest wymaga wykonania sekwencyjnego; inne frameworki potrzebują własnej walidacji. |
+| Wbudowany runner .NET oraz adaptery unittest/pytest i JUnit pozwalają wykorzystać istniejącą suite. | .NET ma jawne ograniczenia frameworka i układu; pytest wymaga wykonania sekwencyjnego. |
 
 Hook jest zabezpieczeniem procesu, a nie izolacją systemową. Złośliwy kod testu
 może naruszyć proces runnera; właściciel komputera może wyłączyć hooki. Ukryte testy

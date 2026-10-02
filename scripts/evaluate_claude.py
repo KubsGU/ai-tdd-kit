@@ -187,7 +187,7 @@ def main():
                 "--output-format", "stream-json", "--verbose", "--max-turns", str(args.max_turns), "--max-budget-usd", str(args.max_budget_usd),
                 "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config",
                 "--mcp-config", '{"mcpServers":{}}', "--permission-mode", "acceptEdits",
-                "--allowedTools", "Read,Glob,Grep,Write,Edit,Agent,Bash(python *),Bash(python3 *)"]
+                "--allowedTools", "Read,Glob,Grep,Write,Edit,Agent,Bash(python *),Bash(python3 *),Bash(node *)"]
         if args.effort:
             argv += ["--effort", args.effort]
         env = launch_environment(os.environ)
@@ -243,7 +243,7 @@ def main():
                     if content.get("type") == "tool_use" and content.get("name") in {"Agent", "Task"}:
                         agents.append(content.get("input", {}).get("subagent_type", ""))
                         dispatch_roles[content["id"]] = content.get("input", {}).get("subagent_type", "")
-                    if content.get("type") == "tool_use" and content.get("name") == "Bash" and "scripts/tdd.py" in content.get("input", {}).get("command", ""):
+                    if content.get("type") == "tool_use" and content.get("name") == "Bash" and any(entry in content.get("input", {}).get("command", "") for entry in ("scripts/tdd.py", "scripts/tdd-launcher.cjs")):
                         controller_calls.add(content["id"])
             if item.get("type") == "user":
                 for content in item.get("message", {}).get("content", []):

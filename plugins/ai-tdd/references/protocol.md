@@ -19,12 +19,23 @@ For repository profiling, test oracles and tool scope, follow
 [the quality guidance](quality.md).
 
 Tested Claude Code: 2.1.285 and 2.1.286. Use a compatible current release;
-older hook/subagent behavior is not validated. Python 3.10+ and Node.js must be
-on PATH; use an actively supported Node LTS release. The Node launcher chooses
-`python` on Windows and `python3` on Unix;
-AI_TDD_PYTHON can specify an actual interpreter executable (not a shell alias).
-Use the same interpreter for controller calls and hooks. The controller has no
-third-party dependencies. pytest/Jest/etc remain dependencies of the host project.
+older hook/subagent behavior is not validated. Node.js must be on PATH; use an
+actively supported LTS release. The stable `scripts/tdd-launcher.cjs` facade
+runs the same Python controller using an installed Python 3.10+ or a verified
+bundled interpreter. `AI_TDD_PYTHON` can select an actual interpreter executable
+(not a shell alias). Once provisioned, a valid cached bundle is preferred;
+corrupt bundles fail rather than falling back to a different backend.
+
+Before a new task, run the facade's `--runtime-info`. If no backend is available,
+explicit `setup-runtime [--root PROJECT]` provisions the exact release binary
+for Windows x64, Linux x64 or macOS arm64, checking pinned size/SHA256 before
+installation and each use. It requires network access and a writable plugin
+cache. Hooks never download. Existing state, including DONE, or a controller
+lock prevents provisioning: resume the recorded backend or archive DONE first.
+Other hosts need actual Python. The bundle includes standard-library controller
+dependencies, not pytest or custom project Python environments; `{python}`
+commands need the real project interpreter. Direct Python controller calls
+remain compatible. See [the .NET guide](dotnet.md) for native project setup.
 
 Start Claude with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` in its environment.
 This forces foreground subagents, including interactive sessions where fork mode
@@ -68,6 +79,9 @@ with an independently configured sandbox. No hidden-test isolation is claimed.
   missing roles inherit. Author/verifier allow inherit or opus; implementer also
   allows haiku/sonnet. The normalized policy freezes at begin, including across
   reconfigure/rebase; it is requested routing, not backend identity proof.
+  The .NET preset also declares evaluated project/TFM modules and exact generated
+  project bin/obj roots. These exclusions are frozen at begin, denied to workers,
+  and cannot be expanded through setup repair. No global bin/obj ignore exists.
 - `spec.json`: positive integer version, nonempty goal and acceptance list with
   unique nonempty id and description. Add examples, scope, invariants,
   nonfunctional requirements and assumptions where relevant. open_questions
@@ -101,17 +115,19 @@ this version can certify a feature; it does not silently grandfather them.
 Prefix every command with:
 
 ```text
-python -B "/absolute/path/to/ai-tdd/scripts/tdd.py" --root "/absolute/project"
+node "/absolute/path/to/ai-tdd/scripts/tdd-launcher.cjs" --root "/absolute/project"
 ```
 
-Use `python3` on Unix where appropriate. In an active task use Bash, forward
+Legacy direct `python -B .../scripts/tdd.py` calls are still compatible when a
+real interpreter exists. Use the same backend for controller calls and hooks.
+In an active task use Bash, forward
 slashes, and a single command; no cd, pipes, substitutions, redirection, operators
 or command chaining. Keep rationale text plain without shell metacharacters.
 
 | Command | Preconditions and resulting behavior |
 | --- | --- |
-| init | Creates config template without overwriting any existing config. |
-| doctor | Executes the actual Node/Python hook with a sentinel input and validates its structured denial response. No task or source changes. |
+| init | Creates config without overwriting existing config; detected C# projects use evaluated native .NET setup, other projects retain the template. |
+| doctor | Executes the actual Node/backend hook with a sentinel input and validates its structured denial response. No task or source changes. |
 | archive | DONE only; moves .ai-tdd into a unique project-local .ai-tdd-history/task-id without overwriting old evidence or changing feature files. |
 | begin [--allow-empty] | Validated spec/plan, passing full test and configured quality baselines; checkpoint existing test files → TEST. |
 | status | Recomputes freshness and returns the compact decision view with receipt paths; never changes state. Put --full before status for the complete diagnostic state. |
@@ -171,13 +187,26 @@ IDs, file hashes before/after execution and source freshness at subsequent gates
 CLI begin also requires a working hook self-test. Receipts include the
 spec/config/test/helper manifests, bundled controller/runner/hook code, role and
 coordinator instructions,
-source and a hash of interpreter/platform/relevant environment options. Dependency
+source and a hash of the actual interpreter executable/platform/relevant
+environment options. Native .NET receipts also bind the selected SDK and
+evaluated project configuration. Dependency
 lockfiles are bound when configured; installed package contents, every environment
 variable, external services and nondeterministic state are not fully fingerprinted.
 
 Built-in unittest JSON adapter supports ordinary tests and subtests. Failed
 subtests count against their parent ID. Skips, expectedFailure and fixture/discovery
 errors cannot certify a pass. Whole-suite inventory is the acceptance unit.
+
+The built-in .NET VSTest runner reconciles every configured test project/TFM's
+separate discovery, native framework events/XML and TRX. Supported existing
+packages are xUnit with xunit.runner.visualstudio >=3.0.0, or NUnit >=3.14.0 with
+NUnit3TestAdapter >=4.5.0, plus Microsoft.NET.Test.Sdk. Runtime, setup, teardown,
+invalid cases and inconsistent/missing inventory cannot certify RED or GREEN.
+Behavioral RED requires observed xUnit assertion types or structured NUnit
+assertion evidence, and an actual test-body stack witness. Ordinary MSTest TRX,
+MTP, filters and unsupported output layouts fail closed. No package upgrade or
+manually authored adapter is needed for a supported project. See
+[the .NET guide](dotnet.md) for exact boundaries and quality configuration.
 
 For pytest use templates/config.pytest.json, adapt roots and use actual pytest
 node IDs, such as `tests/test_fee.py::FeeTests::test_threshold`. The bundled JSON

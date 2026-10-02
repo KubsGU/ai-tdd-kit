@@ -28,12 +28,23 @@ assessment. Existing repo lint, formatting, types and security checks run throug
 the controller, including fresh checks before DONE. Missing configuration is an
 explicit limitation. See [test quality and repository checks](references/quality.md).
 
-Requires Python 3.10+, Node.js on PATH, and your project's working test runner.
-The controller verifies the actual hook before beginning. It stores private
+Requires Node.js on PATH and your project's working test runner. On Windows x64,
+Linux x64 and macOS arm64, explicit runtime setup provides a version-pinned,
+SHA256/size-verified controller without a separate Python installation. Other
+hosts need Python 3.10+. Hooks never download a runtime. The Node facade preserves
+the same controller and verifies the actual hook before beginning. It stores private
 task state and execution receipts under `.ai-tdd/` in the target project.
 
+For .NET, `init` detects and evaluates existing C# projects using SDK 8+/MSBuild
+17.8+. The built-in VSTest runner supports xUnit with adapter >=3.0.0 and NUnit
+>=3.14.0 with NUnit3TestAdapter >=4.5.0. It reconciles full project/TFM discovery,
+native framework evidence and TRX, without a manually written adapter or package
+upgrade. MSTest TRX and Microsoft.Testing.Platform fail closed until adequate
+native evidence is supported. See [the .NET guide](references/dotnet.md) for
+layout limits, runtime setup and existing build/analyzer/format checks.
+
 Workers write only their declared tests or source. The coordinator runs the
-required suite through the Python controller. Behavioral failures authorize
+required suite through the Node controller facade. Behavioral failures authorize
 implementation; missing/skipped tests, import errors and stale evidence do not.
 Incorrect tests and runner configuration have distinct, audited correction flows.
 The task-wide test-run limit survives retry and setup repair. The pytest JSON
@@ -49,4 +60,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.4.0.
+MIT license. Version 1.5.0.

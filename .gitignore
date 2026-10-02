@@ -7,3 +7,4 @@ validation/*.json
 CHECKSUMS.json
 .ai-tdd/
 .ai-tdd-history/
+.runtime/

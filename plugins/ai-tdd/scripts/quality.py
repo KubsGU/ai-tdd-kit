@@ -5,9 +5,11 @@ supplies a fingerprint of the artifacts that commands must not modify and owns
 the final persisted receipt. This module never reads or imports the controller.
 """
 import math
+import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import uuid
@@ -17,6 +19,26 @@ PLUGIN = Path(__file__).resolve().parents[1]
 KINDS = {"lint", "format", "typecheck", "security", "custom"}
 RESERVED_NAMES = {"con", "prn", "aux", "nul", *{"com" + str(i) for i in range(1, 10)},
                   *{"lpt" + str(i) for i in range(1, 10)}}
+
+
+def project_python():
+    """A bundled controller is not a general-purpose project interpreter."""
+    if not getattr(sys, 'frozen', False):
+        return sys.executable
+    candidates = [os.environ['AI_TDD_PYTHON']] if os.environ.get('AI_TDD_PYTHON') else ['python3', 'python']
+    for candidate in candidates:
+        executable = shutil.which(candidate)
+        if not executable:
+            continue
+        try:
+            process = subprocess.run([executable, '-I', '-c', 'import json,sys;print(json.dumps([sys.executable,list(sys.version_info[:2])]))'],
+                                     capture_output=True, encoding='utf-8', timeout=10, shell=False)
+            selected, version = json.loads(process.stdout)
+            if process.returncode == 0 and version[0] == 3 and version[1] >= 10 and Path(selected).is_file():
+                return str(Path(selected).resolve())
+        except (OSError, ValueError, TypeError, IndexError, subprocess.TimeoutExpired):
+            continue
+    raise ValueError('Project Python 3.10+ is required by {python} in this command; select AI_TDD_PYTHON. .NET commands need no project Python')
 
 
 def validate_checks(checks):
@@ -72,7 +94,7 @@ def _runs_directory(root, folder):
     return runs
 
 
-def execute_checks(root, folder, checks, fingerprint):
+def execute_checks(root, folder, checks, fingerprint, python_executable=None):
     """Execute checks once in order, retaining logs and stopping on failure.
 
     Log paths are relative to ``root``. ``checks`` in the returned receipt records
@@ -87,7 +109,8 @@ def execute_checks(root, folder, checks, fingerprint):
     runs = _runs_directory(root, folder)
     env = dict(os.environ)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    replacements = {"{python}": sys.executable, "{root}": str(root), "{plugin}": str(PLUGIN)}
+    uses_python = any('{python}' in arg for check in checks for arg in check['argv'])
+    replacements = {"{python}": (python_executable or project_python()) if uses_python else '', "{root}": str(root), "{plugin}": str(PLUGIN)}
     receipt["status"] = "passed"
     for index, check in enumerate(checks):
         argv = []

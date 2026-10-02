@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "files": [
     "README.md",
     "README.pl.md",
@@ -57,6 +57,26 @@
     "validation/MODEL_BENCHMARK.md",
     "validation/MODEL_BENCHMARK_PILOT_PROTOCOL.md",
     "validation/MODEL_COST_RESEARCH.md",
-    "validation/MODEL_BENCHMARK_RESULTS.json"
+    "validation/MODEL_BENCHMARK_RESULTS.json",
+    ".github/workflows/runtime.yml",
+    "requirements-runtime-build.txt",
+    "plugins/ai-tdd/runtime-manifest.json",
+    "plugins/ai-tdd/references/dotnet.md",
+    "plugins/ai-tdd/scripts/dotnet_runner.py",
+    "plugins/ai-tdd/scripts/dotnet_setup.py",
+    "plugins/ai-tdd/scripts/tdd-launcher.cjs",
+    "plugins/ai-tdd/scripts/runtime_entry.py",
+    "plugins/ai-tdd/tests/test_dotnet_controller.py",
+    "plugins/ai-tdd/tests/test_dotnet_runner.py",
+    "plugins/ai-tdd/tests/test_portable_runtime.py",
+    "plugins/ai-tdd/tests/test_node_launch.py",
+    "scripts/build_runtime.py",
+    "scripts/measure_runtime.py",
+    "scripts/dotnet_demo.py",
+    "scripts/launch_claude.cjs",
+    "validation/dotnet-native-fixtures.json",
+    "scripts/check_runtime_download.py",
+    "validation/DOTNET_VALIDATION.md",
+    "validation/DOTNET_CI_RESULTS.json"
   ]
 }
