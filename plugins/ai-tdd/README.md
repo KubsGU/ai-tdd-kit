@@ -43,6 +43,13 @@ upgrade. MSTest TRX and Microsoft.Testing.Platform fail closed until adequate
 native evidence is supported. See [the .NET guide](references/dotnet.md) for
 layout limits, runtime setup and existing build/analyzer/format checks.
 
+xUnit IDs come from native discovery and execution, with readable display names
+kept as metadata even when repeated or shortened. Read actual baseline report
+and RED log/report IDs for acceptance mappings and review; do not build IDs from
+names. Exactly one execution per discovered case is required. Theories that
+enumerate rows only at runtime remain unsupported. Keep native diagnostic logs
+local because they may contain fixture values and paths.
+
 Workers write only their declared tests or source. The coordinator runs the
 required suite through the Node controller facade. Behavioral failures authorize
 implementation; missing/skipped tests, import errors and stale evidence do not.
@@ -60,4 +67,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.5.1.
+MIT license. Version 1.5.2.

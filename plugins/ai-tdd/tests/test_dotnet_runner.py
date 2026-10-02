@@ -42,6 +42,47 @@ def trx(outcome="Passed", total=1):
             f'failed="{int(outcome == "Failed")}" notExecuted="{int(outcome == "NotExecuted")}" /></ResultSummary></TestRun>')
 
 
+SOURCE = str(Path(tempfile.gettempdir()) / "ai-tdd-contract/tests/Demo/bin/Debug/net8.0/Demo.dll")
+VS_ID = "aefd6b69-ca17-5cd0-14b5-55d5b9810873"
+
+
+def discovered(case_id="case", vs_id=VS_ID, name="Demo.Checks.Total"):
+    return {"Id": vs_id, "FullyQualifiedName": "Demo.Checks.Total", "DisplayName": name,
+            "ExecutorUri": "executor://xunit/VsTestRunner3/netcore/", "Source": SOURCE,
+            "Properties": [{"Key": {"Id": "XunitTestCaseUniqueID"}, "Value": case_id},
+                           {"Key": {"Id": "TestCase.ManagedType"}, "Value": "Demo.Checks"}]}
+
+
+def discovery_trace(cases=None, batches=(), **changes):
+    cases = [discovered()] if cases is None else cases
+    payload = {"TotalTests": len(cases) + sum(map(len, batches)), "LastDiscoveredTests": cases,
+               "IsAborted": False, "FullyDiscoveredSources": [SOURCE], "PartiallyDiscoveredSources": [],
+               "NotDiscoveredSources": [], "SkippedDiscoverySources": [], **changes}
+    events = [{"MessageType": "TestDiscovery.TestFound", "Payload": batch} for batch in batches]
+    events.append({"MessageType": "TestDiscovery.Completed", "Payload": payload})
+    return "\n".join("TpTrace Verbose: 0 : 123, 1, 2026/10/02, 10:00:00.001, 100, vstest.console.dll, "
+                     "TestRequestSender.OnDiscoveryMessageReceived: Received message: " + json.dumps({'Version': 7, **event}) for event in events)
+
+
+def xunit_trx(outcome="Passed", total=1, cases=None):
+    cases = cases or [("Demo.Checks.Total", VS_ID, outcome)]
+    namespace = 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'
+    import xml.etree.ElementTree as ET
+    tree = ET.Element('TestRun', xmlns=namespace)
+    results, definitions = ET.SubElement(tree, 'Results'), ET.SubElement(tree, 'TestDefinitions')
+    for index, (name, vs_id, result) in enumerate(cases):
+        execution = f'00000000-0000-0000-0000-{index + 1:012d}'
+        ET.SubElement(results, 'UnitTestResult', testName=name, testId=vs_id, executionId=execution, outcome=result)
+        definition = ET.SubElement(definitions, 'UnitTest', id=vs_id, name=name)
+        ET.SubElement(definition, 'Execution', id=execution)
+        ET.SubElement(definition, 'TestMethod', className='Demo.Checks', name='Total',
+                      codeBase=SOURCE, adapterTypeName='executor://xunit/VsTestRunner3/netcore/')
+    summary = ET.SubElement(tree, 'ResultSummary')
+    ET.SubElement(summary, 'Counters', total=str(total), executed=str(sum(row[2] != 'NotExecuted' for row in cases)),
+                  passed=str(sum(row[2] == 'Passed' for row in cases)), failed=str(sum(row[2] == 'Failed' for row in cases)))
+    return ET.tostring(tree, encoding='unicode')
+
+
 class DotnetEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.assertTrue((SCRIPTS / "dotnet_runner.py").is_file(), "Native .NET runner is missing")
@@ -50,12 +91,12 @@ class DotnetEvidenceTests(unittest.TestCase):
         loader.loader.exec_module(self.runner)
 
     def report(self, events=None, xml=None, names=None):
-        return self.runner.reconcile("tests/Demo.csproj", "net8.0", names or ["Demo.Checks.Total"],
-                                     console(events or messages()), xml or trx())
+        return self.runner.reconcile("tests/Demo.csproj", "net8.0", names or self.runner.discovery_cases(discovery_trace()),
+                                     console(events or messages()), xml or xunit_trx())
 
     def test_native_assertion_with_body_stack_is_the_only_red_witness(self):
-        report = self.report(messages("test-failed"), trx("Failed"))
-        self.assertEqual(report["collected"], ["tests/Demo.csproj|net8.0|Demo.Checks.Total"])
+        report = self.report(messages("test-failed"), xunit_trx("Failed"))
+        self.assertEqual(report["collected"], ["tests/Demo.csproj|net8.0|xunit:case"])
         self.assertEqual(report["results"][0]["exception"], "AssertionError")
         self.assertEqual(report["results"][0]["native_exception_types"], ["Xunit.Sdk.EqualException"])
 
@@ -64,16 +105,16 @@ class DotnetEvidenceTests(unittest.TestCase):
                                  ("Xunit.Sdk.EqualException", "at Demo.Checks..ctor()"),
                                  ("Application.AssertionException", "at Demo.Checks.Total()")]:
             with self.subTest(exception=exception, stack=stack):
-                result = self.report(messages("test-failed", exception, stack), trx("Failed"))["results"][0]
+                result = self.report(messages("test-failed", exception, stack), xunit_trx("Failed"))["results"][0]
                 self.assertEqual(result["status"], "error")
                 self.assertNotEqual(result["exception"], "AssertionError")
 
     def test_skip_is_preserved_and_unknown_failure_types_cannot_be_red(self):
-        self.assertEqual(self.report(messages("test-skipped"), trx("NotExecuted"))["results"][0]["status"], "skipped")
+        self.assertEqual(self.report(messages("test-skipped"), xunit_trx("NotExecuted"))["results"][0]["status"], "skipped")
         events = messages("test-failed")
         events[3].pop("ExceptionTypes")
         with self.assertRaises(self.runner.DotnetError):
-            self.report(events, trx("Failed"))
+            self.report(events, xunit_trx("Failed"))
 
     def test_duplicate_missing_and_cleanup_lifecycle_fail_closed(self):
         missing = messages()
@@ -86,8 +127,9 @@ class DotnetEvidenceTests(unittest.TestCase):
                 self.report(events)
 
     def test_discovery_and_trx_inventory_must_match_actual_execution(self):
-        for names, xml in [(["Demo.Checks.Other"], trx()), (["Demo.Checks.Total"] * 2, trx()),
-                           (["Demo.Checks.Total"], trx("Failed")), (["Demo.Checks.Total"], trx(total=2))]:
+        inventory = self.runner.discovery_cases(discovery_trace())
+        other = self.runner.discovery_cases(discovery_trace([discovered(case_id="other")]))
+        for names, xml in [(other, xunit_trx()), (inventory, xunit_trx("Failed")), (inventory, xunit_trx(total=2))]:
             with self.subTest(names=names, xml=xml), self.assertRaises(self.runner.DotnetError):
                 self.report(names=names, xml=xml)
 
@@ -95,6 +137,89 @@ class DotnetEvidenceTests(unittest.TestCase):
         with self.assertRaises(self.runner.DotnetError):
             self.runner.reconcile("tests/Demo.csproj", "net8.0", ["Demo.Checks.Total"],
                                   "captured output " + console(messages()), trx())
+
+    def test_long_and_identical_theory_names_keep_distinct_native_ids(self):
+        second_id = '8b03426e-99f4-a286-aeb8-3576835e8043'
+        truncated = 'Demo.' + 'long' * 110 + '···'
+        for execution_names in [('Demo.' + 'long' * 140 + '(row: 1)', 'Demo.' + 'long' * 140 + '(row: 2)'),
+                                ('Total(value: "' + 'x' * 50 + '"···)',) * 2]:
+            with self.subTest(execution_names=execution_names):
+                native = [discovered(name=truncated), discovered('other', second_id, truncated)]
+                inventory = self.runner.discovery_cases(discovery_trace(native))
+                first, second = messages(), messages()
+                for batch, case_id, test_id, name in [(first, 'case', 'test', execution_names[0]),
+                                                       (second, 'other', 'other-test', execution_names[1])]:
+                    for event in batch:
+                        if 'TestCaseUniqueID' in event:
+                            event['TestCaseUniqueID'] = case_id
+                        if 'TestUniqueID' in event:
+                            event['TestUniqueID'] = test_id
+                        for key in ('TestDisplayName', 'TestCaseDisplayName'):
+                            if key in event:
+                                event[key] = name
+                events = first[:-1] + second[1:]
+                events[-1]['TestsTotal'] = 2
+                report = self.report(events, xunit_trx(total=2, cases=[(execution_names[0], VS_ID, 'Passed'),
+                                                                      (execution_names[1], second_id, 'Passed')]), inventory)
+                self.assertEqual(set(report['collected']), {'tests/Demo.csproj|net8.0|xunit:case',
+                                                           'tests/Demo.csproj|net8.0|xunit:other'})
+                self.assertEqual([row['display_name'] for row in report['results']], list(execution_names))
+
+    def test_structured_discovery_rejects_missing_duplicate_and_incomplete_identity(self):
+        bad_property = discovered()
+        bad_property['Properties'][0]['Value'] = ''
+        for raw in [discovery_trace([], TotalTests=1), discovery_trace([discovered()] * 2),
+                    discovery_trace([discovered(), discovered('other')]), discovery_trace([bad_property]),
+                    discovery_trace(IsAborted=True), discovery_trace(TotalTests=2),
+                    discovery_trace(PartiallyDiscoveredSources=[SOURCE]), discovery_trace(FullyDiscoveredSources=[]),
+                    discovery_trace() + '\n' + discovery_trace(), discovery_trace().replace('"TotalTests": 1', '"TotalTests":'),
+                    'test output ' + discovery_trace()]:
+            with self.subTest(raw=raw[:160]), self.assertRaises(self.runner.DotnetError):
+                self.runner.discovery_cases(raw)
+
+    def test_structured_discovery_collects_batches_and_completion_tail(self):
+        inventory = self.runner.discovery_cases(discovery_trace([discovered('tail', '00000000-0000-0000-0000-000000000002')],
+                                                                 batches=[[discovered()]]))
+        self.assertEqual(set(inventory), {'case', 'tail'})
+
+    def test_discovery_supports_older_property_layout_and_rejects_conflicts(self):
+        row = discovered()
+        for field in ('Id', 'Source', 'ExecutorUri', 'FullyQualifiedName', 'DisplayName'):
+            row['Properties'].append({'Key': {'Id': 'TestCase.' + field}, 'Value': row.pop(field)})
+        trace = discovery_trace([row]).replace('"Version": 7', '"Version": 3')
+        self.assertEqual(set(self.runner.discovery_cases(trace)), {'case'})
+        row['Id'] = '00000000-0000-0000-0000-000000000002'
+        with self.assertRaisesRegex(self.runner.DotnetError, 'Conflicting'):
+            self.runner.discovery_cases(discovery_trace([row]))
+        with self.assertRaisesRegex(self.runner.DotnetError, 'version'):
+            self.runner.discovery_cases(trace.replace('"Version": 3', '"Version": 8'))
+
+    def test_discovery_errors_and_adapter_suppressed_duplicate_rows_fail_closed(self):
+        prefix = discovery_trace().split('{', 1)[0]
+        for level, message in [(1, 'Exception discovering a theory'), (2, 'discovery error'),
+                               (0, 'Skipping test case with duplicate ID abc')]:
+            raw = prefix + json.dumps({'MessageType': 'TestSession.Message', 'Payload': {'MessageLevel': level, 'Message': message}})
+            with self.subTest(message=message), self.assertRaises(self.runner.DotnetError):
+                self.runner.discovery_cases(raw + '\n' + discovery_trace())
+
+    def test_trx_identity_and_method_cannot_be_replaced_by_matching_names(self):
+        for xml in [xunit_trx().replace(VS_ID, '00000000-0000-0000-0000-000000000002'),
+                    xunit_trx().replace('className="Demo.Checks"', 'className="Demo.Other"'),
+                    xunit_trx().replace('name="Total"', 'name="Other"'),
+                    xunit_trx().replace('codeBase="', 'codeBase="other'),
+                    xunit_trx().replace('<Execution id="', '<Execution id="other')]:
+            with self.subTest(xml=xml[:160]), self.assertRaises(self.runner.DotnetError):
+                self.report(xml=xml)
+
+    def test_delayed_theory_rows_are_not_accepted_as_one_discovered_case(self):
+        events = messages()
+        row = copy.deepcopy(events[2:5])
+        for event in row:
+            event['TestUniqueID'] = 'second-row'
+        events[5]['TestsTotal'] = events[6]['TestsTotal'] = 2
+        events[5:5] = row
+        with self.assertRaisesRegex(self.runner.DotnetError, 'one.*test|theory'):
+            self.report(events)
 
     def nunit(self, result="Failed", label="", stack="at Demo.Checks.Total()", suite_failure=""):
         attributes = 'label="' + label + '"' if label else ""

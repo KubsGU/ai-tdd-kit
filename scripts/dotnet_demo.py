@@ -166,11 +166,54 @@ def native(root):
     return code, json.loads(path.read_text(encoding="utf-8"))
 
 
+def theory_fixture(tests):
+    """Two truncation boundaries: adapter 447 chars and v2 argument formatting.
+
+    103 serializable rows force batched discovery as well as its completion
+    tail. Two long strings have identical formatted names but distinct data.
+    Long nested fixture paths are ordinary project inputs, never user changes.
+    """
+    directory = tests / ('long-theory-path-' + 'p' * 55) / ('nested-' + 'q' * 55)
+    directory.mkdir(parents=True)
+    prefix = 'SharedLongTheoryDisplayName' * 24
+    data = ''.join(f'[InlineData({index})]' for index in range(103))
+    values = 'C:/synthetic/' + 'long/path/' * 12
+    code = ('using Xunit; namespace Demo; public class LongTheories { '
+            f'[Theory(DisplayName="{prefix}")] {data} public void Adapter(int row) {{ Assert.InRange(row, 0, 102); }} '
+            f'[Theory] [InlineData("{values}one")] [InlineData("{values}two")] '
+            'public void Argument(string value) { Assert.True(value.EndsWith("one") || value.EndsWith("two")); } }')
+    (directory / 'LongTheories.cs').write_text(code, encoding='utf-8')
+    return directory / 'LongTheories.cs'
+
+
+def theory_checks(root, report, path):
+    rows = [row for row in report['results'] if row['display_name'].startswith(('SharedLongTheoryDisplayName', 'Demo.LongTheories.Argument'))]
+    if len(rows) != 105 or len({row['id'] for row in rows}) != 105 or any(row['status'] != 'passed' for row in rows):
+        raise RuntimeError('Long/identical theory names lost or misclassified native case identities')
+    names = [row['display_name'] for row in rows]
+    if len(set(names)) != 104 or max(map(len, names)) <= 447:
+        raise RuntimeError('Fixture did not exercise both name truncation boundaries')
+    logs = sorted((root / '.ai-tdd').rglob('discovery.diag.log'))
+    if not logs or not any('"MessageType":"TestDiscovery.TestFound"' in log.read_text(encoding='utf-8-sig') for log in logs):
+        raise RuntimeError('Native discovery did not exercise batched transport cases')
+    return {'native_cases': 105, 'distinct_ids': 105, 'distinct_display_names': 104,
+            'longest_display_name': max(map(len, names)), 'fixture_path_characters': len(str(path)),
+            'batched_discovery': True, 'duplicate_formatted_names': True}
+
+
 def evidence_demo(root, framework, linked_source=False):
     source, tests = fixture(root, framework, linked_source)
     code, baseline = native(root)
     if code or len(baseline["results"]) != 1 or baseline["results"][0]["status"] != "passed":
         raise RuntimeError("Native baseline was not one proven passing test")
+    theory = None
+    if framework == 'xunit':
+        theory_path = theory_fixture(tests)
+        code, long_report = native(root)
+        if code or len(long_report['results']) != 106:
+            raise RuntimeError('Native long-theory baseline was not fully passing')
+        theory = theory_checks(root, long_report, theory_path)
+        theory_path.unlink()
     tests.joinpath("Checks.cs").write_text((
         'using Xunit; namespace Demo; public class Checks { '
         '[Fact] public void Pass() {} [Fact] public void Assertion() { Assert.Equal(0, Fee.Calculate(10000)); } '
@@ -186,7 +229,7 @@ def evidence_demo(root, framework, linked_source=False):
         'public class Setup { [SetUp] public void Start() { Assert.Fail("synthetic setup"); } [Test] public void Body() {} } '
         'public class Cleanup { [Test] public void Body() {} [TearDown] public void End() { Assert.Fail("synthetic cleanup"); } }'), encoding="utf-8")
     code, report = native(root)
-    statuses = {item["id"].split("|")[-1]: item["status"] for item in report["results"]}
+    statuses = {item.get('display_name', item["id"].split("|")[-1]): item["status"] for item in report["results"]}
     expected = {"Demo.Checks.Pass": "passed", "Demo.Checks.Assertion": "failed", "Demo.Checks.Error": "error",
                 "Demo.Checks.Skip": "skipped", "Demo.Setup.Body": "error", "Demo.Cleanup.Body": "error"}
     if code != 1 or statuses != expected:
@@ -198,7 +241,8 @@ def evidence_demo(root, framework, linked_source=False):
         build_rejected = True
     else:
         raise RuntimeError("Compile error incorrectly produced acceptance evidence")
-    return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "full_inventory": len(report["collected"]), "statuses": statuses, "build_failure_rejected": build_rejected}
+    return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "full_inventory": len(report["collected"]), "statuses": statuses, "build_failure_rejected": build_rejected,
+            **({'long_theories': theory} if theory else {})}
 
 
 class FacadeController:
@@ -274,6 +318,7 @@ def packaged_plugin(root, executable):
 def workflow_demo(root, framework, linked_source=False, facade=None):
     source, tests = fixture(root, framework, linked_source, configure=facade is None)
     folder = root / ".ai-tdd"
+    theory_path = theory_fixture(tests) if framework == 'xunit' else None
     try:
         controller = FacadeController(root, *facade) if facade else TDD.Controller(root)
     except (RuntimeError, SETUP.DotnetError):
@@ -286,7 +331,12 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
     assertion = ('using Xunit; namespace Demo; public class Threshold { [Fact] public void Boundary() { Assert.Equal(0, Fee.Calculate(10000)); } }'
                  if framework == "xunit" else 'using NUnit.Framework; namespace Demo; public class Threshold { [Test] public void Boundary() { Assert.That(Fee.Calculate(10000), Is.EqualTo(0)); } }')
     (tests / "Threshold.cs").write_text(assertion, encoding="utf-8")
-    test_id = "tests/Demo.Tests/Demo.Tests.csproj|net8.0|Demo.Threshold.Boundary"
+    # Discover the actual native case ID instead of constructing it from a name.
+    _, red_report = native(root)
+    red_rows = [row for row in red_report['results'] if row.get('display_name', row['id'].split('|')[-1]) == 'Demo.Threshold.Boundary']
+    if len(red_rows) != 1 or red_rows[0]['exception'] != 'AssertionError':
+        raise RuntimeError('Boundary RED case was not independently identified')
+    test_id = red_rows[0]['id']
     controller.red(tests=[test_id], ac=["AC1"], expect="AssertionError", because="AC1 literal independent boundary expects zero")
     source.joinpath("Fee.cs").write_text('namespace Demo; public static class Fee { public static int Calculate(int cents) => cents >= 10000 ? 0 : 799; }\n', encoding="utf-8")
     controller.green()
@@ -299,7 +349,8 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
     (folder / "review.json").write_text(json.dumps(review), encoding="utf-8")
     result = controller.finish()
     return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "controller_mode": "node-facade" if facade else "python-driver",
-            "phase": result["phase"], "executed_tests": len(result["completion_receipt"]["results"]), "red_exception": "AssertionError"}
+            "phase": result["phase"], "executed_tests": len(result["completion_receipt"]["results"]), "red_exception": "AssertionError",
+            **({'long_theories': theory_checks(root, result['completion_receipt'], theory_path)} if theory_path else {})}
 
 
 def main():
