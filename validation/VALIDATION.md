@@ -1,5 +1,40 @@
 # Validation report — AI TDD Kit
 
+## 1.5.4 absent linked tooling inputs — 2026-10-05
+
+An explicitly linked, absent ancestor `.dockerignore` could prevent setup even
+though the project's own declaration neither copies it to output nor publish.
+The correction accepts only genuinely absent, consistent non-copying `Content` /
+`None` links declared by the owning in-root project. It binds their exact canonical
+paths without granting external ownership or reading an appeared file's content.
+Existing external user files, executable/build/runner/private inputs, mismatched
+metadata, devices, inaccessible paths and linked ancestors remain rejected.
+
+The configure acceptance regression failed before the correction. Three gate
+regressions separately failed on late creation after GREEN, during a real
+controller subprocess, and during native execution. They now prevent successful
+receipts/reports. Existing worker guards still deny writes outside the root.
+Windows junction rejection executes locally; dangling symlink privilege is a
+documented local skip. No project-file edit or placeholder creation is a repair.
+
+The full local suite ran 304 tests in 80.227 seconds: 298 passed and six documented
+environment/opt-in skips. The established process-scoped pytest plugin-autoload
+adjustment avoids an unrelated local Application Control restriction; it does not
+change plugin configuration or ordinary clean CI. Ruff, strict manifests and the
+controller/test-strength demonstrations pass.
+
+Actual local SDK 10.0.301 restore and MSBuild evaluation bind exactly one absent
+synthetic link while retaining both NuGet content provenance paths, inherited
+coverage settings and unchanged authored inputs. That setup-only proof is
+distinct from full native execution. The native fixture now requires the same
+exact absence before and after its existing xUnit/NUnit workflows. Final native
+host/SDK and installation results belong in the
+[1.5.4 release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.5.4).
+
+Public fixtures contain no private repository data or paid model calls. Plugin
+1.5.4 retains the original pinned 1.5.0 interpreter and provenance; native CI
+checks its actual execution of the current external sources.
+
 ## 1.5.3 repository compatibility — 2026-10-05
 
 The preset preserves the effective existing in-repository runsettings file,

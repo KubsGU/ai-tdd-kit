@@ -108,7 +108,9 @@ def setup_diagnostics(root):
                     path = (project.parent / SETUP.msbuild_path(name)).absolute()
                     SETUP._relative(root, path)
                 except (SETUP.DotnetError, OSError, ValueError):
-                    allowed = path is not None and kind in {"None", "Content"} and SETUP._package_input(metadata, packages, path, item, project=project)
+                    allowed = path is not None and kind in {"None", "Content"} and (
+                        SETUP._package_input(metadata, packages, path, item, project=project)
+                        or SETUP._external_absent_input(root, project, path, item) is not None)
                     if not allowed and len(data["unsafe_inputs"]) < 20:
                         data["unsafe_inputs"].append({"project": record["project"], "kind": kind,
                             "item": {key: str(item[key])[:1024] for key in fields if key in item}, "package_allowed": False})
@@ -131,12 +133,38 @@ def repository_inputs(root):
     return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in names if (root / name).exists()}
 
 
-def verify_repository_inputs(root):
+def verify_external_absent_input(root, require_config=True):
+    """Prove one project-authored absent link stays bound through native runs."""
+    root = Path(root).resolve()
+    expected = json.loads((root / ".ai-tdd/external-absent-input.json").read_text(encoding="utf-8"))["path"]
+    path = Path(expected)
+    if (str(Path(os.path.abspath(path))) != expected or path.resolve() != path
+            or path == root or root in path.parents or path.name != ".dockerignore"):
+        raise RuntimeError("Unsafe synthetic absent external input proof path")
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise RuntimeError("The project-authored linked external input must remain absent")
+    if require_config:
+        config_path = root / ".ai-tdd/config.json"
+        if not config_path.is_file():
+            raise RuntimeError("The absent external input proof requires evaluated native configuration")
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        if config.get("dotnet", {}).get("external_absent_inputs") != [expected]:
+            raise RuntimeError("Native configuration must bind exactly the expected absent external input")
+    return {"external_absent_input_count": 1, "project_authored_absent_content_bound": require_config,
+            "external_absent_inputs_still_absent": True}
+
+
+def verify_repository_inputs(root, require_config=True):
     before = json.loads((root / ".ai-tdd/repository-inputs.json").read_text(encoding="utf-8"))
     if repository_inputs(root) != before:
         raise RuntimeError("The kit changed an authored fixture project or existing repository configuration")
     return {"authored_inputs_unchanged": True, "authored_input_sha256": before,
             "inherited_runsettings": "coverage.runsettings",
+            **verify_external_absent_input(root, require_config),
             **json.loads((root / ".ai-tdd/restored-content-proof.json").read_text(encoding="utf-8"))}
 
 
@@ -261,7 +289,16 @@ def fixture(root, framework, linked_source=False, configure=True):
     (root / "NuGet.config").write_text('<configuration><packageSources><clear/><add key="fixture" value=".ai-tdd/local-feed"/><add key="public" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>', encoding="utf-8")
     (root / "Directory.Build.props").write_text('<Project><PropertyGroup><RunSettingsFilePath>$(MSBuildThisFileDirectory)coverage.runsettings</RunSettingsFilePath></PropertyGroup></Project>', encoding="utf-8")
     (root / "coverage.runsettings").write_text('<RunSettings><DataCollectionRunSettings><DataCollectors><DataCollector friendlyName="XPlat Code Coverage" enabled="True"><Configuration><Format>cobertura</Format><IncludeTestAssembly>true</IncludeTestAssembly></Configuration></DataCollector></DataCollectors></DataCollectionRunSettings></RunSettings>', encoding="utf-8")
-    (source / "Demo.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>', encoding="utf-8")
+    # A linked ancestor file can be intentionally absent: it contributes no
+    # build/publish bytes. Use an uncreated UUID sibling, never a host file.
+    absent = root.parent / ("ai-tdd-absent-" + uuid.uuid4().hex) / ".dockerignore"
+    if absent.parent.exists() or absent.parent.is_symlink() or absent.exists() or absent.is_symlink():
+        raise RuntimeError("Synthetic external input path unexpectedly exists")
+    absent_include = Path(os.path.relpath(absent, source)).as_posix()
+    (root / ".ai-tdd/external-absent-input.json").write_text(json.dumps({"path": str(absent)}), encoding="utf-8")
+    (source / "Demo.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>'
+        '<ItemGroup><Content Include="' + absent_include + '" Link=".dockerignore" CopyToOutputDirectory="Never" '
+        'CopyToPublishDirectory="Never"/></ItemGroup></Project>', encoding="utf-8")
     (source / "Fee.cs").write_text('namespace Demo; public static class Fee { public static int Calculate(int cents) => 799; }\n', encoding="utf-8")
     packages = ([('xunit', '2.9.3'), ('xunit.runner.visualstudio', '3.0.0')] if framework == "xunit" else
                 [('NUnit', '3.14.0'), ('NUnit3TestAdapter', '4.5.0')]) + [('Microsoft.NET.Test.Sdk', '17.14.1'),
@@ -293,7 +330,7 @@ def fixture(root, framework, linked_source=False, configure=True):
             setup_diagnostics(root)
             raise
         (root / ".ai-tdd/config.json").write_text(json.dumps(config), encoding="utf-8")
-    verify_repository_inputs(root)
+    verify_repository_inputs(root, require_config=configure)
     return source, tests
 
 
@@ -469,6 +506,7 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
     except (RuntimeError, SETUP.DotnetError):
         setup_diagnostics(root)
         raise
+    verify_repository_inputs(root)
     (folder / "spec.json").write_text(json.dumps({"version": 1, "goal": "Free delivery at 10000 cents",
         "acceptance": [{"id": "AC1", "description": "Fee is zero for a 10000-cent cart"}], "open_questions": []}), encoding="utf-8")
     (folder / "review-plan.json").write_text(json.dumps({"scenarios": [{"ac": "AC1", "case": "Literal boundary 10000 cents"}]}), encoding="utf-8")

@@ -43,6 +43,14 @@ upgrade. MSTest TRX and Microsoft.Testing.Platform fail closed until adequate
 native evidence is supported. See [the .NET guide](references/dotnet.md) for
 layout limits, runtime setup and existing build/analyzer/format checks.
 
+Existing in-repository runsettings and verified restored NuGet content remain
+inputs to setup. A genuinely absent external linked `Content`/`None` declared
+by its owning project is accepted only without output/publish copying. Its
+canonical path and absence are checked again during execution and freshness
+gates; creating it invalidates setup. This grants no external write ownership.
+Existing user-authored external files still need a reviewed custom setup.
+Do not edit project files or create placeholder inputs merely to bypass setup.
+
 xUnit IDs come from native discovery and execution, with readable display names
 kept as metadata even when repeated or shortened. Read actual baseline report
 and RED log/report IDs for acceptance mappings and review; do not build IDs from
@@ -67,4 +75,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.5.2.
+MIT license. Version 1.5.4.

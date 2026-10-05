@@ -332,6 +332,14 @@ class Controller:
     def protected(self, include_tests=True, include_spec=True):
         paths = self.config["protected_paths"] + self.quality_inputs + (self.config["test_roots"] if include_tests else [])
         result = self.manifest(paths)
+        dotnet = self.config.get("dotnet", {})
+        if isinstance(dotnet, dict) and "external_absent_inputs" in dotnet:
+            module = dotnet_setup_module()
+            try:
+                absent = module.external_absent_snapshot(self.root, dotnet["external_absent_inputs"])
+            except module.DotnetError as error:
+                raise TddError(str(error)) from error
+            result.update({"external-absent:" + path: marker for path, marker in absent.items()})
         names = ["config.json", "review-plan.json", "repo-profile.json"] + (["spec.json"] if include_spec else [])
         for name in names:
             result[".ai-tdd/" + name] = digest(self.folder / name)
@@ -941,10 +949,15 @@ def lock(root):
         path.unlink(missing_ok=True)
 
 
-def dotnet_configuration(root):
+def dotnet_setup_module():
     loader = importlib.util.spec_from_file_location('ai_tdd_dotnet_setup', PLUGIN / 'scripts/dotnet_setup.py')
     module = importlib.util.module_from_spec(loader)
     loader.loader.exec_module(module)
+    return module
+
+
+def dotnet_configuration(root):
+    module = dotnet_setup_module()
     try:
         return module.configure(root)
     except module.DotnetError as error:

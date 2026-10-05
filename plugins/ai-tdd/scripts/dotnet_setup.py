@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -353,6 +354,92 @@ def _package_input(metadata, packages, path, item, *, project=None):
         return False
 
 
+def _external_absent_names(parts):
+    """Absent editor links cannot refer to private, executable or runner inputs."""
+    private = {".git", ".ai-tdd", ".ssh", ".aws", ".azure", ".gnupg", ".claude", ".codex"}
+    controls = {name.lower() for name in PRESET_INPUTS} | {
+        "config.json", "launchsettings.json", "appsettings.json", "packages.config",
+        "pyproject.toml", "pytest.ini", "package.json", "package-lock.json", "pnpm-lock.yaml",
+        "yarn.lock", "dockerfile", "makefile", "agents.md", "claude.md", "msbuild.rsp"}
+    executable = {".cs", ".csproj", ".fs", ".fsproj", ".vb", ".vbproj", ".props", ".targets",
+                  ".sln", ".slnx", ".runsettings", ".config", ".dll", ".exe", ".py", ".js",
+                  ".cjs", ".mjs", ".sh", ".ps1", ".cmd", ".bat"}
+    for part in parts:
+        name = part.lower()
+        if (name in private or name.startswith((".env", "directory.", "appsettings."))
+                or name in controls or Path(name).suffix in executable
+                or re.fullmatch(r"(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?", name)
+                or part.endswith((".", " ")) or any(char in part for char in ':*?"<>|')):
+            raise DotnetError("Private, build, runner or device paths cannot be absent external inputs")
+
+
+def external_absent_snapshot(root, paths):
+    """Freeze genuine absence without reading or granting ownership of external files.
+
+    lstat each ancestor: exists()/resolve() alone can mistake a dangling link,
+    inaccessible path or newly introduced junction for an absent regular file.
+    """
+    if not isinstance(paths, list):
+        raise DotnetError("external_absent_inputs must be a list of canonical absolute paths")
+    root = Path(root).resolve()
+    seen, snapshot, size = set(), {}, 0
+    for value in paths:
+        if (not isinstance(value, str) or not value or len(value) > 4096
+                or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF for char in value)):
+            raise DotnetError("Malformed or oversized absent external input path")
+        size += len(value.encode("utf-8")) + 4
+        if size > 5_000_000:
+            raise DotnetError("Absent external input paths exceed the bounded configuration size")
+        path = Path(value)
+        if (not path.is_absolute() or value != str(path) or value != os.path.abspath(value)
+                or path.anchor.startswith("\\\\") or path == root or root in path.parents
+                or path in seen):
+            raise DotnetError("Absent external inputs must be unique canonical local paths outside the root")
+        _external_absent_names(path.parts[1:])
+        seen.add(path)
+        try:
+            for cursor in [*reversed(path.parents), path]:
+                try:
+                    info = cursor.lstat()
+                except FileNotFoundError:
+                    continue
+                if (stat.S_ISLNK(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+                    raise DotnetError("Absent external inputs cannot use symlinks or junctions")
+                if cursor == path:
+                    raise DotnetError("An absent external input now exists; repeat setup after reviewing ownership")
+                if not stat.S_ISDIR(info.st_mode):
+                    raise DotnetError("An absent external input has a non-directory ancestor")
+        except OSError as error:
+            raise DotnetError("Cannot establish external input absence: " + type(error).__name__) from error
+        snapshot[value] = "absent"
+    return dict(sorted(snapshot.items()))
+
+
+def _external_absent_input(root, project, path, item):
+    """Only an own-project, non-copying, consistent editor link can be absent."""
+    try:
+        full_path = Path(msbuild_path(item["FullPath"]))
+        identity = Path(msbuild_path(item["Identity"]))
+        link = Path(msbuild_path(item["Link"]))
+        defining = Path(msbuild_path(item["DefiningProjectFullPath"]))
+        if (not full_path.is_absolute() or full_path != Path(os.path.abspath(path))
+                or identity.drive or identity.is_absolute() or full_path != Path(os.path.abspath(project.parent / identity))
+                or link.drive or link.is_absolute() or ".." in link.parts or not link.parts
+                or defining != project or not stat.S_ISREG(defining.lstat().st_mode)):
+            return None
+        _relative(root, defining)
+        _external_absent_names(link.parts)
+        for name in ("CopyToOutputDirectory", "CopyToPublishDirectory"):
+            value = item.get(name, "")
+            if not isinstance(value, str) or value.strip().lower() not in {"", "never"}:
+                return None
+        external_absent_snapshot(root, [str(full_path)])
+        return full_path
+    except (DotnetError, KeyError, TypeError, ValueError, OSError):
+        return None
+
+
 def configure(root):
     """Return controller configuration without writing or replacing any files."""
     root = Path(root).resolve()
@@ -370,7 +457,7 @@ def configure(root):
         if settings.get("test", {}).get("runner", "VSTest").lower() != "vstest":
             raise DotnetError("global.json selects an unsupported test runner; native evidence requires VSTest")
     source_roots, test_roots, modules, linked_sources = [], [], [], []
-    protected = set()
+    protected, external_absent = set(), set()
     generated = []
     for project in projects:
         relative = _relative(root, project)
@@ -425,6 +512,10 @@ def configure(root):
                     except DotnetError as error:
                         if kind in {"None", "Content"} and _package_input(evaluated, tfm_packages, input_path, item, project=project):
                             continue
+                        absent = _external_absent_input(root, project, input_path, item) if kind in {"None", "Content"} else None
+                        if absent is not None:
+                            external_absent.add(absent)
+                            continue
                         raise DotnetError("Unsafe evaluated " + kind + " input in " + relative + ": " + name
                                           + "; defining import: " + item.get("DefiningProjectFullPath", "<missing>")
                                           + ". Expected an in-root file or an exact restored NuGet asset/import. "
@@ -462,11 +553,16 @@ def configure(root):
                 or any(part.lower() in {"fixtures", "testdata", "snapshots", "__snapshots__"} for part in path.parts)):
             protected.add(_relative(root, path))
     node = shutil.which("node") or "node"
-    return {"schema": 1, "source_roots": sorted(source_roots), "test_roots": sorted(test_roots),
+    config = {"schema": 1, "source_roots": sorted(source_roots), "test_roots": sorted(test_roots),
             "protected_paths": sorted(protected), "generated_roots": sorted(set(generated)), "timeout_seconds": 600,
             "max_attempts": 3, "runner": {"format": "json", "argv": [node, "--preserve-symlinks", "--preserve-symlinks-main", "{plugin}/scripts/tdd-launcher.cjs", "--dotnet-test", "--root", "{root}", "--report", "{report}"]},
             "dotnet": {"schema": 1, "sdk": sdk_identity(root), "modules": modules, "projects": [_relative(root, project) for project in projects]},
             "quality_checks": []}
+    if external_absent:
+        paths = sorted(str(path) for path in external_absent)
+        external_absent_snapshot(root, paths)
+        config["dotnet"]["external_absent_inputs"] = paths
+    return config
 
 
 def main(argv=None):

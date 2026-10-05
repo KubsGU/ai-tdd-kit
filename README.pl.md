@@ -7,7 +7,7 @@ autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależ
 Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
 tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
 dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
-Wersja 1.5.3, licencja MIT.
+Wersja 1.5.4, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -54,7 +54,7 @@ Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements)
 Na innych platformach potrzebny jest Python 3.10+.
 Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.5.3.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.5.4.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -98,6 +98,14 @@ Pliki `Content`/`None` dostarczane przez NuGet, także z zależności przechodni
 są rozpoznawane na podstawie odtworzonego grafu pakietów i pochodzenia importów.
 Jeśli brakuje tych danych, przywróć dotychczasowe pakiety repo. Setup nie wymaga
 edycji `.csproj` ani wykluczania zawartości pakietów dla obejścia kontroli.
+
+Zewnętrzny link `Content`/`None`, zadeklarowany przez własny projekt, może być
+zaakceptowany, jeśli plik rzeczywiście nie istnieje i nie jest kopiowany do
+outputu ani publish, np. brakujący `.dockerignore` w katalogu nadrzędnym.
+Kanoniczna ścieżka i brak pliku są związane z setupem i ponownie sprawdzane przy
+wykonaniu oraz kontroli świeżości. Utworzenie pliku unieważnia ten setup; nie
+przyznaje uprawnień do zapisu poza repo. Istniejące zewnętrzne pliki użytkownika
+nadal wymagają sprawdzonej konfiguracji niestandardowej.
 
 Ścieżka VSTest obsługuje xUnit z `xunit.runner.visualstudio >= 3.0.0` oraz NUnit
 `>= 3.14.0` z `NUnit3TestAdapter >= 4.5.0`. Runner porównuje pełne discovery,

@@ -451,6 +451,8 @@ def run(root, report, config=None):
     current = SETUP.configure(root)
     if current["dotnet"] != configured or current["generated_roots"] != value.get("generated_roots"):
         raise DotnetError("Evaluated .NET projects/frameworks/output ownership changed; repeat reviewed setup")
+    absent_inputs = configured.get("external_absent_inputs", [])
+    absent_before = SETUP.external_absent_snapshot(root, absent_inputs)
     dotnet = shutil.which("dotnet")
     if not dotnet:
         raise DotnetError(".NET SDK is unavailable on PATH")
@@ -519,6 +521,8 @@ def run(root, report, config=None):
         report_data["collected"].extend(evidence["collected"])
         report_data["results"].extend(evidence["results"])
         report_data["native_modules"].append({**module, "directory": directory.relative_to(root).as_posix(), "exit_code": code})
+    if SETUP.external_absent_snapshot(root, absent_inputs) != absent_before:
+        raise DotnetError("External absent project input changed during native execution")
     with report.open("x", encoding="utf-8") as stream:
         stream.write(json.dumps(report_data, ensure_ascii=False, indent=2) + "\n")
     return int(any(item["status"] in {"failed", "error"} for item in report_data["results"]))
