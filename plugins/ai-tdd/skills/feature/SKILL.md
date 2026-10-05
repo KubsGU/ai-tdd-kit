@@ -38,7 +38,13 @@ Run init, then doctor. Detected C# projects receive evaluated .NET setup; read
 Do not upgrade packages, migrate framework or change global settings. Adapt
 narrow disjoint roots and protect all
 fixtures/helpers/config/runner inputs, including relevant absent files. The runner
-must preserve the full required suite. Before begin, record factual conventions
+must preserve the full required suite. Keep existing supported runsettings and
+package content intact; do not edit `.csproj`, strip settings or exclude assets
+merely to bypass setup. Missing/stale package provenance calls for the repository's
+normal restore of existing versions. For shared user inputs outside a selected
+solution subdirectory, choose the full repository root before a new task and
+recheck project ownership. Inspect precise local diagnostics; private source/logs
+need not be published. Before begin, record factual conventions
 and existing read-only quality commands in `.ai-tdd/repo-profile.json` (for .NET,
 include existing build/analyzers, .editorconfig, format checks and CI), configure
 applicable quality_checks and budgets, and write `.ai-tdd/spec.json`.

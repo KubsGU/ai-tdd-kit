@@ -464,6 +464,8 @@ def run(root, report, config=None):
         directory = folder / str(index)
         directory.mkdir()
         base = [dotnet, "test", str(root / module["project"]), "--framework", module["tfm"], "--verbosity", "minimal", "--nologo"]
+        if module.get("runsettings"):
+            base += ["--settings", str(root / module["runsettings"]["path"])]
         nunit = module["framework"] == "nunit-vstest"
         if nunit:
             artifacts = root / module["project"]

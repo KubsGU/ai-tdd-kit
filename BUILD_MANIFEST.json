@@ -1,5 +1,5 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.3",
   "files": [
     "README.md",
     "README.pl.md",
@@ -68,6 +68,8 @@
     "plugins/ai-tdd/scripts/runtime_entry.py",
     "plugins/ai-tdd/tests/test_dotnet_controller.py",
     "plugins/ai-tdd/tests/test_dotnet_runner.py",
+    "plugins/ai-tdd/tests/test_dotnet_runsettings.py",
+    "plugins/ai-tdd/tests/test_dotnet_content.py",
     "plugins/ai-tdd/tests/test_portable_runtime.py",
     "plugins/ai-tdd/tests/test_node_launch.py",
     "scripts/build_runtime.py",

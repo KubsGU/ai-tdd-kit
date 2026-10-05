@@ -58,7 +58,7 @@ Actual native CI smoke results establish only their tested host scope; this
 local attempt does not prove Python-free use under strict Application Control.
 
 The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
-Plugin and interpreter versions are independent: plugin 1.5.2 reuses the pinned
+Plugin and interpreter versions are independent: plugin 1.5.3 reuses the pinned
 1.5.0 interpreter, which executes the installed external controller sources.
 Its historical build metadata describes the original build inputs; the new
 plugin source is covered by the source ZIP/checksums and task fingerprints.
@@ -105,13 +105,51 @@ each test project/TFM in the suite. Each source and test project needs its own
 disjoint subdirectory, for example `src/App/` and `tests/App.Tests/`.
 Root-level, shared or nested project ownership is unsupported. Projects need
 explicit supported `net...` target frameworks, ordinary project-local `bin/`
-and `obj/` output paths, and no implicit runsettings/filter or MTP selection.
+and `obj/` output paths, and no selective test filters or MTP selection.
 User-authored external or unowned linked inputs need a reviewed custom setup.
 Test-project linked C# sources are accepted only when they belong to an
 independently evaluated source project inside the root, whose source tree is
 fingerprinted. Links into another test project are rejected. Ordinary evaluated
-package-owned adapter assets remain
+package-owned assets remain
 tool dependencies; they are not copied into public evidence.
+
+## Existing runsettings and package content
+
+`init` accepts an existing regular `.runsettings` file inside the selected
+repository root. It uses the evaluated effective `VSTestSetting`, falling back
+to `RunSettingsFilePath`, including values inherited from `Directory.Build.props`.
+A bare relative path is resolved from the project directory. The preset records
+the resolved path and SHA256, protects the original file and passes its absolute
+path through `--settings` for both discovery and execution. It does not rewrite
+the file, clear the MSBuild property or copy a reduced version over it.
+
+Coverage collectors and coverage-only Include/Exclude configuration remain
+supported. A coverage exclusion controls what is measured, not which tests run.
+The runner supplies its required evidence options and fresh output locations;
+the repository's original runsettings remains the input to each phase. Test
+filters, early stopping, collapsed theory discovery and unsupported adapter
+controls are rejected with the setting identified. An unknown control needs a
+precise compatibility rule before it can be accepted; removing the setting to
+make the gate pass is not a setup repair.
+
+Evaluated `Content`/`None` assets can come from direct or transitive NuGet packages.
+An asset outside the repository is accepted only when its exact package version
+is present in the selected restored target graph, its file is in that package's
+recorded inventory and the defining import has the required provenance. This
+supports direct `contentFiles` supplied through NuGet-generated imports in the
+project's `obj/` directory and transitive assets supplied through resolved package
+build imports. It does not change NuGet's own content propagation rules.
+A cache directory or package-like path alone is insufficient. User-authored
+external content does not become a trusted dependency through this exception.
+
+If package ownership cannot be established because restore records are missing
+or stale, restore the repository's existing package versions using its normal
+setup before starting the task. Do not edit `.csproj`, add `ExcludeAssets`, remove
+`Content`/`None` items or change package versions merely to bypass setup. Shared
+user-authored fixtures inside the full repository root remain protected inputs;
+when a narrower solution directory excludes them, choose the full repository root
+before a new task and recheck the disjoint project layout. Existing configuration
+is never overwritten by `init`.
 
 Only the exact evaluated project `bin/` and `obj/` directories are excluded
 from source/test manifests. Exclusions are frozen at `begin`; workers cannot
@@ -215,9 +253,15 @@ See [quality guidance](quality.md) for budgets and final receipts.
 ## Troubleshooting and limits
 
 An older xUnit adapter, ordinary MSTest TRX, MTP selection, custom output layout,
-implicit filters or ambiguous evidence produces a specific setup/run error.
+selective filters, unsupported runsettings or ambiguous evidence produces a
+specific setup/run error.
 Resolve the existing environment separately or retain the task as incomplete;
 do not bypass it with a message regex, a narrowed suite or manual receipts.
+For a runsettings error, inspect the resolved file and named setting locally.
+For an ownership error, inspect the item's defining import and restored assets
+graph; confirm the chosen root contains user-authored shared inputs. Keep private
+repository paths, fixture contents and native logs local. A public repository or
+uploading private source is not required to use the kit or diagnose these checks.
 MSBuild/test execution is trusted project code, not a sandbox for hostile code.
 External services, installed package contents and nondeterminism are not fully
 fingerprinted. Framework support is bounded; consult the
@@ -228,6 +272,9 @@ the existing baseline, RED/GREEN and evidence freshness guards still apply.
 Primary references:
 
 - [VSTest dotnet test options](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-vstest)
+- [Microsoft runsettings configuration and project properties](https://learn.microsoft.com/en-us/visualstudio/test/configure-unit-tests-by-using-a-dot-runsettings-file)
+- [NuGet generated MSBuild props and targets](https://learn.microsoft.com/en-us/nuget/concepts/msbuild-props-and-targets)
+- [NuGet contentFiles generation source](https://source.dot.net/NuGet.Commands/RestoreCommand/ContentFiles/ContentFileUtils.cs.html)
 - [Microsoft.Testing.Platform dotnet test integration](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)
 - [xUnit runsettings/reporters](https://xunit.net/docs/config-runsettings)
 - [xUnit 3.0.0 discovery identities and display names](https://github.com/xunit/visualstudio.xunit/blob/3.0.0/src/xunit.runner.visualstudio/Sinks/VsDiscoverySink.cs)

@@ -16,10 +16,17 @@ import subprocess
 import sys
 import tempfile
 import uuid
+import xml.etree.ElementTree as ET
+import zipfile
 
 
 KIT = Path(__file__).resolve().parents[1]
 PLUGIN = KIT / "plugins/ai-tdd"
+CONTENT_CONSUMER = "AiTdd.Synthetic.Content.Consumer"
+CONTENT_LEAF = "AiTdd.Synthetic.Content.Leaf"
+CONTENT_VERSION = "1.0.0"
+CONTENT_PAYLOAD = '{"synthetic": "restored-transitive-content"}\n'
+BUILD_PAYLOAD = "restored-transitive-build-content\n"
 
 
 def load(name, filename):
@@ -117,6 +124,104 @@ def setup_diagnostics(root):
         print(json.dumps({"synthetic_unsafe_inputs": data["unsafe_inputs"]}, ensure_ascii=False), file=sys.stderr)
 
 
+def repository_inputs(root):
+    """Hash authored project/configuration files, never user repository data."""
+    names = ("src/Demo/Demo.csproj", "tests/Demo.Tests/Demo.Tests.csproj", "Directory.Build.props",
+             "coverage.runsettings", "NuGet.config", "global.json")
+    return {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in names if (root / name).exists()}
+
+
+def verify_repository_inputs(root):
+    before = json.loads((root / ".ai-tdd/repository-inputs.json").read_text(encoding="utf-8"))
+    if repository_inputs(root) != before:
+        raise RuntimeError("The kit changed an authored fixture project or existing repository configuration")
+    return {"authored_inputs_unchanged": True, "authored_input_sha256": before,
+            "inherited_runsettings": "coverage.runsettings",
+            **json.loads((root / ".ai-tdd/restored-content-proof.json").read_text(encoding="utf-8"))}
+
+
+def restored_content_checks(root, project):
+    metadata = SETUP.evaluate(project, tfm="net8.0", root=root)
+    assets = json.loads(Path(metadata["Properties"]["ProjectAssetsFile"]).read_text(encoding="utf-8-sig"))
+    package_root = Path(metadata["Properties"]["NuGetPackageRoot"]).resolve()
+    targets = assets["targets"]["net8.0"]
+    paths = {Path(item["FullPath"]).resolve(): item for item in metadata["Items"].get("Content", [])}
+    content = "contentFiles/any/any/SyntheticData/payload.json"
+    imported = "buildTransitive/" + CONTENT_LEAF + ".targets"
+    direct = package_root / CONTENT_CONSUMER.lower() / CONTENT_VERSION / content
+    transitive = package_root / CONTENT_LEAF.lower() / CONTENT_VERSION / "buildTransitive/build-payload.txt"
+    generated = project.parent / "obj" / (project.name + ".nuget.g.props")
+    if direct not in paths or Path(paths[direct]["DefiningProjectFullPath"]).resolve() != generated.resolve():
+        raise RuntimeError("Fixture did not generate the standard NuGet contentFiles input")
+    if targets[CONTENT_CONSUMER + "/" + CONTENT_VERSION].get("contentFiles", {}).get(content, {}).get("buildAction") != "Content":
+        raise RuntimeError("Fixture standard Content was not selected by the restored target")
+    if transitive not in paths or Path(paths[transitive]["DefiningProjectFullPath"]).resolve() != package_root / CONTENT_LEAF.lower() / CONTENT_VERSION / imported:
+        raise RuntimeError("Fixture did not evaluate the transitive package's imported Content")
+    if imported not in targets[CONTENT_LEAF + "/" + CONTENT_VERSION].get("build", {}):
+        raise RuntimeError("Fixture transitive import was not selected by the restored target")
+    value = {"nuget_contentfiles_package": CONTENT_CONSUMER + "/" + CONTENT_VERSION,
+             "transitive_content_package": CONTENT_LEAF + "/" + CONTENT_VERSION,
+             "contentfiles_generated_props_proven": True, "transitive_content_import_proven": True}
+    (root / ".ai-tdd/restored-content-proof.json").write_text(json.dumps(value), encoding="utf-8")
+    return value
+
+
+def content_feed(root):
+    """An ordinary restored NuGet dependency with two external Content owners.
+
+    Standard contentFiles items are defined by generated nuget.g.props; the
+    buildTransitive item is defined by the package's own import. This local
+    public fixture requires no package publication or changes to user caches.
+    """
+    feed = root / ".ai-tdd/local-feed"
+    feed.mkdir()
+    packages = {
+        CONTENT_LEAF: {
+            "buildTransitive/build-payload.txt": BUILD_PAYLOAD,
+            "buildTransitive/" + CONTENT_LEAF + ".targets":
+                '<Project><ItemGroup><Content Include="$(MSBuildThisFileDirectory)build-payload.txt">'
+                '<Link>SyntheticData/build-payload.txt</Link><TargetPath>SyntheticData/build-payload.txt</TargetPath>'
+                '<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content></ItemGroup></Project>',
+        },
+        CONTENT_CONSUMER: {"contentFiles/any/any/SyntheticData/payload.json": CONTENT_PAYLOAD},
+    }
+    for name, contents in packages.items():
+        extra = ('' if name == CONTENT_LEAF else '<contentFiles><files include="any/any/SyntheticData/payload.json" buildAction="Content" '
+                 'copyToOutput="true" flatten="false"/></contentFiles><dependencies><group targetFramework="net8.0"><dependency id="' + CONTENT_LEAF +
+                 '" version="[' + CONTENT_VERSION + ']"/></group></dependencies>')
+        contents = {name + ".nuspec": '<?xml version="1.0"?><package><metadata><id>' + name + '</id><version>' + CONTENT_VERSION +
+                    '</version><authors>AI TDD synthetic fixture</authors><description>Public isolated compatibility regression</description>' + extra + '</metadata></package>', **contents}
+        path = feed / (name.lower() + "." + CONTENT_VERSION + ".nupkg")
+        with zipfile.ZipFile(path, "x", compression=zipfile.ZIP_DEFLATED) as archive:
+            for filename, value in contents.items():
+                archive.writestr(zipfile.ZipInfo(filename, date_time=(2025, 1, 1, 0, 0, 0)), value.encode("utf-8"))
+    return feed
+
+
+def coverage_checks(root, directories=None):
+    """Prove the inherited collector actually ran, using native attachments."""
+    trx_paths = ([root / directory / "result.trx" for directory in directories] if directories is not None else
+                 sorted((root / ".ai-tdd").rglob("result.trx")))
+    if not trx_paths:
+        raise RuntimeError("No native TRX runs available to verify existing coverage settings")
+    covered = []
+    for path in trx_paths:
+        tree = ET.fromstring(path.read_text(encoding="utf-8-sig"))
+        attachments = [child.get("href", "") for node in tree.iter() if node.tag.rsplit("}", 1)[-1] == "UriAttachment"
+                       for child in node.iter()]
+        if not any("coverage.cobertura.xml" in value for value in attachments):
+            raise RuntimeError("Inherited coverage collector did not attach its report to a native run")
+        reports = list(path.parent.rglob("coverage.cobertura.xml"))
+        if len(reports) != 1:
+            raise RuntimeError("Each native execution must produce exactly one fresh coverage report")
+        report = ET.fromstring(reports[0].read_text(encoding="utf-8-sig"))
+        classes = [node for node in report.iter("class") if node.get("name") == "Demo.Fee"]
+        if not classes or not any(int(line.get("hits", "0")) > 0 for node in classes for line in node.iter("line")):
+            raise RuntimeError("Coverage attachment did not witness execution of the synthetic feature")
+        covered.append({"native_results": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(reports[0].read_bytes()).hexdigest()})
+    return {"coverage_attached_runs": len(covered), "coverage_feature_hit_proven": True, "coverage_reports": covered}
+
+
 def fixture(root, framework, linked_source=False, configure=True):
     source = root / "src/Demo"
     tests = root / "tests/Demo.Tests"
@@ -128,24 +233,35 @@ def fixture(root, framework, linked_source=False, configure=True):
         if not re.fullmatch(r"\d+\.\d+\.\d+", sdk) or int(sdk.split(".")[0]) < 8:
             raise ValueError("DOTNET_DEMO_SDK must select an exact stable installed SDK 8+")
         (root / "global.json").write_text(json.dumps({"sdk": {"version": sdk, "rollForward": "disable"}}), encoding="utf-8")
-    (root / "NuGet.config").write_text('<configuration><packageSources><clear/><add key="public" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>', encoding="utf-8")
+    content_feed(root)
+    (root / "NuGet.config").write_text('<configuration><packageSources><clear/><add key="fixture" value=".ai-tdd/local-feed"/><add key="public" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>', encoding="utf-8")
+    (root / "Directory.Build.props").write_text('<Project><PropertyGroup><RunSettingsFilePath>$(MSBuildThisFileDirectory)coverage.runsettings</RunSettingsFilePath></PropertyGroup></Project>', encoding="utf-8")
+    (root / "coverage.runsettings").write_text('<RunSettings><DataCollectionRunSettings><DataCollectors><DataCollector friendlyName="XPlat Code Coverage" enabled="True"><Configuration><Format>cobertura</Format><IncludeTestAssembly>true</IncludeTestAssembly></Configuration></DataCollector></DataCollectors></DataCollectionRunSettings></RunSettings>', encoding="utf-8")
     (source / "Demo.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>', encoding="utf-8")
     (source / "Fee.cs").write_text('namespace Demo; public static class Fee { public static int Calculate(int cents) => 799; }\n', encoding="utf-8")
     packages = ([('xunit', '2.9.3'), ('xunit.runner.visualstudio', '3.0.0')] if framework == "xunit" else
-                [('NUnit', '3.14.0'), ('NUnit3TestAdapter', '4.5.0')]) + [('Microsoft.NET.Test.Sdk', '17.14.1')]
+                [('NUnit', '3.14.0'), ('NUnit3TestAdapter', '4.5.0')]) + [('Microsoft.NET.Test.Sdk', '17.14.1'),
+                    ('coverlet.collector', '6.0.4'), (CONTENT_CONSUMER, CONTENT_VERSION)]
     references = ''.join(f'<PackageReference Include="{name}" Version="{version}"/>' for name, version in packages)
     # The linked-source opt-in uses an ordinary shared source arrangement for
     # local application-control policies that block a separate unsigned DLL.
     source_reference = ('<ProjectReference Include="../../src/Demo/Demo.csproj" ReferenceOutputAssembly="false"/><Compile Include="../../src/Demo/Fee.cs" Link="Fee.cs"/>'
                         if linked_source else '<ProjectReference Include="../../src/Demo/Demo.csproj"/>')
     (tests / "Demo.Tests.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup><ItemGroup>' + references + source_reference + '</ItemGroup></Project>', encoding="utf-8")
-    body = ('using Xunit; namespace Demo; public class Checks { [Fact] public void Baseline() { Assert.Equal(799, Fee.Calculate(100)); } }' if framework == "xunit" else
-            'using NUnit.Framework; namespace Demo; public class Checks { [Test] public void Baseline() { Assert.That(Fee.Calculate(100), Is.EqualTo(799)); } }')
+    content = 'System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory, "SyntheticData", '
+    body = ('using Xunit; namespace Demo; public class Checks { [Fact] public void Baseline() { Assert.Equal(799, Fee.Calculate(100)); '
+            'Assert.Equal(' + json.dumps(CONTENT_PAYLOAD) + ', ' + content + '"payload.json"))); '
+            'Assert.Equal(' + json.dumps(BUILD_PAYLOAD) + ', ' + content + '"build-payload.txt"))); } }' if framework == "xunit" else
+            'using NUnit.Framework; namespace Demo; public class Checks { [Test] public void Baseline() { Assert.That(Fee.Calculate(100), Is.EqualTo(799)); '
+            'Assert.That(' + content + '"payload.json")), Is.EqualTo(' + json.dumps(CONTENT_PAYLOAD) + ')); '
+            'Assert.That(' + content + '"build-payload.txt")), Is.EqualTo(' + json.dumps(BUILD_PAYLOAD) + ')); } }')
     (tests / "Checks.cs").write_text(body, encoding="utf-8")
+    (root / ".ai-tdd/repository-inputs.json").write_text(json.dumps(repository_inputs(root)), encoding="utf-8")
     restore = subprocess.run(["dotnet", "restore", str(tests / "Demo.Tests.csproj"), "--configfile", str(root / "NuGet.config"), "--verbosity", "quiet"],
                              cwd=root, env=SETUP.environment(), capture_output=True, text=True, timeout=240)
     if restore.returncode:
         raise RuntimeError("Public isolated fixture restore failed; no user packages were changed")
+    restored_content_checks(root, tests / "Demo.Tests.csproj")
     if configure:
         try:
             config = SETUP.configure(root)
@@ -153,6 +269,7 @@ def fixture(root, framework, linked_source=False, configure=True):
             setup_diagnostics(root)
             raise
         (root / ".ai-tdd/config.json").write_text(json.dumps(config), encoding="utf-8")
+    verify_repository_inputs(root)
     return source, tests
 
 
@@ -163,7 +280,10 @@ def native(root):
     except RUNNER.DotnetError:
         setup_diagnostics(root)
         raise
-    return code, json.loads(path.read_text(encoding="utf-8"))
+    report = json.loads(path.read_text(encoding="utf-8"))
+    coverage_checks(root, [module["directory"] for module in report["native_modules"]])
+    verify_repository_inputs(root)
+    return code, report
 
 
 def theory_fixture(tests):
@@ -242,6 +362,7 @@ def evidence_demo(root, framework, linked_source=False):
     else:
         raise RuntimeError("Compile error incorrectly produced acceptance evidence")
     return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "full_inventory": len(report["collected"]), "statuses": statuses, "build_failure_rejected": build_rejected,
+            "repository_compatibility": {**verify_repository_inputs(root), **coverage_checks(root)},
             **({'long_theories': theory} if theory else {})}
 
 
@@ -350,6 +471,7 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
     result = controller.finish()
     return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "controller_mode": "node-facade" if facade else "python-driver",
             "phase": result["phase"], "executed_tests": len(result["completion_receipt"]["results"]), "red_exception": "AssertionError",
+            "repository_compatibility": {**verify_repository_inputs(root), **coverage_checks(root)},
             **({'long_theories': theory_checks(root, result['completion_receipt'], theory_path)} if theory_path else {})}
 
 

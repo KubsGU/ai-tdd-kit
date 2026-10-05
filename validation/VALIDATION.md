@@ -1,5 +1,37 @@
 # Validation report — AI TDD Kit
 
+## 1.5.3 repository compatibility — 2026-10-05
+
+The preset preserves the effective existing in-repository runsettings file,
+including inherited `RunSettingsFilePath` and higher-priority `VSTestSetting`.
+Its path and raw SHA256 bind both discovery and execution. Regressions distinguish
+coverage exclusions from test filters, early stopping and collapsed theory
+discovery, and reject malformed/ambiguous XML, external settings and settings drift.
+The coverage acceptance regressions failed against the previous blanket rejection.
+
+Package content regressions cover exact reachable restored dependencies,
+package file/import membership, generated `contentFiles` imports, recorded fallback
+caches and target aliases. They also reject orphan/stale packages, user-authored
+external assets and mismatched project/cache/import/item metadata. Eight content
+regressions failed before the provenance correction. Shared in-repository assets
+remain protected. No user project, package version or settings edits are required.
+
+An actual local SDK 10.0.301 restore/evaluation accepted the combined synthetic
+fixture with inherited coverage settings, direct NuGet `contentFiles` and a
+transitive build-imported `Content` asset. It preserved all authored project and
+configuration hashes. This setup result is separate from native test execution.
+The native fixture additionally requires real attached Cobertura reports with
+executed `Demo.Fee` line hits, copied package payload assertions, unchanged project/
+props/settings hashes, and full xUnit/NUnit DONE workflows. Existing 105-row xUnit
+identity and 70-project setup checks remain in the native CI path.
+
+Final full-suite, native host/SDK and public install/download results are recorded
+in the [1.5.3 release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.5.3).
+Plugin 1.5.3 retains the original pinned 1.5.0 interpreter and its historical
+provenance; native CI separately exercises the anonymously downloaded old binary
+with the current external sources. These fixtures use public synthetic inputs and
+deterministic role simulation, without private repository data or paid model calls.
+
 ## 1.5.1 project-count correction — 2026-10-02
 
 The native preset's arbitrary 50-project rejection is removed. New 70/128-project
