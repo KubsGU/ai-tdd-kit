@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
-      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures
     strategy:
       fail-fast: false
       matrix:
@@ -101,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: runtime-failure-${{ matrix.platform }}
-          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          path: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures/
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 3
@@ -112,7 +112,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
-      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures
     strategy:
       fail-fast: false
       matrix:
@@ -149,7 +149,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dotnet-failure-${{ matrix.os }}-${{ matrix.sdk }}
-          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          path: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures/
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 3
@@ -160,7 +160,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     env:
-      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures
       DOTNET_DEMO_SDK: '8.0.100'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -183,7 +183,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: intentional-native-failure-diagnostics
-          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          path: ${{ github.workspace }}/dist/ai-tdd-dotnet-failures/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
