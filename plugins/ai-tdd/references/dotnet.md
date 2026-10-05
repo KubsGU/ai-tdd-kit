@@ -58,7 +58,7 @@ Actual native CI smoke results establish only their tested host scope; this
 local attempt does not prove Python-free use under strict Application Control.
 
 The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
-Plugin and interpreter versions are independent: plugin 1.5.3 reuses the pinned
+Plugin and interpreter versions are independent: plugin 1.5.4 reuses the pinned
 1.5.0 interpreter, which executes the installed external controller sources.
 Its historical build metadata describes the original build inputs; the new
 plugin source is covered by the source ZIP/checksums and task fingerprints.
@@ -106,14 +106,15 @@ disjoint subdirectory, for example `src/App/` and `tests/App.Tests/`.
 Root-level, shared or nested project ownership is unsupported. Projects need
 explicit supported `net...` target frameworks, ordinary project-local `bin/`
 and `obj/` output paths, and no selective test filters or MTP selection.
-User-authored external or unowned linked inputs need a reviewed custom setup.
+Existing user-authored external or unowned linked inputs need a reviewed custom
+setup. A narrowly checked absent external content link is described below.
 Test-project linked C# sources are accepted only when they belong to an
 independently evaluated source project inside the root, whose source tree is
 fingerprinted. Links into another test project are rejected. Ordinary evaluated
 package-owned assets remain
 tool dependencies; they are not copied into public evidence.
 
-## Existing runsettings and package content
+## Existing runsettings, package content and absent links
 
 `init` accepts an existing regular `.runsettings` file inside the selected
 repository root. It uses the evaluated effective `VSTestSetting`, falling back
@@ -133,14 +134,30 @@ precise compatibility rule before it can be accepted; removing the setting to
 make the gate pass is not a setup repair.
 
 Evaluated `Content`/`None` assets can come from direct or transitive NuGet packages.
-An asset outside the repository is accepted only when its exact package version
-is present in the selected restored target graph, its file is in that package's
-recorded inventory and the defining import has the required provenance. This
+An existing asset outside the repository is accepted only when its exact package
+version is present in the selected restored target graph, its file is in that
+package's recorded inventory and the defining import has the required provenance. This
 supports direct `contentFiles` supplied through NuGet-generated imports in the
 project's `obj/` directory and transitive assets supplied through resolved package
 build imports. It does not change NuGet's own content propagation rules.
 A cache directory or package-like path alone is insufficient. User-authored
 external content does not become a trusted dependency through this exception.
+
+An external linked `Content`/`None` may name a file that does not exist, such as
+an ancestor `.dockerignore` left in a project's ordinary Docker tooling setup.
+The preset accepts such an item only when the owning in-root `.csproj` declares
+it, the canonical target is genuinely absent and it has no output or publish
+copy. Imported items, existing external files and absent inputs copied by the
+project remain unsupported. No project edit, placeholder file, root expansion
+or changed coverage configuration is needed for this case.
+
+Accepted targets are recorded in optional `dotnet.external_absent_inputs`, with
+their canonical paths and required absence. These paths remain private local
+configuration and grant no agent ownership outside the repository. Configuration
+checks, native execution before and after each run, and controller protected
+input/freshness gates recheck absence. Creating the file invalidates the recorded
+setup and requires a supported configuration before execution can continue.
+This is an absence assertion, not a blanket exclusion for external inputs.
 
 If package ownership cannot be established because restore records are missing
 or stale, restore the repository's existing package versions using its normal
@@ -163,6 +180,12 @@ locations and reconciliation of native IDs, outcomes and TRX counters. Duplicate
 or unstable IDs, missing cases, malformed/truncated events, filters, skips,
 unexecuted cases and inconsistent totals fail closed. The baseline must pass the
 real suite; pre-existing skips or failures need separate resolution.
+
+Native TRX and NUnit XML reports have a 64 MiB budget and must remain fresh regular
+files without linked paths. Missing, unsafe and oversized artifacts receive
+separate diagnostics. This accommodates verbose reports from large theory suites
+without dropping cases or XML payload sections. Native ID/outcome reconciliation
+and the separate normalized controller JSON/message bounds remain unchanged.
 
 For xUnit, discovery uses fresh VSTest `--diag` transport JSON rather than the
 readable `--list-tests` output. It collects `TestDiscovery.TestFound` cases and
@@ -259,7 +282,11 @@ Resolve the existing environment separately or retain the task as incomplete;
 do not bypass it with a message regex, a narrowed suite or manual receipts.
 For a runsettings error, inspect the resolved file and named setting locally.
 For an ownership error, inspect the item's defining import and restored assets
-graph; confirm the chosen root contains user-authored shared inputs. Keep private
+graph; confirm the chosen root contains user-authored shared inputs. For an
+absent external content link, confirm its own project declares it and no copy
+metadata requests output/publish copying; do not create the missing file to
+work around setup. If a previously recorded absent input appears, the setup
+must be reviewed again rather than editing receipts to ignore it. Keep private
 repository paths, fixture contents and native logs local. A public repository or
 uploading private source is not required to use the kit or diagnose these checks.
 MSBuild/test execution is trusted project code, not a sandbox for hostile code.

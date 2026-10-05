@@ -16,7 +16,7 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.5.3**.
+Version **1.5.4**.
 
 ## Install
 
@@ -97,6 +97,13 @@ Package-supplied `Content`/`None` assets, including transitive dependencies, are
 recognized through their restored package graph and import provenance. Restore
 the repository's existing packages if those records are missing; setup does not
 require editing `.csproj` files or excluding package content to bypass ownership.
+
+An external linked `Content`/`None` declared by the owning project can also be
+accepted when the file is genuinely absent and has no output or publish copy,
+for example a missing ancestor `.dockerignore`. Its canonical path and absence
+are bound to setup and rechecked at execution and freshness gates. Creating the
+file invalidates that setup; it grants no external write ownership. Existing
+user-authored external files still require a reviewed custom setup.
 
 The built-in VSTest path supports existing xUnit projects with
 `xunit.runner.visualstudio >= 3.0.0`, and NUnit projects with `NUnit >= 3.14.0`

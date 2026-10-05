@@ -1,5 +1,6 @@
 """Native coverage proofs follow TRX attachments rather than unrelated copies."""
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +14,49 @@ loader = importlib.util.spec_from_file_location("dotnet_demo_coverage", KIT / "s
 demo = importlib.util.module_from_spec(loader)
 loader.loader.exec_module(demo)
 TRX_NS = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
+
+
+class AbsentExternalContentProofTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-absent-content-proof-")
+        self.addCleanup(self.temp.cleanup)
+        self.sandbox = Path(self.temp.name).resolve()
+        self.root = self.sandbox / "project"
+        (self.root / ".ai-tdd").mkdir(parents=True)
+        self.external = self.sandbox / "absent-ancestor/.dockerignore"
+        (self.root / ".ai-tdd/external-absent-input.json").write_text(
+            json.dumps({"path": str(self.external)}), encoding="utf-8")
+        self.write_config([str(self.external)])
+
+    def write_config(self, paths):
+        (self.root / ".ai-tdd/config.json").write_text(
+            json.dumps({"dotnet": {"external_absent_inputs": paths}}), encoding="utf-8")
+
+    def test_proof_requires_exactly_the_expected_bound_absent_path(self):
+        proof = demo.verify_external_absent_input(self.root)
+        self.assertEqual(proof["external_absent_input_count"], 1)
+        self.assertTrue(proof["project_authored_absent_content_bound"])
+        self.assertTrue(proof["external_absent_inputs_still_absent"])
+        for paths in ([], [str(self.sandbox / "other")], [str(self.external), str(self.sandbox / "other")]):
+            with self.subTest(paths=paths):
+                self.write_config(paths)
+                with self.assertRaisesRegex(RuntimeError, "exactly the expected absent external input"):
+                    demo.verify_external_absent_input(self.root)
+
+    def test_creating_the_bound_input_invalidates_final_absence_proof(self):
+        demo.verify_external_absent_input(self.root)
+        self.external.parent.mkdir()
+        self.external.write_text("synthetic newly present external input\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "must remain absent"):
+            demo.verify_external_absent_input(self.root)
+
+    def test_only_fixture_setup_before_facade_init_can_defer_config_binding(self):
+        (self.root / ".ai-tdd/config.json").unlink()
+        proof = demo.verify_external_absent_input(self.root, require_config=False)
+        self.assertTrue(proof["external_absent_inputs_still_absent"])
+        self.assertFalse(proof["project_authored_absent_content_bound"])
+        with self.assertRaisesRegex(RuntimeError, "evaluated native configuration"):
+            demo.verify_external_absent_input(self.root)
 
 
 class CoverageAttachmentTests(unittest.TestCase):

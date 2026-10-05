@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.5.4 — 2026-10-05
+
+- Accept genuinely absent external linked `Content`/`None` declared by the
+  owning in-repository project, when the item has no output or publish copy.
+  An absent ancestor `.dockerignore` does not require changing the project or
+  creating a placeholder file merely to initialize the kit.
+- Bind each accepted canonical path and its absence in optional
+  `dotnet.external_absent_inputs`. Recheck absence during configuration, before
+  and after native test execution, and at controller freshness/protected gates.
+  Creating the input invalidates the recorded setup; it does not authorize an
+  external write or become an ignored dependency.
+- Keep existing user-authored external files unsupported, along with imported
+  or copied absent inputs. Preserve exact NuGet ownership checks, existing
+  runsettings, full test evidence and repository ownership boundaries.
+- Accept native TRX/NUnit XML evidence up to 64 MiB, preserving fresh regular
+  file checks and complete reconciliation. A valid report just above 5 MB no
+  longer appears as missing evidence; missing, unsafe and oversized artifacts
+  receive distinct diagnostics. Normalized controller JSON limits remain intact.
+- Reuse the unchanged pinned runtime 1.5.0 interpreter and its original build
+  metadata. Finish/archive active tasks with their original plugin before updating.
+
 ## 1.5.3 — 2026-10-05
 
 - Preserve existing in-repository runsettings selected through evaluated MSBuild
