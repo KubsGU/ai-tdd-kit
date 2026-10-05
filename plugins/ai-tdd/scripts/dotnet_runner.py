@@ -4,8 +4,10 @@ Only existing supported VSTest frameworks are accepted; no user adapter is
 authored and no exception type is inferred from text or reporter Cause.
 """
 import argparse
+from collections import Counter
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -32,6 +34,11 @@ ASSERTIONS = frozenset("Xunit.Sdk." + name for name in (
     "ThrowsAnyException", "ThrowsException", "TrueException"))
 TERMINALS = {"test-passed": "passed", "test-failed": "failed", "test-skipped": "skipped", "test-not-run": "skipped"}
 NATIVE_XML_MAX_BYTES = 64 * 1024 * 1024
+NATIVE_JSON_MAX_BYTES = 64 * 1024 * 1024
+
+
+class NativeOwnershipError(DotnetError):
+    """An unsafe native evidence path aborts the entire module plan."""
 
 
 def _unique_names(names):
@@ -183,6 +190,12 @@ def method_witness(stack, klass, method):
     return bool(re.search(r"(?:^|\s)at\s+(?:" + body + "|" + asynchronous + ")", stack))
 
 
+def _policy_failure(types, messages):
+    return any(exception == "System.IO.FileLoadException" and
+               re.search(r"(?<![0-9a-f])0x800711c7(?![0-9a-f])", message, re.I)
+               for exception, message in zip(types, messages))
+
+
 def _failure(event, case):
     arrays = {name: event.get(name) for name in ("ExceptionTypes", "ExceptionParentIndices", "Messages", "StackTraces")}
     length = len(arrays["ExceptionTypes"]) if isinstance(arrays["ExceptionTypes"], list) else 0
@@ -197,10 +210,16 @@ def _failure(event, case):
             raise DotnetError("Malformed native failure metadata")
     actual_type = arrays["ExceptionTypes"][0]
     assertion = actual_type in ASSERTIONS and method_witness(arrays["StackTraces"][0], case.get("TestClassName"), case.get("TestMethodName"))
-    return {"status": "failed" if assertion else "error", "exception": "AssertionError" if assertion else actual_type or "UnknownFailure",
+    policy_blocked = _policy_failure(arrays["ExceptionTypes"], arrays["Messages"])
+    if policy_blocked:
+        assertion, actual_type = False, "System.IO.FileLoadException"
+    result = {"status": "failed" if assertion else "error", "exception": "AssertionError" if assertion else actual_type or "UnknownFailure",
             "native_exception_types": arrays["ExceptionTypes"], "native_exception_parent_indices": arrays["ExceptionParentIndices"],
             "native_messages": arrays["Messages"], "native_stack_traces": arrays["StackTraces"], "native_cause": event.get("Cause"),
             "detail": "\n".join(arrays["Messages"])[:1200]}
+    if policy_blocked:
+        result.update(native_failure_code="application_control_blocked", native_hresult="0x800711C7")
+    return result
 
 
 def _read_native_xml(path, label):
@@ -240,26 +259,35 @@ def _xml(raw):
         raise DotnetError("Malformed native XML evidence") from error
 
 
-def _trx(raw, outcomes, native=None):
+def _trx(raw, outcomes, native=None, *, parent_rows=False):
     tree = _xml(raw)
     namespace = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
     if tree.tag != namespace + "TestRun":
         raise DotnetError("TRX needs the native TestRun schema")
-    actual = {}
+    if parent_rows:
+        containers = tree.findall(namespace + "Results")
+        if (len(containers) != 1 or any(item.tag != namespace + "UnitTestResult" for item in containers[0])
+                or tree.findall(".//" + namespace + "InnerResults")
+                or len(tree.findall(".//" + namespace + "UnitTestResult")) != len(containers[0])):
+            raise DotnetError("Runtime theory TRX requires one flat Results container of native UnitTestResult rows")
+    actual, parent_executions = {}, {}
     executions = set()
     for item in tree.findall(namespace + "Results/" + namespace + "UnitTestResult"):
         name, outcome = (_guid(item.get("testId")) if native else item.get("testName")), item.get("outcome")
-        if not name or name in actual or outcome not in {"Passed", "Failed", "NotExecuted"}:
+        if not name or name in actual and not parent_rows or outcome not in {"Passed", "Failed", "NotExecuted"}:
             raise DotnetError("TRX contains missing/duplicate/unsupported outcomes")
-        actual[name] = outcome
+        if parent_rows:
+            actual.setdefault(name, []).append(outcome)
+        else:
+            actual[name] = outcome
         if native:
             execution_id = _guid(item.get("executionId"))
             if execution_id in executions:
                 raise DotnetError("TRX contains duplicate executions")
             executions.add(execution_id)
+            parent_executions.setdefault(name, set()).add(execution_id)
     if native:
         definitions = {}
-        result_ids = {_guid(item.get("testId")): item for item in tree.findall(namespace + "Results/" + namespace + "UnitTestResult")}
         for definition in tree.findall(namespace + "TestDefinitions/" + namespace + "UnitTest"):
             test_id = _guid(definition.get("id"))
             methods, runs = definition.findall(namespace + "TestMethod"), definition.findall(namespace + "Execution")
@@ -269,21 +297,24 @@ def _trx(raw, outcomes, native=None):
             if (method.get("className", "") + "." + method.get("name", "") != case["method"]
                     or method.get("adapterTypeName") != case["executor_uri"]
                     or Path(method.get("codeBase", "")) != Path(case["source"])
-                    or test_id not in result_ids or _guid(runs[0].get("id")) != _guid(result_ids[test_id].get("executionId"))):
+                    or _guid(runs[0].get("id")) not in parent_executions.get(test_id, set())):
                 raise DotnetError("TRX method/source/execution differs from discovered native test")
             definitions[test_id] = definition
         if set(definitions) != set(native):
             raise DotnetError("TRX is missing native test definitions")
-    expected = {name: {"test-passed": "Passed", "test-failed": "Failed", "test-skipped": "NotExecuted", "test-not-run": "NotExecuted"}[outcome]
-                for name, outcome in outcomes.items()}
-    if actual != expected:
+    translation = {"test-passed": "Passed", "test-failed": "Failed", "test-skipped": "NotExecuted", "test-not-run": "NotExecuted"}
+    expected = ({name: [translation[outcome] for outcome in rows] for name, rows in outcomes.items()} if parent_rows else
+                {name: translation[outcome] for name, outcome in outcomes.items()})
+    mismatch = (set(actual) != set(expected) or any(Counter(actual[name]) != Counter(expected[name]) for name in actual)) if parent_rows else actual != expected
+    if mismatch:
         raise DotnetError("Fresh TRX and native reporter disagree on test inventory/outcomes")
     counters = tree.findall(namespace + "ResultSummary/" + namespace + "Counters")
     if len(counters) != 1:
         raise DotnetError("TRX requires one execution count summary")
-    counts = {"total": len(actual), "passed": sum(value == "Passed" for value in actual.values()),
-              "failed": sum(value == "Failed" for value in actual.values()),
-              "executed": sum(value != "NotExecuted" for value in actual.values())}
+    leaves = [value for rows in actual.values() for value in rows] if parent_rows else list(actual.values())
+    counts = {"total": len(leaves), "passed": sum(value == "Passed" for value in leaves),
+              "failed": sum(value == "Failed" for value in leaves),
+              "executed": sum(value != "NotExecuted" for value in leaves)}
     for key, value in counts.items():
         if counters[0].get(key) != str(value):
             raise DotnetError("TRX declared counts disagree with execution")
@@ -294,7 +325,7 @@ def _trx(raw, outcomes, native=None):
         raise DotnetError("TRX run diagnostics prevent clean native evidence")
 
 
-def reconcile(project, tfm, discovered, stdout, trx):
+def reconcile(project, tfm, discovered, stdout, trx, *, runtime_theories=False):
     """Join full discovered IDs with actual typed lifecycle and fresh TRX."""
     if not isinstance(discovered, dict) or not discovered:
         raise DotnetError("Full structured xUnit discovery is required")
@@ -311,12 +342,20 @@ def reconcile(project, tfm, discovered, stdout, trx):
             continue
         if completed or assembly is None or event.get("AssemblyUniqueID") != assembly:
             raise DotnetError("Native event outside its single assembly lifecycle")
+        if runtime_theories and kind in {"test-starting", "test-finished", "test-case-finished", *TERMINALS}:
+            parent = cases.get(event.get("TestCaseUniqueID"))
+            if parent is None or any(_text(event, key) != parent[key] for key in
+                                     ("TestCollectionUniqueID", "TestClassUniqueID", "TestMethodUniqueID")):
+                raise DotnetError("Native row/case ancestry differs from its exact active parent lifecycle")
         if kind == "test-case-starting":
             case_id = _text(event, "TestCaseUniqueID")
             if case_id in cases:
                 raise DotnetError("Duplicate native test case lifecycle")
             _text(event, "TestClassName")
             _text(event, "TestMethodName")
+            if runtime_theories:
+                for key in ("TestCollectionUniqueID", "TestClassUniqueID", "TestMethodUniqueID"):
+                    _text(event, key)
             if case_id not in discovered or event["TestClassName"] + "." + event["TestMethodName"] != discovered[case_id]["method"]:
                 raise DotnetError("Native execution case/method differs from full discovery")
             cases[case_id] = event
@@ -325,10 +364,10 @@ def reconcile(project, tfm, discovered, stdout, trx):
             if test_id in tests or case_id not in cases or case_id in finished_cases:
                 raise DotnetError("Invalid/duplicate test-starting lifecycle")
             _text(event, "TestDisplayName")
-            if case_id in case_tests:
+            if case_id in case_tests and not runtime_theories:
                 raise DotnetError("Exactly one test per discovered case is required; delayed theory rows/retries are unsupported")
             tests[test_id] = event
-            case_tests[case_id] = test_id
+            case_tests.setdefault(case_id, []).append(test_id)
         elif kind in TERMINALS or kind == "test-finished":
             test_id = _text(event, "TestUniqueID")
             if test_id not in tests or test_id in finished_tests or event.get("TestCaseUniqueID") != tests[test_id]["TestCaseUniqueID"]:
@@ -343,7 +382,7 @@ def reconcile(project, tfm, discovered, stdout, trx):
                 terminals[test_id] = event
         elif kind == "test-case-finished":
             case_id = _text(event, "TestCaseUniqueID")
-            members = [case_tests[case_id]] if case_id in case_tests else []
+            members = case_tests.get(case_id, [])
             if case_id not in cases or case_id in finished_cases or not members or any(item not in finished_tests for item in members):
                 raise DotnetError("Incomplete/duplicate test case lifecycle")
             _counts(event, [terminals[item]["$type"] for item in members])
@@ -357,18 +396,31 @@ def reconcile(project, tfm, discovered, stdout, trx):
         raise DotnetError("Missing native assembly completion")
     if set(cases) != set(discovered):
         raise DotnetError("Full discovery differs from actual executed inventory; filters/retries/undiscovered theory rows are unsupported")
-    outcomes = {discovered[tests[test_id]["TestCaseUniqueID"]]["vstest_id"]: event["$type"] for test_id, event in terminals.items()}
-    _trx(trx, outcomes, {case["vstest_id"]: case for case in discovered.values()})
+    if runtime_theories:
+        outcomes = {discovered[case_id]["vstest_id"]: [terminals[test_id]["$type"] for test_id in members]
+                    for case_id, members in case_tests.items()}
+    else:
+        outcomes = {discovered[tests[test_id]["TestCaseUniqueID"]]["vstest_id"]: event["$type"] for test_id, event in terminals.items()}
+    # The native adapter supplies only parent VSTest IDs to TRX. Compare all
+    # independent row outcomes under each exact parent, without inventing a
+    # reporter-child to randomly assigned TRX execution GUID association.
+    _trx(trx, outcomes, {case["vstest_id"]: case for case in discovered.values()}, parent_rows=runtime_theories)
     results = []
     for test_id, event in terminals.items():
         item = tests[test_id]
-        result = {"id": project + "|" + tfm + "|xunit:" + item["TestCaseUniqueID"], "display_name": item["TestDisplayName"],
+        identity = project + "|" + tfm + "|xunit:" + item["TestCaseUniqueID"]
+        if runtime_theories:
+            identity += "|test:" + test_id
+        result = {"id": identity, "display_name": item["TestDisplayName"],
                   "native_case_id": item["TestCaseUniqueID"], "vstest_id": discovered[item["TestCaseUniqueID"]]["vstest_id"],
                   "status": TERMINALS[event["$type"]], "exception": "", "detail": event.get("Reason", "")}
+        if runtime_theories:
+            result["native_test_id"] = test_id
         if event["$type"] == "test-failed":
             result.update(_failure(event, cases[item["TestCaseUniqueID"]]))
         results.append(result)
-    return {"schema": 1, "collected": [project + "|" + tfm + "|xunit:" + case_id for case_id in discovered], "results": results}
+    collected = [item["id"] for item in results] if runtime_theories else [project + "|" + tfm + "|xunit:" + case_id for case_id in discovered]
+    return {"schema": 1, "collected": collected, "results": results}
 
 
 def _nunit_counts(node, cases):
@@ -453,7 +505,7 @@ def _nunit_target(project, tfm, artifacts, root):
     except (ValueError, KeyError, TypeError) as error:
         raise DotnetError("Unsupported NUnit output metadata") from error
     if target != artifacts and artifacts not in target.parents or not filename or Path(filename).name != filename:
-        raise DotnetError("NUnit artifacts must stay within the fresh owned bin/ directory")
+        raise NativeOwnershipError("NUnit artifacts must stay within the fresh owned bin/ directory")
     return target / "Dump" / ("D_" + filename + ".dump"), Path(filename).stem + ".xml"
 
 
@@ -464,6 +516,82 @@ def _process(argv, root, stdout_path, stderr_path, timeout):
         except (OSError, subprocess.TimeoutExpired) as error:
             raise DotnetError("Native .NET execution failed: " + type(error).__name__ + "; inspect the local run logs") from error
     return result.returncode, stdout_path.read_text(encoding="utf-8-sig", errors="replace")
+
+
+def _native_diagnostic(stdout, stderr=""):
+    """Classify advisory failures from typed records, never assertion evidence."""
+    try:
+        events = _events(stdout)
+    except DotnetError:
+        events = []
+    runtime = None
+    for event in events:
+        if event.get("$type") != "test-failed" and event.get("$type") != "error-message" and not event.get("$type", "").endswith("cleanup-failure"):
+            continue
+        try:
+            failure = _failure(event, {})
+        except DotnetError:
+            continue
+        for exception, message in zip(failure["native_exception_types"], failure["native_messages"]):
+            if exception == "System.IO.FileLoadException" and re.search(r"(?<![0-9a-f])0x800711c7(?![0-9a-f])", message, re.I):
+                return {"kind": "application-control", "code": "application_control_blocked", "exception_type": exception, "hresult": "0x800711C7",
+                        "message": "Windows Application Control blocked an assembly; repair its trusted build/install provenance before rerunning. Policy was not changed."}
+            if runtime is None and exception and exception not in ASSERTIONS:
+                code = ("assembly_load_failure" if exception in {"System.IO.FileLoadException", "System.IO.FileNotFoundException",
+                                                                "System.BadImageFormatException", "System.Reflection.ReflectionTypeLoadException"}
+                        else "native_runtime_error")
+                runtime = {"kind": "native-runtime-error", "code": code, "exception_type": exception, "message": message[:1200]}
+    # This is only a failure advisory, never a lifecycle/assertion witness.
+    # The existing adapter may fail before it can emit typed JSON records.
+    # Recognize its concrete catastrophic exception header and exact Windows
+    # HRESULT, without depending on localized descriptions of the policy.
+    header = re.search(r"(?m)^\s*(?:\[xUnit\.net \d{2}:\d{2}:\d{2}\.\d{2}\]\s+[^\r\n:]+:\s+)?"
+                       r"Catastrophic failure:\s*System\.IO\.FileLoadException(?:\s|:)", stderr)
+    if header and re.search(r"(?<![0-9a-f])0x800711c7(?![0-9a-f])", stderr[header.start():], re.I):
+        return {"kind": "application-control", "code": "application_control_blocked", "exception_type": "System.IO.FileLoadException",
+                "hresult": "0x800711C7", "evidence_source": "adapter-stderr",
+                "message": "The existing xUnit adapter reports an assembly blocked by Windows Application Control before native JSON. Policy was not changed."}
+    return runtime or {}
+
+
+def _advisory_stderr(path):
+    try:
+        info = path.lstat()
+        if (not stat.S_ISREG(info.st_mode) or path.resolve() != path.absolute() or info.st_size > 1_000_000
+                or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+            return ""
+        with path.open("rb") as stream:
+            raw = stream.read(1_000_001)
+        return raw.decode("utf-8-sig", errors="replace") if len(raw) <= 1_000_000 else ""
+    except OSError:
+        return ""
+
+
+def _logs(directory, root):
+    names = ("discovery.stdout.log", "discovery.stderr.log", "discovery.diag.log", "discovery.xml",
+             "execution.stdout.log", "execution.stderr.log", "result.trx")
+    return {name: (directory / name).relative_to(root).as_posix() for name in names if (directory / name).is_file()}
+
+
+def _write_progress(report, data, *, initial=False):
+    raw = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    if len(raw.encode("utf-8")) > NATIVE_JSON_MAX_BYTES:
+        raise DotnetError("Normalized native report exceeds the 64 MiB evidence bound; full native logs are retained")
+    if initial:
+        with report.open("x", encoding="utf-8") as stream:
+            stream.write(raw)
+        return
+    info = report.lstat()
+    if (not stat.S_ISREG(info.st_mode) or report.resolve() != report.absolute()
+            or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+        raise DotnetError("Unsafe native progress report path")
+    temporary = report.with_name(report.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        with temporary.open("x", encoding="utf-8") as stream:
+            stream.write(raw)
+        os.replace(temporary, report)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def run(root, report, config=None):
@@ -491,66 +619,119 @@ def run(root, report, config=None):
         raise DotnetError(".NET runner timeout must be positive and at most 3600 seconds")
     folder = report.parent / (report.stem + "-dotnet-" + uuid.uuid4().hex)
     folder.mkdir(parents=False, exist_ok=False)
-    report_data = {"schema": 1, "collected": [], "results": [], "native_modules": []}
+    report_data = {"schema": 1, "completion": "incomplete", "planned_module_count": len(configured["modules"]),
+                   "collected": [], "results": [], "diagnostics": [],
+                   "native_modules": [{**module, "status": "pending"} for module in configured["modules"]]}
+    _write_progress(report, report_data, initial=True)
     for index, module in enumerate(configured["modules"]):
         directory = folder / str(index)
         directory.mkdir()
-        base = [dotnet, "test", str(root / module["project"]), "--framework", module["tfm"], "--verbosity", "minimal", "--nologo"]
-        if module.get("runsettings"):
-            base += ["--settings", str(root / module["runsettings"]["path"])]
-        nunit = module["framework"] == "nunit-vstest"
-        if nunit:
-            artifacts = root / module["project"]
-            artifacts = artifacts.parent / "bin" / ("ai-tdd-" + uuid.uuid4().hex)
-            if artifacts.exists():
-                raise DotnetError("NUnit artifacts directory must be fresh")
-            dump, result_name = _nunit_target(root / module["project"], module["tfm"], artifacts, root)
-            if dump.exists():
-                raise DotnetError("NUnit discovery evidence must be fresh")
-            base += ["--artifacts-path", str(artifacts)]
-        discovery_log = directory / "discovery.diag.log"
-        discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else
-                                            ["--diag", str(discovery_log), "--", "RunConfiguration.BatchSize=100"])
-        discovery_code, discovery = _process(base + discovery_args, root, directory / "discovery.stdout.log", directory / "discovery.stderr.log", timeout)
-        if discovery_code:
-            raise DotnetError(".NET build/discovery failed; repair compilation or discovery before RED (local logs retained)")
-        if nunit:
-            native_discovery = _read_native_xml(dump, "NUnit full discovery XML")
-            (directory / "discovery.xml").write_text(native_discovery, encoding="utf-8")
-        else:
-            if not discovery_log.is_file() or discovery_log.is_symlink():
-                raise DotnetError("Missing fresh structured VSTest discovery diagnostics")
-            with discovery_log.open(encoding="utf-8-sig") as stream:
-                inventory = discovery_cases(iter(lambda: stream.readline(5_000_001), ""))
-            owned_bin = (root / module["project"]).parent / "bin"
-            native_source = Path(next(iter(inventory.values()))["source"])
-            if owned_bin not in native_source.parents or native_source.resolve() != native_source:
-                raise DotnetError("Native discovery assembly must remain inside its owned project bin directory")
-        settings = (["NUnit.TestOutputXml=" + str(directory), "NUnit.DisplayName=FullName"] if nunit else
-                    ["xUnit.ReporterSwitch=json", "xUnit.NoAutoReporters=true"])
-        code, execution = _process(base + ["--no-build", "--no-restore", "--results-directory", str(directory),
-                                          "--logger", "trx;LogFileName=result.trx", "--logger", "console;verbosity=normal", "--", *settings],
-                                   root, directory / "execution.stdout.log", directory / "execution.stderr.log", timeout)
-        if code not in (0, 1):
-            raise DotnetError(".NET test execution did not produce a normal completed run")
-        path = directory / "result.trx"
-        native_trx = _read_native_xml(path, "TRX")
-        if nunit:
-            native_results = directory / result_name
-            evidence = reconcile_nunit(module["project"], module["tfm"], native_discovery,
-                                       _read_native_xml(native_results, "NUnit native result XML"), native_trx)
-        else:
-            evidence = reconcile(module["project"], module["tfm"], inventory, execution, native_trx)
-        failures = any(item["status"] in {"failed", "error"} for item in evidence["results"])
-        if code != int(failures):
-            raise DotnetError("Native exit status disagrees with executed outcomes")
-        report_data["collected"].extend(evidence["collected"])
-        report_data["results"].extend(evidence["results"])
-        report_data["native_modules"].append({**module, "directory": directory.relative_to(root).as_posix(), "exit_code": code})
+        receipt = report_data["native_modules"][index]
+        receipt.update(status="running", directory=directory.relative_to(root).as_posix(), phase="discovery")
+        execution = ""
+        _write_progress(report, report_data)
+        try:
+            base = [dotnet, "test", str(root / module["project"]), "--framework", module["tfm"], "--verbosity", "minimal", "--nologo"]
+            if module.get("runsettings"):
+                base += ["--settings", str(root / module["runsettings"]["path"])]
+            nunit = module["framework"] == "nunit-vstest"
+            runtime_theories = not nunit and configured.get("theory_mode") == "runtime-parent-rows-v1"
+            theory_settings = ["xUnit.PreEnumerateTheories=false"] if runtime_theories else []
+            if nunit:
+                artifacts = (root / module["project"]).parent / "bin" / ("ai-tdd-" + uuid.uuid4().hex)
+                if artifacts.exists():
+                    raise DotnetError("NUnit artifacts directory must be fresh")
+                dump, result_name = _nunit_target(root / module["project"], module["tfm"], artifacts, root)
+                if dump.exists():
+                    raise DotnetError("NUnit discovery evidence must be fresh")
+                base += ["--artifacts-path", str(artifacts)]
+            discovery_log = directory / "discovery.diag.log"
+            discovery_args = ["--list-tests"] + (["--", "NUnit.DumpXmlTestDiscovery=true", "NUnit.DisplayName=FullName"] if nunit else
+                                                ["--diag", str(discovery_log), "--", "RunConfiguration.BatchSize=100", *theory_settings])
+            discovery_code, discovery = _process(base + discovery_args, root, directory / "discovery.stdout.log", directory / "discovery.stderr.log", timeout)
+            receipt["discovery_exit_code"] = discovery_code
+            if discovery_code:
+                raise DotnetError(".NET build/discovery failed; repair compilation or discovery before RED (local logs retained)")
+            if nunit:
+                native_discovery = _read_native_xml(dump, "NUnit full discovery XML")
+                (directory / "discovery.xml").write_text(native_discovery, encoding="utf-8")
+            else:
+                if not discovery_log.is_file() or discovery_log.is_symlink():
+                    raise DotnetError("Missing fresh structured VSTest discovery diagnostics")
+                with discovery_log.open(encoding="utf-8-sig") as stream:
+                    inventory = discovery_cases(iter(lambda: stream.readline(5_000_001), ""))
+                receipt["discovery_case_count"] = len(inventory)
+                owned_bin = (root / module["project"]).parent / "bin"
+                native_source = Path(next(iter(inventory.values()))["source"])
+                if owned_bin not in native_source.parents or native_source.resolve() != native_source:
+                    raise NativeOwnershipError("Native discovery assembly must remain inside its owned project bin directory")
+            receipt["phase"] = "execution"
+            _write_progress(report, report_data)
+            settings = (["NUnit.TestOutputXml=" + str(directory), "NUnit.DisplayName=FullName"] if nunit else
+                        ["xUnit.ReporterSwitch=json", "xUnit.NoAutoReporters=true", *theory_settings])
+            code, execution = _process(base + ["--no-build", "--no-restore", "--results-directory", str(directory),
+                                              "--logger", "trx;LogFileName=result.trx", "--logger", "console;verbosity=normal", "--", *settings],
+                                       root, directory / "execution.stdout.log", directory / "execution.stderr.log", timeout)
+            receipt["exit_code"] = code
+            if code not in (0, 1):
+                raise DotnetError(".NET test execution did not produce a normal completed run")
+            receipt["phase"] = "reconciliation"
+            native_trx = _read_native_xml(directory / "result.trx", "TRX")
+            if nunit:
+                evidence = reconcile_nunit(module["project"], module["tfm"], native_discovery,
+                                           _read_native_xml(directory / result_name, "NUnit native result XML"), native_trx)
+            else:
+                evidence = reconcile(module["project"], module["tfm"], inventory, execution, native_trx, runtime_theories=runtime_theories)
+            failures = any(item["status"] in {"failed", "error"} for item in evidence["results"])
+            if code != int(failures):
+                raise DotnetError("Native exit status disagrees with executed outcomes")
+            report_data["collected"].extend(evidence["collected"])
+            report_data["results"].extend(evidence["results"])
+            receipt.update(status="complete", executed_row_count=len(evidence["results"]))
+            receipt.pop("phase", None)
+        except (DotnetError, OSError, ValueError) as error:
+            advisory = _native_diagnostic(execution, _advisory_stderr(directory / "execution.stderr.log"))
+            diagnostic = {"module_index": index, "project": module["project"], "tfm": module["tfm"],
+                          "phase": receipt["phase"], "kind": "native-" + receipt["phase"] + "-error", "message": str(error),
+                          "code": "native_" + receipt["phase"] + "_error",
+                          "logs": _logs(directory, root)}
+            if isinstance(error.__cause__, subprocess.TimeoutExpired):
+                diagnostic["kind"] = "native-process-timeout"
+                diagnostic["code"] = "native_process_timeout"
+            elif isinstance(error.__cause__, OSError):
+                diagnostic["kind"] = "native-process-launch-error"
+                diagnostic["code"] = "native_process_launch_error"
+            if advisory:
+                diagnostic.update(advisory)
+                diagnostic["reconciliation_error"] = str(error)
+            receipt.update(status="incomplete", diagnostics=[diagnostic])
+            report_data["diagnostics"].append(diagnostic)
+            if isinstance(error, NativeOwnershipError):
+                diagnostic["kind"] = "native-ownership-error"
+                diagnostic["code"] = "native_ownership_error"
+                _write_progress(report, report_data)
+                raise
+        # External absence remains a global ownership invariant even when the
+        # native module fails. A drift aborts all remaining work and can never
+        # be transformed into a completed acceptance report.
+        try:
+            if SETUP.external_absent_snapshot(root, absent_inputs) != absent_before:
+                raise DotnetError("External absent project input changed during native execution")
+        except DotnetError as error:
+            diagnostic = {"module_index": index, "phase": "ownership", "kind": "native-ownership-error", "message": str(error),
+                          "code": "native_ownership_error",
+                          "logs": _logs(directory, root)}
+            receipt.update(status="incomplete", diagnostics=receipt.get("diagnostics", []) + [diagnostic])
+            report_data["diagnostics"].append(diagnostic)
+            _write_progress(report, report_data)
+            raise
+        _write_progress(report, report_data)
     if SETUP.external_absent_snapshot(root, absent_inputs) != absent_before:
         raise DotnetError("External absent project input changed during native execution")
-    with report.open("x", encoding="utf-8") as stream:
-        stream.write(json.dumps(report_data, ensure_ascii=False, indent=2) + "\n")
+    if report_data["diagnostics"]:
+        return 2
+    report_data["completion"] = "complete"
+    _write_progress(report, report_data)
     return int(any(item["status"] in {"failed", "error"} for item in report_data["results"]))
 
 

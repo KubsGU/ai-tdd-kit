@@ -16,7 +16,7 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.5.4**.
+Version **1.6.0**.
 
 ## Install
 
@@ -112,12 +112,21 @@ framework evidence and TRX results across every configured test project/target
 framework. Assertion evidence needs a test-body stack witness; runtime, setup,
 teardown and missing-inventory failures cannot authorize implementation.
 
-xUnit cases use stable native case IDs; readable display names may be long,
+xUnit rows use native parent and child IDs; readable display names may be long,
 shortened by the adapter, or repeated. The coordinator reads actual IDs from
 the baseline report and new cases from the RED run's log/report, then uses
 those IDs for acceptance mappings and review. It does not construct IDs from
-test names. The runner requires exactly one execution per discovered case;
-theories whose rows are enumerated only at runtime remain unsupported.
+test names. The runner discovers theory parents consistently and validates every
+row emitted at execution, including nonserializable MemberData. It binds every
+child lifecycle and compares per-parent outcomes with independent TRX results.
+The existing parent row inventory is frozen across phases. xUnit v2 child IDs
+identify ordinals, so authored data must remain protected and runtime data stable.
+
+The runner collects all configured modules and retains incremental local progress
+when a module fails. Incomplete discovery, a blocked assembly or missing evidence
+produces a typed diagnostic and an incomplete report, never a passing receipt.
+Existing test errors remain visible and prevent a passing baseline. No project
+edit, coverage removal or security-policy change is an automatic repair.
 
 Ordinary MSTest TRX and Microsoft.Testing.Platform are currently unsupported:
 their available evidence is not treated as a typed behavioral RED. Unsupported

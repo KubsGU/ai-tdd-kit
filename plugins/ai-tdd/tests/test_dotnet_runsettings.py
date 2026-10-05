@@ -67,13 +67,20 @@ class RepositoryRunsettingsTests(unittest.TestCase):
     def test_selection_early_stop_and_unknown_adapter_controls_are_actionable(self):
         bad = [("RunConfiguration", "TestCaseFilter", "Category=Smoke"),
                ("xUnit", "StopOnFail", "true"), ("xUnit", "Explicit", "only"),
-               ("xUnit", "PreEnumerateTheories", "false"), ("NUnit", "Where", "cat == Smoke"),
+               ("xUnit", "PreEnumerateTheories", "unknown"), ("NUnit", "Where", "cat == Smoke"),
                ("NUnit", "StopOnError", "true"), ("NUnit", "ExplicitMode", "None"),
                ("xUnit", "UnreviewedSelectionExtension", "true")]
         for section, node, value in bad:
             with self.subTest(node=node), self.assertRaisesRegex(self.setup.DotnetError, node):
                 self.configured(f"<RunSettings><{section}><{node}>{value}</{node}></{section}></RunSettings>")
         self.configured("<RunSettings><xUnit><StopOnFail>false</StopOnFail><PreEnumerateTheories>true</PreEnumerateTheories></xUnit></RunSettings>")
+
+    def test_existing_deferred_theory_setting_is_preserved_under_runtime_row_policy(self):
+        text = COVERAGE.replace("<xUnit>", "<xUnit><PreEnumerateTheories>false</PreEnumerateTheories>")
+        config, path = self.configured(text)
+        self.assertEqual(path.read_text(encoding="utf-8"), text)
+        self.assertEqual(config["dotnet"]["theory_mode"], "runtime-parent-rows-v1")
+        self.assertEqual(config["dotnet"]["modules"][0]["runsettings"]["sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_malformed_ambiguous_and_external_settings_do_not_pass(self):
         values = ["<RunSettings>", "<Other/>",

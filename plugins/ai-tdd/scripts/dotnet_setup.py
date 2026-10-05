@@ -210,7 +210,7 @@ def _runsettings(root, project, metadata):
                     raise DotnetError("Unsupported nested runsettings control " + location)
                 if ((location in {"RunConfiguration/TestCaseFilter", "NUnit/Where"} and text)
                         or (location in {"xUnit/StopOnFail", "NUnit/StopOnError"} and text != "false")
-                        or (location == "xUnit/PreEnumerateTheories" and text != "true")
+                        or (location == "xUnit/PreEnumerateTheories" and text not in {"true", "false"})
                         or (location == "xUnit/Explicit" and text not in {"off", "on"})
                         or (location == "NUnit/ExplicitMode" and text not in {"strict", "relaxed"})):
                     raise DotnetError("Runsettings " + location + " can suppress cases or stop early; full native evidence is required")
@@ -554,10 +554,12 @@ def configure(root):
             protected.add(_relative(root, path))
     node = shutil.which("node") or "node"
     config = {"schema": 1, "source_roots": sorted(source_roots), "test_roots": sorted(test_roots),
-            "protected_paths": sorted(protected), "generated_roots": sorted(set(generated)), "timeout_seconds": 600,
+            "protected_paths": sorted(protected), "generated_roots": sorted(set(generated)), "timeout_seconds": min(3600, max(600, len(modules) * 60)),
             "max_attempts": 3, "runner": {"format": "json", "argv": [node, "--preserve-symlinks", "--preserve-symlinks-main", "{plugin}/scripts/tdd-launcher.cjs", "--dotnet-test", "--root", "{root}", "--report", "{report}"]},
             "dotnet": {"schema": 1, "sdk": sdk_identity(root), "modules": modules, "projects": [_relative(root, project) for project in projects]},
             "quality_checks": []}
+    if any(module["framework"] == "xunit-vstest" for module in modules):
+        config["dotnet"]["theory_mode"] = "runtime-parent-rows-v1"
     if external_absent:
         paths = sorted(str(path) for path in external_absent)
         external_absent_snapshot(root, paths)

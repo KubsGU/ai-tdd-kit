@@ -13,6 +13,7 @@ from pathlib import Path
 import platform
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import uuid
@@ -26,6 +27,9 @@ IGNORED = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_m
 READ_TOOLS = {"Read", "Glob", "Grep", "AskUserQuestion", "TodoWrite", "TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "SendUserMessage"}
 SELFTEST_REASON = "deny: AI TDD hook self-test"
 CACHE_FLAGS = ("DISABLE_PROMPT_CACHING", "DISABLE_PROMPT_CACHING_OPUS", "DISABLE_PROMPT_CACHING_SONNET", "DISABLE_PROMPT_CACHING_HAIKU", "DISABLE_PROMPT_CACHING_FABLE")
+JSON_INPUT_MAX_BYTES = 5_000_000
+NATIVE_REPORT_MAX_BYTES = 64 * 1024 * 1024
+STATE_MAX_BYTES = 64 * 1024 * 1024
 
 
 class TddError(RuntimeError):
@@ -63,20 +67,29 @@ def digest(path):
         return hashlib.sha256(stream.read()).hexdigest()
 
 
-def read_json(path):
+def read_json(path, *, max_bytes=JSON_INPUT_MAX_BYTES):
     try:
-        if path.stat().st_size > 5_000_000 or path.is_symlink():
+        info = path.lstat()
+        if (info.st_size > max_bytes or not stat.S_ISREG(info.st_mode) or path.is_symlink()
+                or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
             raise TddError("Unsafe or oversized JSON artifact")
-        return json.loads(path.read_text(encoding="utf-8"))
+        with path.open("rb") as stream:
+            raw = stream.read(max_bytes + 1)
+        if len(raw) > max_bytes:
+            raise TddError("Unsafe or oversized JSON artifact")
+        return json.loads(raw.decode("utf-8"))
     except (OSError, ValueError) as error:
         raise TddError(f"Cannot read {path.name}: {type(error).__name__}") from error
 
 
-def atomic_json(path, value):
+def atomic_json(path, value, *, max_bytes=None):
+    raw = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+    if max_bytes is not None and len(raw.encode("utf-8")) > max_bytes:
+        raise TddError("JSON artifact exceeds its bounded evidence budget; previous artifact is preserved")
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
     try:
-        temp.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        temp.write_text(raw, encoding="utf-8")
         os.replace(temp, path)
     finally:
         temp.unlink(missing_ok=True)
@@ -160,9 +173,44 @@ def hook_health():
     return {"hook_health": "pass", "python_version": platform.python_version()}
 
 
-def parse_report(path, fmt):
+def native_report_problem(value):
+    """A progress report is diagnostic evidence, never a passing receipt."""
+    if not isinstance(value, dict):
+        return "Runner JSON report must be an object"
+    if (value.get("completion", "complete") != "complete" or value.get("complete", True) is not True
+            or value.get("diagnostics")):
+        codes = sorted({item["code"] for item in value.get("diagnostics", [])
+                        if isinstance(item, dict) and isinstance(item.get("code"), str) and item["code"]}) if isinstance(value.get("diagnostics", []), list) else []
+        return "Incomplete native .NET evidence: " + (", ".join(code[:120] for code in codes[:12]) or "module collection did not complete")
+    if "planned_module_count" in value:
+        count, modules = value["planned_module_count"], value.get("native_modules")
+        if (type(count) is not int or count < 1 or not isinstance(modules, list) or len(modules) != count
+                or any(not isinstance(module, dict) or module.get("status") != "complete" for module in modules)):
+            return "Incomplete native .NET evidence: planned/completed module inventory differs"
+    return None
+
+
+def native_runtime_rows(results):
+    """Bind the native framework's row inventory without interpreting names."""
+    parents = {}
+    for item in results:
+        if "native_test_id" not in item:
+            continue
+        parent, child, test_id = item.get("native_case_id"), item["native_test_id"], item["id"]
+        if (not isinstance(parent, str) or not parent or not isinstance(child, str) or not child
+                or not test_id.endswith("|xunit:" + parent + "|test:" + child)):
+            raise TddError("Invalid native runtime row identity")
+        key = test_id[:-(len(child) + len("|test:"))]
+        parents.setdefault(key, []).append(test_id)
+    return {parent: sorted(rows) for parent, rows in sorted(parents.items())}
+
+
+def parse_report(path, fmt, *, native=False):
     if fmt == "json":
-        value = read_json(path)
+        value = read_json(path, max_bytes=NATIVE_REPORT_MAX_BYTES if native else JSON_INPUT_MAX_BYTES)
+        problem = native_report_problem(value)
+        if problem:
+            raise TddError(problem)
         if value.get("schema") != 1:
             raise TddError("Unsupported runner report schema")
         collected, results = value.get("collected"), value.get("results")
@@ -278,7 +326,7 @@ class Controller:
                 raise TddError("Private/control paths cannot be quality inputs")
             if any(inside(resolved, owned) or inside(owned, resolved) for owned in sources + tests):
                 raise TddError("Quality inputs are configuration; source/test roots are already fingerprinted")
-        self.state = read_json(self.state_path) if self.state_path.exists() else None
+        self.state = read_json(self.state_path, max_bytes=STATE_MAX_BYTES) if self.state_path.exists() else None
         if self.state and self.state.get("phase") != "DONE":
             if self.state.get('generated_roots', []) != self.generated_roots:
                 raise TddError('Frozen generated_roots changed; setup repair cannot change excluded outputs')
@@ -352,7 +400,7 @@ class Controller:
 
     def save(self, event, **details):
         self.state["history"].append({"event": event, "utc": datetime.now(timezone.utc).isoformat(), **details})
-        atomic_json(self.state_path, self.state)
+        atomic_json(self.state_path, self.state, max_bytes=STATE_MAX_BYTES)
         return self.state
 
     def phase(self, *allowed):
@@ -382,6 +430,8 @@ class Controller:
             raise TddError("Changed protected artifacts; use explicit contract amendment")
 
     def run(self, kind):
+        dotnet = self.config.get("dotnet")
+        native = isinstance(dotnet, dict) and dotnet.get("schema") == 1
         if self.state:
             self.require_run_budget()
             self.state["runner_runs"] = self.state.get("runner_runs", 1) + 1
@@ -402,23 +452,40 @@ class Controller:
             argv.append(arg)
         child_env = os.environ.copy()
         child_env["PYTHONDONTWRITEBYTECODE"] = "1"
+        process_error = None
         try:
             with (runs / (run_id + ".stdout.log")).open("wb") as out, (runs / (run_id + ".stderr.log")).open("wb") as err:
                 process = subprocess.run(argv, cwd=self.root, env=child_env, shell=False, stdout=out, stderr=err, timeout=self.config.get("timeout_seconds", 120))
         except subprocess.TimeoutExpired as error:
-            raise TddError("Runner timeout; no RED/GREEN evidence") from error
+            process_error = error
         except OSError as error:
-            raise TddError("Runner executable unavailable: " + type(error).__name__) from error
+            process_error = error
         if self.protected() != before_protected or self.source() != before_source or digest(self.state_path) != before_state:
             raise TddError("Runner modified source or protected artifacts")
-        collected, results = parse_report(report, self.config["runner"]["format"])
+        log_path = (runs / (run_id + ".stderr.log")).relative_to(self.root).as_posix()
+        if process_error:
+            reason = "Runner timeout" if isinstance(process_error, subprocess.TimeoutExpired) else "Runner executable unavailable: " + type(process_error).__name__
+            if self.config["runner"]["format"] == "json" and report.exists():
+                try:
+                    problem = native_report_problem(read_json(report, max_bytes=NATIVE_REPORT_MAX_BYTES if native else JSON_INPUT_MAX_BYTES))
+                except TddError as error:
+                    problem = str(error)
+                if problem:
+                    reason += "; " + problem
+            raise TddError(reason + "; no RED/GREEN evidence; inspect " + log_path) from process_error
+        if not report.exists():
+            raise TddError("Runner exited with code " + str(process.returncode) + " without a fresh report; inspect " + log_path)
+        try:
+            collected, results = parse_report(report, self.config["runner"]["format"], native=native)
+        except TddError as error:
+            raise TddError(str(error) + "; inspect " + report.relative_to(self.root).as_posix() + " and " + log_path) from error
         failed = any(item["status"] in {"failed", "error"} for item in results)
         if process.returncode not in {0, 1} or (process.returncode == 0) == failed:
             raise TddError("Runner exit/report mismatch or infrastructure failure")
         if any(item["status"] == "skipped" for item in results):
             raise TddError("Skipped tests cannot certify this workflow")
         receipt = {"id": run_id, "kind": kind, "utc": datetime.now(timezone.utc).isoformat(), "environment": self.runtime_environment(), "protected": before_protected, "source": before_source, "collected": collected, "results": results, "exit_code": process.returncode}
-        atomic_json(runs / (run_id + ".receipt.json"), receipt)
+        atomic_json(runs / (run_id + ".receipt.json"), receipt, max_bytes=STATE_MAX_BYTES)
         return receipt
 
     def require_run_budget(self):
@@ -431,6 +498,11 @@ class Controller:
             raise TddError("Missing previously executed required test IDs")
         if any(item["status"] != "passed" for test_id, item in actual.items() if test_id not in failing):
             raise TddError("Unexpected regression or runner error")
+        rows = native_runtime_rows(receipt["results"])
+        for parent, required in self.state.get("native_runtime_rows", {}).items():
+            observed = rows.get(parent)
+            if observed != required and self.state["phase"] != "AMEND":
+                raise TddError("Existing runtime theory row inventory changed; diagnose data stability or use an explicit contract amendment")
         return actual
 
     def fresh(self):
@@ -493,6 +565,7 @@ class Controller:
 
     def begin(self, allow_empty=False):
         # Setup artifacts may have been completed after object construction.
+        policy_upgrade = prepare_native_policy(self.root)
         self.__init__(self.root)
         if self.state:
             raise TddError("A task already exists; resume it or use a separate checkout")
@@ -505,11 +578,17 @@ class Controller:
             raise TddError("Review plan must address every acceptance criterion")
         baseline = self.run("baseline")
         if baseline["exit_code"] or (not baseline["results"] and not allow_empty):
-            raise TddError("Baseline must pass and execute tests; bootstrap needs --allow-empty")
+            types = sorted({str(item.get("exception") or item["status"])[:120] for item in baseline["results"] if item["status"] != "passed"})
+            types = sorted(set(types) | {item["native_failure_code"] for item in baseline["results"]
+                                        if item["status"] != "passed" and isinstance(item.get("native_failure_code"), str)})
+            path = (self.folder / "runs" / (baseline["id"] + ".receipt.json")).relative_to(self.root).as_posix()
+            raise TddError("Baseline must pass and execute tests" + (": " + ", ".join(types[:12]) if types else "; bootstrap needs --allow-empty") + "; inspect " + path)
         quality_baseline = self.run_quality("baseline")
         self.state = {"schema": 1, "task_id": uuid.uuid4().hex, "phase": "TEST", "spec_version": spec["version"], "environment": self.runtime_environment(), "baseline_receipt": baseline, "required_ids": baseline["collected"], "source_checkpoint": self.source(), "test_checkpoint": self.test_files(), "fixed": self.protected(False), "coverage": {}, "attempts": 0, "cycle": 1, "history": [], "empty_baseline_waiver": bool(not baseline["results"] and allow_empty)}
         self.state.update(runner_runs=1, runner_run_limit=self.config.get("max_runner_runs", 100))
         self.state.update(initial_required_ids=list(baseline["collected"]), quality_policy=self.quality_policy,
+                          native_runtime_rows=native_runtime_rows(baseline["results"]),
+                          native_policy_upgrade=policy_upgrade,
                           worker_models=dict(self.worker_models),
                           generated_roots=list(self.generated_roots),
                           quality_runs=int(bool(self.quality_checks)), quality_run_limit=self.quality_policy["run_limit"],
@@ -544,6 +623,7 @@ class Controller:
         self.state["fixed"], self.state["frozen"] = self.protected(False), self.protected()
         self.state["increment"] = {"tests": tests, "ac": ac, "because": because}
         self.state["attempts"] = 0
+        self.state["native_runtime_rows"] = native_runtime_rows(receipt["results"])
         self.state.pop("review", None)
 
     def red(self, tests, ac, expect, because):
@@ -962,6 +1042,41 @@ def dotnet_configuration(root):
         return module.configure(root)
     except module.DotnetError as error:
         raise TddError(str(error)) from error
+
+
+def prepare_native_policy(root):
+    """Upgrade only an unchanged inactive native preset's evidence policy."""
+    folder = managed_folder(root)
+    if (folder / "state.json").exists() or not (folder / "config.json").is_file():
+        return None
+    path = folder / "config.json"
+    value = read_json(path)
+    native = value.get("dotnet")
+    if not isinstance(native, dict) or "theory_mode" in native:
+        return None
+    modules = native.get("modules", [])
+    if not isinstance(modules, list) or not any(isinstance(module, dict) and module.get("framework") == "xunit-vstest" for module in modules):
+        return None
+    original = path.read_bytes()
+    original_hash = hashlib.sha256(original).hexdigest()
+    if value != json.loads(original):
+        raise TddError("Native configuration changed during preparation; repeat reviewed setup before begin")
+    current = dotnet_configuration(root)
+    evaluated = dict(current["dotnet"])
+    mode = evaluated.pop("theory_mode", None)
+    ownership = ("source_roots", "test_roots", "protected_paths", "generated_roots")
+    if (mode != "runtime-parent-rows-v1" or evaluated != native
+            or any(current.get(key, []) != value.get(key, []) for key in ownership)
+            or digest(path) != original_hash):
+        raise TddError("Native setup changed beyond runtime-row policy; repeat reviewed setup before begin")
+    directory = safe_path(root, ".ai-tdd/diagnostics")
+    directory.mkdir(parents=True, exist_ok=True)
+    backup = directory / ("config-before-runtime-rows-" + uuid.uuid4().hex + ".json")
+    with backup.open("xb") as stream:
+        stream.write(original)
+    value["dotnet"]["theory_mode"] = mode
+    atomic_json(path, value)
+    return {"backup": backup.relative_to(root).as_posix(), "sha256": original_hash}
 
 
 def init(root):

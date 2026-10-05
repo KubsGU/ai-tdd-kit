@@ -4,6 +4,7 @@ Requires an existing .NET 8+ SDK and public NuGet connectivity. Every fixture,
 CLI home and package cache is temporary; existing SDKs/projects are untouched.
 """
 import argparse
+from collections import Counter, defaultdict
 from contextlib import contextmanager
 import hashlib
 import importlib.util
@@ -12,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -65,14 +67,86 @@ def fixture_directory():
     root = Path(tempfile.mkdtemp(prefix="ai-tdd-dotnet-demo-")).resolve()
     try:
         yield root
-    except BaseException:
+    except BaseException as error:
         print("Synthetic .NET fixture and local failure logs retained at " + str(root), file=sys.stderr)
+        artifact_directory = os.environ.get("AI_TDD_DEMO_FAILURE_ARTIFACTS")
+        if artifact_directory:
+            try:
+                collect_failure_artifacts(root, Path(artifact_directory), error)
+            except Exception as capture_error:
+                print("Could not collect synthetic failure artifacts: " + type(capture_error).__name__, file=sys.stderr)
         raise
     else:
         # Validate the exact created target before recursive fixture cleanup.
         if root.parent != Path(tempfile.gettempdir()).resolve() or not root.name.startswith("ai-tdd-dotnet-demo-"):
             raise RuntimeError("Refusing cleanup outside the explicitly created fixture directory")
         shutil.rmtree(root)
+
+
+def collect_failure_artifacts(root, destination, error):
+    """Copy bounded diagnostics from this public demo's synthetic fixture only.
+
+    CI explicitly opts into this helper. It never scans checkout directories,
+    environment variables, binaries, package caches or user repositories. Log
+    tails preserve underlying subprocess errors when no JSON receipt exists.
+    """
+    root = Path(root).absolute()
+    if (root.parent != Path(tempfile.gettempdir()).resolve()
+            or not root.name.startswith("ai-tdd-dotnet-demo-") or root.resolve() != root):
+        raise RuntimeError("Artifact capture requires the explicitly created synthetic fixture directory")
+    destination = Path(destination).resolve() / root.name
+    if destination == root or root in destination.parents:
+        raise RuntimeError("Failure artifacts must stay outside the source fixture")
+    destination.mkdir(parents=True, exist_ok=False)
+    manifest = {"schema": 1, "scope": "generated-public-dotnet-fixture", "error_type": type(error).__name__,
+                "files": [], "omitted_files": [], "limit_reached": False}
+    candidates = []
+    # These four folders are created by main; no other temporary tree is read.
+    for name in ("xunit-evidence", "xunit-workflow", "nunit-evidence", "nunit-workflow"):
+        folder = root / name / ".ai-tdd"
+        if not folder.is_dir() or folder.resolve() != folder:
+            continue
+        for current, directories, filenames in os.walk(folder, followlinks=False):
+            directories[:] = sorted(name for name in directories if (Path(current) / name).resolve() == Path(current) / name)
+            for name in filenames:
+                path = Path(current) / name
+                if path.suffix.lower() not in {".log", ".json", ".trx", ".xml"}:
+                    continue
+                metadata = path.lstat()
+                if (not stat.S_ISREG(metadata.st_mode) or path.resolve() != path
+                        or getattr(metadata, "st_file_attributes", 0) & 0x400):
+                    continue
+                candidates.append((path, metadata.st_size))
+    # Put subprocess stderr first so XML volume cannot hide the root failure.
+    candidates.sort(key=lambda value: (0 if value[0].name.endswith("stderr.log") else
+                                      1 if value[0].suffix.lower() == ".log" else 2,
+                                      value[0].relative_to(root).as_posix()))
+    remaining = 128 * 1024 * 1024
+    for path, size in candidates:
+        relative = path.relative_to(root).as_posix()
+        if len(manifest["files"]) >= 256 or remaining <= 0:
+            manifest["limit_reached"] = True
+            break
+        limit = min(1024 * 1024 if path.suffix.lower() == ".log" else 64 * 1024 * 1024, remaining)
+        if size > limit and path.suffix.lower() != ".log":
+            manifest["omitted_files"].append({"path": relative, "reason": "byte-limit", "original_bytes": size})
+            continue
+        with path.open("rb") as stream:
+            if size > limit:
+                stream.seek(-limit, os.SEEK_END)
+            value = stream.read(limit + 1)
+        if len(value) > limit:
+            manifest["omitted_files"].append({"path": relative, "reason": "changed-during-capture"})
+            continue
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(value)
+        remaining -= len(value)
+        manifest["files"].append({"path": relative, "original_bytes": size, "copied_bytes": len(value),
+                                  "truncated": size > len(value)})
+    (destination / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print("Synthetic failure artifacts collected at " + str(destination), file=sys.stderr)
+    return destination
 
 
 def setup_diagnostics(root):
@@ -342,27 +416,122 @@ def native(root):
         setup_diagnostics(root)
         raise
     report = json.loads(path.read_text(encoding="utf-8"))
+    if code not in (0, 1) or report.get("completion") != "complete":
+        setup_diagnostics(root)
+        raise RUNNER.DotnetError("Synthetic native run incomplete: " + json.dumps(report.get("diagnostics", []), ensure_ascii=False))
     coverage_checks(root, [module["directory"] for module in report["native_modules"]])
     verify_repository_inputs(root)
     return code, report
 
 
+def native_report(root, value):
+    """Resolve a controller receipt to its unchanged native evidence file."""
+    if "native_modules" in value:
+        return value
+    run_id = value.get("id", "")
+    if not re.fullmatch(r"[a-f0-9]{32}", run_id):
+        raise RuntimeError("Native proof requires a real controller receipt")
+    report = json.loads((root / ".ai-tdd/runs" / (run_id + ".json")).read_text(encoding="utf-8"))
+    if report["results"] != value["results"] or report["collected"] != value["collected"]:
+        raise RuntimeError("Controller receipt differs from its native evidence")
+    return report
+
+
+def native_inventory(root, report):
+    report = native_report(root, report)
+    if len(report["native_modules"]) != 1:
+        raise RuntimeError("Synthetic identity proof requires exactly one native module")
+    directory = root / report["native_modules"][0]["directory"]
+    if directory.resolve() != directory or root / ".ai-tdd" not in directory.parents:
+        raise RuntimeError("Unsafe synthetic native evidence directory")
+    with (directory / "discovery.diag.log").open(encoding="utf-8-sig") as stream:
+        inventory = RUNNER.discovery_cases(iter(lambda: stream.readline(5_000_001), ""))
+    return inventory, directory
+
+
+def native_identity_checks(root, report, previous=None):
+    """Audit parent discovery and aggregate TRX outcomes independently of rows.
+
+    TRX execution GUIDs are only native execution witnesses; they are never
+    fabricated as JSON child IDs or joined through truncated display names.
+    """
+    report = native_report(root, report)
+    inventory, directory = native_inventory(root, report)
+    expected, identities = defaultdict(Counter), set()
+    for row in report["results"]:
+        parent, child = row.get("native_case_id"), row.get("native_test_id")
+        if parent not in inventory or not child or row.get("vstest_id") != inventory[parent]["vstest_id"]:
+            raise RuntimeError("Missing or inconsistent native parent/child identity")
+        identity = (parent, child, row["id"])
+        if identity in identities:
+            raise RuntimeError("Duplicate native child identity")
+        identities.add(identity)
+        expected[row["vstest_id"]][{"passed": "Passed", "failed": "Failed", "error": "Failed", "skipped": "NotExecuted"}[row["status"]]] += 1
+    namespace = "{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}"
+    tree = ET.fromstring((directory / "result.trx").read_text(encoding="utf-8-sig"))
+    actual, executions, parents = defaultdict(Counter), set(), defaultdict(set)
+    for row in tree.findall(namespace + "Results/" + namespace + "UnitTestResult"):
+        execution = row.get("executionId")
+        if not execution or execution in executions:
+            raise RuntimeError("TRX requires unique actual execution IDs")
+        executions.add(execution)
+        parents[row.get("testId")].add(execution)
+        actual[row.get("testId")][row.get("outcome")] += 1
+    if actual != expected:
+        raise RuntimeError("TRX aggregate parent outcomes differ from actual runtime rows")
+    native_parents = {value["vstest_id"]: value for value in inventory.values()}
+    definitions = set()
+    for definition in tree.findall(namespace + "TestDefinitions/" + namespace + "UnitTest"):
+        parent = definition.get("id")
+        methods, runs = definition.findall(namespace + "TestMethod"), definition.findall(namespace + "Execution")
+        if parent not in native_parents or parent in definitions or len(methods) != 1 or len(runs) != 1:
+            raise RuntimeError("TRX parent definitions do not bind exact discovery")
+        case, method = native_parents[parent], methods[0]
+        if (method.get("className", "") + "." + method.get("name", "") != case["method"]
+                or Path(method.get("codeBase", "")) != Path(case["source"])
+                or method.get("adapterTypeName") != case["executor_uri"]
+                or runs[0].get("id") not in parents[parent]):
+            raise RuntimeError("TRX parent method/source/execution binding differs from discovery")
+        definitions.add(parent)
+    if definitions != set(native_parents) or set(expected) != set(native_parents):
+        raise RuntimeError("TRX parent inventory is incomplete")
+    if previous is not None:
+        earlier = {(row["native_case_id"], row["native_test_id"], row["id"]) for row in native_report(root, previous)["results"]}
+        if earlier != identities:
+            raise RuntimeError("Native child identities changed across an unchanged rerun")
+    return {"discovered_parent_cases": len(inventory), "executed_native_rows": len(identities),
+            "expanded_parent_cases": sum(sum(outcomes.values()) > 1 for outcomes in expected.values()),
+            "aggregate_trx_binding_proven": True, "unchanged_run_child_ids_stable": previous is not None,
+            "identity_limitation": "Native ordinal child IDs prove unchanged-run continuity; same-count MemberData reorder needs semantic review"}
+
+
 def theory_fixture(tests):
     """Two truncation boundaries: adapter 447 chars and v2 argument formatting.
 
-    103 serializable rows force batched discovery as well as its completion
-    tail. Two long strings have identical formatted names but distinct data.
-    Long nested fixture paths are ordinary project inputs, never user changes.
+    Nonserializable MemberData proves deferred runtime rows. Another 103 Fact
+    methods retain transport batching when each theory has one parent during
+    discovery. Long nested fixture paths are ordinary synthetic inputs.
     """
     directory = tests / ('long-theory-path-' + 'p' * 55) / ('nested-' + 'q' * 55)
     directory.mkdir(parents=True)
     prefix = 'SharedLongTheoryDisplayName' * 24
     data = ''.join(f'[InlineData({index})]' for index in range(103))
     values = 'C:/synthetic/' + 'long/path/' * 12
-    code = ('using Xunit; namespace Demo; public class LongTheories { '
+    facts = ''.join(f'[Fact] public void ExistingLowCart{index:03d}() {{ Assert.Equal(799, Fee.Calculate({index})); }}'
+                    for index in range(103))
+    code = ('using Xunit; using System.Collections.Generic; namespace Demo; public class LongTheories { '
             f'[Theory(DisplayName="{prefix}")] {data} public void Adapter(int row) {{ Assert.InRange(row, 0, 102); }} '
             f'[Theory] [InlineData("{values}one")] [InlineData("{values}two")] '
-            'public void Argument(string value) { Assert.True(value.EndsWith("one") || value.EndsWith("two")); } }')
+            'public void Argument(string value) { Assert.True(value.EndsWith("one") || value.EndsWith("two")); } } '
+            'public sealed class CartInput { public int Cents { get; } public string Label { get; } '
+            'public CartInput(int cents, string label) { Cents = cents; Label = label; } public override string ToString() => Label; } '
+            'public class DeferredTheories { public static IEnumerable<object[]> Rows() { '
+            'yield return new object[] { new CartInput(100, "same cart") }; '
+            'yield return new object[] { new CartInput(200, "same cart") }; '
+            'yield return new object[] { new CartInput(300, "third cart") }; } '
+            '[Theory] [MemberData(nameof(Rows), DisableDiscoveryEnumeration = true)] '
+            'public void Objects(CartInput cart) { Assert.Equal(799, Fee.Calculate(cart.Cents)); } } '
+            'public class TransportBatches { ' + facts + ' }')
     (directory / 'LongTheories.cs').write_text(code, encoding='utf-8')
     return directory / 'LongTheories.cs'
 
@@ -374,12 +543,25 @@ def theory_checks(root, report, path):
     names = [row['display_name'] for row in rows]
     if len(set(names)) != 104 or max(map(len, names)) <= 447:
         raise RuntimeError('Fixture did not exercise both name truncation boundaries')
-    logs = sorted((root / '.ai-tdd').rglob('discovery.diag.log'))
-    if not logs or not any('"MessageType":"TestDiscovery.TestFound"' in log.read_text(encoding='utf-8-sig') for log in logs):
+    inventory, directory = native_inventory(root, report)
+    facts = [case for case in inventory.values() if case['method'].startswith('Demo.TransportBatches.ExistingLowCart')]
+    trace = (directory / 'discovery.diag.log').read_text(encoding='utf-8-sig')
+    if len(facts) != 103 or '"MessageType":"TestDiscovery.TestFound"' not in trace:
         raise RuntimeError('Native discovery did not exercise batched transport cases')
     return {'native_cases': 105, 'distinct_ids': 105, 'distinct_display_names': 104,
             'longest_display_name': max(map(len, names)), 'fixture_path_characters': len(str(path)),
-            'batched_discovery': True, 'duplicate_formatted_names': True}
+            'batched_discovery': True, 'discovered_fact_methods': len(facts), 'duplicate_formatted_names': True}
+
+
+def runtime_theory_checks(root, report, previous=None):
+    proof = native_identity_checks(root, report, previous)
+    inventory, _ = native_inventory(root, report)
+    parents = {parent for parent, case in inventory.items() if case['method'] == 'Demo.DeferredTheories.Objects'}
+    rows = [row for row in report['results'] if row['native_case_id'] in parents]
+    if len(parents) != 1 or len(rows) != 3 or len({row['display_name'] for row in rows}) != 2:
+        raise RuntimeError('Nonserializable MemberData did not prove distinct rows with duplicate formatted names')
+    return {**proof, 'nonserializable_memberdata_rows': len(rows), 'nonserializable_discovered_parents': len(parents),
+            'duplicate_memberdata_display_names': True, 'command_scoped_theory_enumeration': True}
 
 
 def evidence_demo(root, framework, linked_source=False):
@@ -387,13 +569,17 @@ def evidence_demo(root, framework, linked_source=False):
     code, baseline = native(root)
     if code or len(baseline["results"]) != 1 or baseline["results"][0]["status"] != "passed":
         raise RuntimeError("Native baseline was not one proven passing test")
-    theory = None
+    theory, deferred = None, None
     if framework == 'xunit':
         theory_path = theory_fixture(tests)
         code, long_report = native(root)
-        if code or len(long_report['results']) != 106:
+        if code or len(long_report['results']) != 1 + 105 + 103 + 3:
             raise RuntimeError('Native long-theory baseline was not fully passing')
         theory = theory_checks(root, long_report, theory_path)
+        repeat_code, repeated_report = native(root)
+        if repeat_code:
+            raise RuntimeError('Unchanged native runtime-row baseline failed on its repeat')
+        deferred = runtime_theory_checks(root, repeated_report, previous=long_report)
         theory_path.unlink()
     tests.joinpath("Checks.cs").write_text((
         'using Xunit; namespace Demo; public class Checks { '
@@ -424,7 +610,7 @@ def evidence_demo(root, framework, linked_source=False):
         raise RuntimeError("Compile error incorrectly produced acceptance evidence")
     return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "full_inventory": len(report["collected"]), "statuses": statuses, "build_failure_rejected": build_rejected,
             "repository_compatibility": {**verify_repository_inputs(root), **coverage_checks(root)},
-            **({'long_theories': theory} if theory else {})}
+            **({'long_theories': theory, 'deferred_theories': deferred} if theory else {})}
 
 
 class FacadeController:
@@ -507,20 +693,32 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
         setup_diagnostics(root)
         raise
     verify_repository_inputs(root)
-    (folder / "spec.json").write_text(json.dumps({"version": 1, "goal": "Free delivery at 10000 cents",
-        "acceptance": [{"id": "AC1", "description": "Fee is zero for a 10000-cent cart"}], "open_questions": []}), encoding="utf-8")
+    (folder / "spec.json").write_text(json.dumps({"version": 1, "goal": "Free delivery at or above 10000 cents",
+        "acceptance": [{"id": "AC1", "description": "Fee is zero for carts at or above 10000 cents"}], "open_questions": []}), encoding="utf-8")
     (folder / "review-plan.json").write_text(json.dumps({"scenarios": [{"ac": "AC1", "case": "Literal boundary 10000 cents"}]}), encoding="utf-8")
     controller.begin()
-    assertion = ('using Xunit; namespace Demo; public class Threshold { [Fact] public void Boundary() { Assert.Equal(0, Fee.Calculate(10000)); } }'
+    assertion = ('using Xunit; using System.Collections.Generic; namespace Demo; public class Threshold { '
+                 'public static IEnumerable<object[]> Rows() { yield return new object[] { new CartInput(10000, "boundary") }; '
+                 'yield return new object[] { new CartInput(10001, "boundary") }; } '
+                 '[Theory] [MemberData(nameof(Rows), DisableDiscoveryEnumeration = true)] '
+                 'public void Boundary(CartInput cart) { Assert.Equal(0, Fee.Calculate(cart.Cents)); } }'
                  if framework == "xunit" else 'using NUnit.Framework; namespace Demo; public class Threshold { [Test] public void Boundary() { Assert.That(Fee.Calculate(10000), Is.EqualTo(0)); } }')
     (tests / "Threshold.cs").write_text(assertion, encoding="utf-8")
     # Discover the actual native case ID instead of constructing it from a name.
     _, red_report = native(root)
-    red_rows = [row for row in red_report['results'] if row.get('display_name', row['id'].split('|')[-1]) == 'Demo.Threshold.Boundary']
-    if len(red_rows) != 1 or red_rows[0]['exception'] != 'AssertionError':
+    if framework == 'xunit':
+        inventory, _ = native_inventory(root, red_report)
+        parents = {parent for parent, case in inventory.items() if case['method'] == 'Demo.Threshold.Boundary'}
+        red_rows = [row for row in red_report['results'] if row['native_case_id'] in parents]
+        if len(parents) != 1 or len({row['display_name'] for row in red_rows}) != 1:
+            raise RuntimeError('Runtime boundary theory must have one discovered parent and duplicate child display names')
+        native_identity_checks(root, red_report)
+    else:
+        red_rows = [row for row in red_report['results'] if row.get('display_name', row['id'].split('|')[-1]) == 'Demo.Threshold.Boundary']
+    if len(red_rows) != (2 if framework == 'xunit' else 1) or any(row['exception'] != 'AssertionError' for row in red_rows):
         raise RuntimeError('Boundary RED case was not independently identified')
-    test_id = red_rows[0]['id']
-    controller.red(tests=[test_id], ac=["AC1"], expect="AssertionError", because="AC1 literal independent boundary expects zero")
+    test_ids = [row['id'] for row in red_rows]
+    controller.red(tests=test_ids, ac=["AC1"], expect="AssertionError", because="AC1 literal inclusive boundary and its immediate neighbor expect zero")
     source.joinpath("Fee.cs").write_text('namespace Demo; public static class Fee { public static int Calculate(int cents) => cents >= 10000 ? 0 : 799; }\n', encoding="utf-8")
     controller.green()
     controller.verify()
@@ -528,13 +726,35 @@ def workflow_demo(root, framework, linked_source=False, facade=None):
               "limitations": ["Synthetic function; deterministic role simulation without AI calls"], "recommendation": "accept",
               "quality_receipt_id": controller.state["quality_receipt"]["id"], "quality_limitations": ["No lint/format/security checks configured in this synthetic fixture"],
               "repo_conventions": "Existing C# namespace/API and installed test framework preserved",
-              "test_assessment": [{"test_id": test_id, "detects": "Inclusive boundary missing", "oracle": "AC1 explicitly makes 10000 cents free", "why_needed": "Tests the exact inclusive threshold"}]}
+              "test_assessment": [{"test_id": test_id, "detects": "Inclusive boundary or next cart missing", "oracle": "AC1 explicitly makes carts at or above 10000 cents free", "why_needed": "Distinct native rows exercise exact boundary and immediate neighbor"} for test_id in test_ids]}
     (folder / "review.json").write_text(json.dumps(review), encoding="utf-8")
     result = controller.finish()
     return {"framework": framework, "source_mode": "linked-source" if linked_source else "project-reference", "controller_mode": "node-facade" if facade else "python-driver",
             "phase": result["phase"], "executed_tests": len(result["completion_receipt"]["results"]), "red_exception": "AssertionError",
             "repository_compatibility": {**verify_repository_inputs(root), **coverage_checks(root)},
-            **({'long_theories': theory_checks(root, result['completion_receipt'], theory_path)} if theory_path else {})}
+            **({'long_theories': theory_checks(root, result['completion_receipt'], theory_path),
+                'deferred_theories': {**runtime_theory_checks(root, result['completion_receipt'], previous=result['green_receipt']),
+                    'new_feature_red_native_rows': len(test_ids), 'new_feature_red_parent_cases': 1,
+                    'new_feature_red_exception': 'AssertionError', 'new_feature_child_ids_survive_green_and_completion':
+                        set(test_ids).issubset(result['completion_receipt']['collected'])}} if theory_path else {})}
+
+
+def failure_probe(root):
+    """Deliberately fail real native compilation to exercise CI log retention."""
+    source, _ = fixture(root, "xunit")
+    source.joinpath("Fee.cs").write_text("synthetic invalid C# for failure artifact probe\n", encoding="utf-8")
+    (root / ".ai-tdd/spec.json").write_text(json.dumps({"version": 1, "goal": "Public synthetic failure diagnostic probe",
+        "acceptance": [{"id": "AC1", "description": "Retain the actual native compiler failure"}], "open_questions": []}), encoding="utf-8")
+    (root / ".ai-tdd/review-plan.json").write_text(json.dumps({"scenarios": [
+        {"ac": "AC1", "case": "Deliberately invalid generated C# must fail before a baseline receipt exists"}]}), encoding="utf-8")
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("Intentional failure probe requires installed Node.js")
+    with (root / ".ai-tdd/probe-controller.stdout.log").open("wb") as stdout, (root / ".ai-tdd/probe-controller.stderr.log").open("wb") as stderr:
+        subprocess.run([node, "--preserve-symlinks", "--preserve-symlinks-main", str(PLUGIN / "scripts/tdd-launcher.cjs"),
+                        "--root", str(root), "begin"], cwd=root, env=dict(os.environ), stdout=stdout, stderr=stderr,
+                       timeout=600, check=True)
+    raise RuntimeError("Intentional failure artifact probe unexpectedly accepted invalid C#")
 
 
 def main():
@@ -545,11 +765,16 @@ def main():
     parser.add_argument("--packaged-executable", help="Seed a local built controller in an isolated plugin cache; implies facade mode and child PATH without Python")
     parser.add_argument("--framework", choices=("xunit", "nunit", "both"), default="both")
     parser.add_argument("--output")
+    parser.add_argument("--failure-probe", action="store_true", help="Intentionally fail a generated native compile to verify CI artifact retention")
     args = parser.parse_args()
     summaries = []
     packaged = None
     with fixture_directory() as root:
         with isolated_environment(root):
+            if args.failure_probe:
+                probe_root = root / "xunit-workflow"
+                probe_root.mkdir()
+                failure_probe(probe_root)
             facade = (PLUGIN, dict(os.environ)) if args.controller_facade else None
             if args.packaged_executable:
                 plugin, child_env, packaged = packaged_plugin(root, args.packaged_executable)

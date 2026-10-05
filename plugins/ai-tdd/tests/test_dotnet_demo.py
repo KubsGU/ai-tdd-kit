@@ -1,11 +1,14 @@
 """Native coverage proofs follow TRX attachments rather than unrelated copies."""
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import uuid
+from unittest import mock
 import xml.etree.ElementTree as ET
 
 
@@ -14,6 +17,217 @@ loader = importlib.util.spec_from_file_location("dotnet_demo_coverage", KIT / "s
 demo = importlib.util.module_from_spec(loader)
 loader.loader.exec_module(demo)
 TRX_NS = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
+
+
+class RuntimeTheoryProofTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-runtime-theory-proof-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.directory = self.root / ".ai-tdd/native/0"
+        self.directory.mkdir(parents=True)
+        self.parents = {"objects": {"vstest_id": str(uuid.uuid4()), "source": str(self.root / "tests/bin/Demo.dll"),
+                                  "executor_uri": "executor://xunit/VsTestRunner3/netcore/", "method": "Demo.DeferredTheories.Objects"},
+                        "fact": {"vstest_id": str(uuid.uuid4()), "source": str(self.root / "tests/bin/Demo.dll"),
+                                 "executor_uri": "executor://xunit/VsTestRunner3/netcore/", "method": "Demo.Checks.Baseline"}}
+        cases = [{"Id": value["vstest_id"], "Source": value["source"], "ExecutorUri": value["executor_uri"],
+                  "FullyQualifiedName": value["method"], "DisplayName": value["method"],
+                  "Properties": [{"Key": {"Id": "XunitTestCaseUniqueID"}, "Value": parent}]}
+                 for parent, value in self.parents.items()]
+        payload = {"TotalTests": 2, "LastDiscoveredTests": cases, "IsAborted": False,
+                   "FullyDiscoveredSources": [self.parents["objects"]["source"]], "PartiallyDiscoveredSources": [],
+                   "NotDiscoveredSources": [], "SkippedDiscoverySources": []}
+        event = {"Version": 7, "MessageType": "TestDiscovery.Completed", "Payload": payload}
+        (self.directory / "discovery.diag.log").write_text(
+            "TpTrace Verbose: 0 : 1, TestRequestSender.OnDiscoveryMessageReceived: Received message: " + json.dumps(event), encoding="utf-8")
+        self.report = {"schema": 1, "collected": [], "results": [], "native_modules": [
+            {"project": "tests/Demo.csproj", "tfm": "net8.0", "directory": ".ai-tdd/native/0"}]}
+        for parent, children in (("objects", 3), ("fact", 1)):
+            for index in range(children):
+                child = parent + "-child-" + str(index)
+                row = {"id": "tests/Demo.csproj|net8.0|xunit:" + parent + "|test:" + child,
+                       "native_case_id": parent, "native_test_id": child, "vstest_id": self.parents[parent]["vstest_id"],
+                       "display_name": "duplicate object" if parent == "objects" else "baseline", "status": "passed"}
+                self.report["results"].append(row)
+                self.report["collected"].append(row["id"])
+        self.write_trx()
+
+    def write_trx(self, corrupt_outcome=False, duplicate_execution=False):
+        tree = ET.Element("TestRun", xmlns=TRX_NS)
+        results, definitions = ET.SubElement(tree, "Results"), ET.SubElement(tree, "TestDefinitions")
+        first_executions = {}
+        for index, row in enumerate(self.report["results"]):
+            execution = "00000000-0000-0000-0000-" + str(1 if duplicate_execution else index + 1).zfill(12)
+            first_executions.setdefault(row["vstest_id"], execution)
+            ET.SubElement(results, "UnitTestResult", testId=row["vstest_id"], executionId=execution,
+                          testName="Deliberately unrelated display name", outcome="Failed" if corrupt_outcome and index == 0 else "Passed")
+        for parent in self.parents.values():
+            definition = ET.SubElement(definitions, "UnitTest", id=parent["vstest_id"])
+            ET.SubElement(definition, "Execution", id=first_executions[parent["vstest_id"]])
+            klass, method = parent["method"].rsplit(".", 1)
+            ET.SubElement(definition, "TestMethod", className=klass, name=method,
+                          codeBase=parent["source"], adapterTypeName=parent["executor_uri"])
+        (self.directory / "result.trx").write_text(ET.tostring(tree, encoding="unicode"), encoding="utf-8")
+
+    def test_proof_counts_parent_discovery_separately_from_runtime_rows_without_display_joins(self):
+        proof = demo.native_identity_checks(self.root, self.report, previous=self.report)
+        self.assertEqual(proof["discovered_parent_cases"], 2)
+        self.assertEqual(proof["executed_native_rows"], 4)
+        self.assertEqual(proof["expanded_parent_cases"], 1)
+        self.assertTrue(proof["aggregate_trx_binding_proven"])
+        self.assertTrue(proof["unchanged_run_child_ids_stable"])
+
+    def test_proof_rejects_aggregate_trx_outcome_corruption_and_duplicate_execution_ids(self):
+        for corrupt, duplicate in ((True, False), (False, True)):
+            self.write_trx(corrupt, duplicate)
+            with self.subTest(corrupt=corrupt, duplicate=duplicate), self.assertRaisesRegex(RuntimeError, "TRX"):
+                demo.native_identity_checks(self.root, self.report)
+
+    def test_proof_rejects_changed_child_identity_across_unchanged_runs(self):
+        previous = json.loads(json.dumps(self.report))
+        previous["results"][0]["native_test_id"] = "different-child"
+        previous["results"][0]["id"] += "different-child"
+        with self.assertRaisesRegex(RuntimeError, "child identities changed"):
+            demo.native_identity_checks(self.root, self.report, previous=previous)
+
+    def test_incomplete_native_envelope_preserves_diagnostic_before_coverage_proofs(self):
+        def incomplete(root, path):
+            path.write_text(json.dumps({"schema": 1, "completion": "incomplete", "planned_module_count": 1,
+                "collected": [], "results": [], "native_modules": [{"directory": ".ai-tdd/native/0", "status": "incomplete"}],
+                "diagnostics": [{"kind": "build-discovery", "message": "synthetic compiler failure"}]}), encoding="utf-8")
+            return 2
+        with mock.patch.object(demo.RUNNER, "run", side_effect=incomplete), mock.patch.object(demo, "setup_diagnostics"):
+            with self.assertRaisesRegex(demo.RUNNER.DotnetError, "synthetic compiler failure"):
+                demo.native(self.root)
+
+
+class SyntheticFailureArtifactsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="ai-tdd-artifact-tests-")
+        self.addCleanup(self.temp.cleanup)
+        self.artifacts = Path(self.temp.name).resolve() / "artifacts"
+
+    def create_logs(self, root):
+        logs = root / "nunit-workflow/.ai-tdd/runs"
+        logs.mkdir(parents=True)
+        (logs / "missing-receipt.stderr.log").write_text(
+            "Native testhost could not start: synthetic assembly load failure\n", encoding="utf-8")
+        (logs / "missing-receipt.stdout.log").write_text("synthetic runner stdout\n", encoding="utf-8")
+        (root / "nunit-workflow/Secret.cs").write_text("source must not be uploaded", encoding="utf-8")
+        (root / "nuget-packages").mkdir()
+        (root / "nuget-packages/cache.log").write_text("cache must not be uploaded", encoding="utf-8")
+        (logs / "not-a-diagnostic.dll").write_bytes(b"binary must not be uploaded")
+        return logs
+
+    def test_missing_receipt_failure_retains_runner_stderr_without_uploading_source_or_caches(self):
+        original = RuntimeError("Cannot read completion.json: FileNotFoundError")
+        with mock.patch.dict(os.environ, {"AI_TDD_DEMO_FAILURE_ARTIFACTS": str(self.artifacts)}):
+            with mock.patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(RuntimeError) as caught:
+                with demo.fixture_directory() as root:
+                    self.addCleanup(lambda: demo.shutil.rmtree(root, ignore_errors=True))
+                    self.create_logs(root)
+                    raise original
+        self.assertIs(caught.exception, original)
+        retained = self.artifacts / root.name
+        log = retained / "nunit-workflow/.ai-tdd/runs/missing-receipt.stderr.log"
+        self.assertIn("synthetic assembly load failure", log.read_text(encoding="utf-8"))
+        manifest = json.loads((retained / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["scope"], "generated-public-dotnet-fixture")
+        self.assertEqual(manifest["error_type"], "RuntimeError")
+        self.assertEqual({item["path"] for item in manifest["files"]}, {
+            "nunit-workflow/.ai-tdd/runs/missing-receipt.stderr.log",
+            "nunit-workflow/.ai-tdd/runs/missing-receipt.stdout.log"})
+        self.assertFalse((retained / "nunit-workflow/Secret.cs").exists())
+        self.assertFalse((retained / "nuget-packages").exists())
+        self.assertFalse((retained / "nunit-workflow/.ai-tdd/runs/not-a-diagnostic.dll").exists())
+        self.assertTrue(root.is_dir(), "Original synthetic failure fixture remains available locally")
+
+    def test_capture_failure_does_not_mask_the_native_failure(self):
+        self.artifacts.parent.mkdir(parents=True, exist_ok=True)
+        self.artifacts.write_text("blocked artifact directory", encoding="utf-8")
+        original = RuntimeError("original native failure")
+        with mock.patch.dict(os.environ, {"AI_TDD_DEMO_FAILURE_ARTIFACTS": str(self.artifacts)}):
+            with mock.patch("sys.stderr", new_callable=io.StringIO) as stderr, self.assertRaises(RuntimeError) as caught:
+                with demo.fixture_directory() as root:
+                    self.addCleanup(lambda: demo.shutil.rmtree(root, ignore_errors=True))
+                    self.create_logs(root)
+                    raise original
+        self.assertIs(caught.exception, original)
+        self.assertIn("Could not collect synthetic failure artifacts", stderr.getvalue())
+
+    def test_success_removes_fixture_and_produces_no_failure_upload(self):
+        with mock.patch.dict(os.environ, {"AI_TDD_DEMO_FAILURE_ARTIFACTS": str(self.artifacts)}):
+            with demo.fixture_directory() as root:
+                self.create_logs(root)
+        self.assertFalse(root.exists())
+        self.assertFalse(self.artifacts.exists())
+
+    def test_failure_capture_stays_local_when_ci_has_not_opted_in(self):
+        with mock.patch.dict(os.environ, {"AI_TDD_DEMO_FAILURE_ARTIFACTS": ""}):
+            with mock.patch("sys.stderr", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "synthetic"):
+                with demo.fixture_directory() as root:
+                    self.addCleanup(lambda: demo.shutil.rmtree(root, ignore_errors=True))
+                    self.create_logs(root)
+                    raise RuntimeError("synthetic")
+        self.assertTrue(root.is_dir())
+        self.assertFalse(self.artifacts.exists())
+
+    def test_capture_is_opt_in_and_never_walks_an_arbitrary_repository(self):
+        external = Path(self.temp.name) / "ordinary-repository"
+        external.mkdir()
+        self.create_logs(external)
+        with self.assertRaisesRegex(RuntimeError, "created synthetic fixture"):
+            demo.collect_failure_artifacts(external, self.artifacts, RuntimeError("failure"))
+        self.assertFalse(self.artifacts.exists())
+
+    def test_large_log_preserves_error_tail_with_explicit_truncation(self):
+        with mock.patch.dict(os.environ, {"AI_TDD_DEMO_FAILURE_ARTIFACTS": str(self.artifacts)}):
+            with mock.patch("sys.stderr", new_callable=io.StringIO), self.assertRaisesRegex(RuntimeError, "synthetic"):
+                with demo.fixture_directory() as root:
+                    self.addCleanup(lambda: demo.shutil.rmtree(root, ignore_errors=True))
+                    logs = self.create_logs(root)
+                    log = logs / "missing-receipt.stderr.log"
+                    log.write_bytes(b"x" * (2 * 1024 * 1024) + b"\nFinal synthetic testhost error\n")
+                    raise RuntimeError("synthetic")
+        retained = self.artifacts / root.name
+        copied = retained / "nunit-workflow/.ai-tdd/runs/missing-receipt.stderr.log"
+        self.assertLessEqual(copied.stat().st_size, 1024 * 1024)
+        self.assertTrue(copied.read_bytes().endswith(b"Final synthetic testhost error\n"))
+        manifest = json.loads((retained / "manifest.json").read_text(encoding="utf-8"))
+        entry = next(item for item in manifest["files"] if item["path"].endswith("stderr.log"))
+        self.assertTrue(entry["truncated"])
+        self.assertGreater(entry["original_bytes"], entry["copied_bytes"])
+
+    def test_file_budget_keeps_subprocess_stderr_and_declares_incomplete_capture(self):
+        with demo.fixture_directory() as root:
+            logs = self.create_logs(root)
+            for index in range(300):
+                (logs / ("earlier-" + str(index) + ".stdout.log")).write_text("synthetic", encoding="utf-8")
+            retained = demo.collect_failure_artifacts(root, self.artifacts, RuntimeError("failure"))
+        manifest = json.loads((retained / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(manifest["files"]), 256)
+        self.assertTrue(manifest["limit_reached"])
+        self.assertTrue((retained / "nunit-workflow/.ai-tdd/runs/missing-receipt.stderr.log").is_file())
+
+    def test_redirected_diagnostic_directory_never_copies_external_logs(self):
+        with demo.fixture_directory() as root:
+            logs = self.create_logs(root)
+            external = Path(self.temp.name).resolve() / "outside"
+            external.mkdir()
+            (external / "private.stderr.log").write_text("external file must remain local", encoding="utf-8")
+            link = logs / "redirected"
+            try:
+                if os.name == "nt":
+                    result = subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(link), str(external)], capture_output=True, text=True)
+                    if result.returncode:
+                        self.skipTest("Native Windows junction creation is unavailable")
+                else:
+                    link.symlink_to(external, target_is_directory=True)
+            except OSError:
+                self.skipTest("Directory link creation is unavailable")
+            retained = demo.collect_failure_artifacts(root, self.artifacts, RuntimeError("failure"))
+            self.assertFalse((retained / "nunit-workflow/.ai-tdd/runs/redirected").exists())
+            self.assertTrue((external / "private.stderr.log").is_file())
 
 
 class AbsentExternalContentProofTests(unittest.TestCase):

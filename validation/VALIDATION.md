@@ -1,5 +1,39 @@
 # Validation report — AI TDD Kit
 
+## 1.6.0 runtime theories and automatic diagnosis — 2026-10-05
+
+Synthetic regressions demonstrated RED before runtime-row, lineage, TRX-shape,
+policy-classification, incomplete-report and timeout corrections. They preserve
+full inventory and typed assertion witnesses. Existing runsettings with deferred
+theory enumeration now pass setup unchanged under the frozen parent-row policy.
+The complete local controller suite passed 359 tests and 350 subtests, with six
+documented environment-dependent skips. Lint, deterministic workflow/test-strength
+demonstrations and isolated real Claude Code ZIP installation also passed;
+installation left user settings unchanged.
+
+Large-evidence regressions failed at the previous 5 MB normalized native limit
+before the fix. The runner now retains full payloads above that size; controller
+state reloads them with compact user output. Native reports and state have
+separate 64 MiB limits. Configuration remains bounded at 5 MB, reads detect growth
+after the size check, and an oversized state write preserves the prior file.
+
+An actual local xUnit run verified 212 executions from 107 discovered parents,
+including 105 long-name rows, nonserializable MemberData and duplicate display
+names. An unchanged repeat preserved child IDs. A fresh local run then encountered
+Windows Application Control before JSON reporting; this became a diagnostic
+regression. This local evidence does not claim a complete passing DONE workflow.
+
+The public fixture requires real deferred child RED/GREEN/DONE, independent
+aggregate TRX witnesses, unchanged authored inputs and original coverage hits.
+Complete host/SDK/runtime and installation evidence belongs in the
+[1.6.0 release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.6.0).
+An intentional public failure probe must remain failed and publish only bounded
+synthetic diagnostics, never private repository logs.
+
+Native v2 child IDs identify ordinals; same-count runtime data changes/reordering
+remain a framework limitation. Existing real test errors and policy blocks cannot
+certify a baseline. Original interpreter 1.5.0 and its provenance remain pinned.
+
 ## 1.5.4 linked tooling inputs and native report sizes — 2026-10-05
 
 An explicitly linked, absent ancestor `.dockerignore` could prevent setup even

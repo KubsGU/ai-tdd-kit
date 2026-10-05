@@ -7,7 +7,7 @@ autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależ
 Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
 tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
 dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
-Wersja 1.5.4, licencja MIT.
+Wersja 1.6.0, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -54,7 +54,7 @@ Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements)
 Na innych platformach potrzebny jest Python 3.10+.
 Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.5.4.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.6.0.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -117,10 +117,19 @@ nie dają obecnie obsługiwanego dowodu: setup zgłosi konkretny brak.
 xUnit używa stabilnych natywnych identyfikatorów przypadków. Czytelne nazwy mogą
 być długie, skrócone przez adapter albo powtarzać się. Koordynator odczytuje
 rzeczywiste ID z raportu baseline, a ID nowych przypadków z logu/raportu RED;
-tych ID używa w mapowaniu AC i review. Nie tworzy ich z nazw testów. Każdy
-odkryty przypadek musi wykonać się dokładnie raz. Teorie wyliczające wiersze
-dopiero podczas wykonania pozostają nieobsługiwane. Natywne logi diagnostyczne
-mogą zawierać dane fixture i ścieżki; zachowaj je lokalnie, poza publicznymi dowodami.
+tych ID używa w mapowaniu AC i review. Nie tworzy ich z nazw testów. Discovery
+odkrywa metody teorii, a runner weryfikuje każdy wiersz wyliczony podczas wykonania,
+także z nieserializowalnego MemberData. Pełny cykl życia wierszy i wyniki dla
+każdego przypadku są porównywane z niezależnym TRX. Zestaw wierszy istniejącej
+teorii jest zamrożony między fazami. ID w xUnit v2 identyfikuje numer wiersza,
+więc dane dostarczane podczas wykonania nadal muszą być stabilne.
+
+Runner zbiera wszystkie moduły i zapisuje postęp lokalnie, również po błędzie
+jednego modułu. Blokada assembly, niepełne discovery i brakujące dowody dostają
+konkretny kod diagnostyczny. Niepełny raport nie potwierdza przejścia fazy;
+istniejące błędy testów nadal blokują poprawny baseline. Projekt, coverage i
+polityka bezpieczeństwa pozostają bez zmian. Logi mogą zawierać prywatne dane
+fixture i ścieżki; zachowaj je lokalnie, poza publicznymi dowodami.
 
 Koordynator przed `begin` dopasowuje istniejące reguły `.editorconfig`, build,
 analyzery, sprawdzanie formatowania i polecenia CI. Nie narzuca nowego stylu;

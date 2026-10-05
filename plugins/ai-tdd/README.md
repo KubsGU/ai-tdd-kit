@@ -54,9 +54,13 @@ Do not edit project files or create placeholder inputs merely to bypass setup.
 xUnit IDs come from native discovery and execution, with readable display names
 kept as metadata even when repeated or shortened. Read actual baseline report
 and RED log/report IDs for acceptance mappings and review; do not build IDs from
-names. Exactly one execution per discovered case is required. Theories that
-enumerate rows only at runtime remain unsupported. Keep native diagnostic logs
-local because they may contain fixture values and paths.
+names. Consistent discovery of theory parents and complete native child lifecycles
+support rows enumerated at runtime, including nonserializable MemberData. Every
+existing parent's row inventory is frozen; TRX independently corroborates all
+outcomes per parent. xUnit v2 child IDs identify row ordinals, not argument values.
+Keep data stable and native diagnostic logs local because they may contain fixture
+values and paths. Incomplete module reports identify the cause and preserve later
+module observations; they cannot certify a passing baseline, RED or GREEN.
 
 Workers write only their declared tests or source. The coordinator runs the
 required suite through the Node controller facade. Behavioral failures authorize
@@ -75,4 +79,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.5.4.
+MIT license. Version 1.6.0.

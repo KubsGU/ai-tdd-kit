@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.6.0 — 2026-10-05
+
+- Automatically support runtime-enumerated xUnit theory rows, including
+  nonserializable MemberData, through consistent discovery of native parents and
+  complete child lifecycles. Preserve existing project and coverage files.
+- Reconcile TRX as exact per-parent outcome multisets with complete definitions,
+  unique execution GUIDs and counters. Freeze existing parent row inventories.
+  Native v2 child IDs identify ordinals; runtime data still needs stability.
+- Collect all safe configured modules after ordinary module failures, atomically
+  retaining incomplete progress, typed diagnostics and local log paths. Partial
+  evidence cannot certify a phase. Global ownership/input drift remains fatal.
+- Diagnose Windows Application Control blocks even before JSON reporting starts.
+  Wrapped assertions cannot promote such failures to RED. Retain timeout progress
+  and recheck source/protected/state integrity after a timeout.
+- Scale the initial full-suite timeout with module count inside existing bounds;
+  freeze it before the task and leave existing configuration unchanged.
+- Before a fresh task, upgrade only an unchanged inactive legacy native preset's
+  evidence policy, preserving original configuration bytes in a local backup and
+  all existing budgets, quality checks and models. Other setup drift is rejected.
+- Retain complete large native normalized reports and state within separate
+  64 MiB budgets, including every failure payload. Bound actual reads and preserve
+  old state on an oversized write; keep configuration/discovery limits at 5 MB
+  and coordinator output compact.
+- Preserve bounded public synthetic failure artifacts in CI and provide an
+  intentionally failing diagnostic probe. Real test errors still block baseline.
+- Reuse pinned interpreter 1.5.0 and original provenance. Finish/archive existing
+  tasks with their original plugin before the new child-ID format.
+
 ## 1.5.4 — 2026-10-05
 
 - Accept genuinely absent external linked `Content`/`None` declared by the

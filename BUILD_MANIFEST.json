@@ -1,5 +1,5 @@
 {
-  "version": "1.5.4",
+  "version": "1.6.0",
   "files": [
     "README.md",
     "README.pl.md",
@@ -74,6 +74,12 @@
     "plugins/ai-tdd/tests/test_dotnet_external_gates.py",
     "plugins/ai-tdd/tests/test_dotnet_report_limits.py",
     "plugins/ai-tdd/tests/test_dotnet_demo.py",
+    "plugins/ai-tdd/tests/test_dotnet_runtime_theories.py",
+    "plugins/ai-tdd/tests/test_dotnet_native_diagnostics.py",
+    "plugins/ai-tdd/tests/test_runner_diagnostics.py",
+    "plugins/ai-tdd/tests/test_dotnet_preset_policy.py",
+    "plugins/ai-tdd/tests/test_dotnet_policy_upgrade.py",
+    "plugins/ai-tdd/tests/test_native_evidence_budget.py",
     "plugins/ai-tdd/tests/test_portable_runtime.py",
     "plugins/ai-tdd/tests/test_node_launch.py",
     "scripts/build_runtime.py",
