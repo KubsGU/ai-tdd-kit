@@ -61,7 +61,14 @@ or environment overrides after a failure, and do not claim lossless routing.
 
 Delegate PLAN to `ai-tdd:verifier` with the spec and existing interface constraints;
 save scenarios in `.ai-tdd/review-plan.json`. Run begin for actual passing test and
-configured quality baselines. Greenfield setup permits only interface stubs and
+configured quality baselines. Native .NET theory rows are captured automatically
+through the frozen runtime-parent policy; use reported child IDs. If begin fails,
+inspect its structured local report: collection continues across ordinary module
+errors and distinguishes real test failures, incomplete discovery, adapter/assembly
+policy blocks and timeouts. Diagnose routine existing setup inputs before
+dispatching feature workers. Do not exclude failing modules, waive existing errors,
+rewrite coverage or weaken OS policy to force a baseline. Use diagnostic codes
+and artifact paths; private fixture data stays local. Greenfield setup permits only interface stubs and
 an explicit documented begin --allow-empty waiver. Never delete user code to
 recreate a TDD history.
 

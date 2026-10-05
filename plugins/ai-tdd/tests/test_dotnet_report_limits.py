@@ -77,7 +77,8 @@ class NativeReportLimitTests(unittest.TestCase):
     def test_full_runner_accepts_large_trx_and_reconciles_every_native_id(self):
         self.assertGreater(len(self.native_trx.encode("utf-8")), 5_000_000)
         code, report = self.run_native()
-        expected = ["tests/Demo.Tests/Demo.Tests.csproj|net8.0|xunit:" + case for case in self.native_ids]
+        expected = ["tests/Demo.Tests/Demo.Tests.csproj|net8.0|xunit:" + case + "|test:test-" + str(index)
+                    for index, case in enumerate(self.native_ids)]
         self.assertEqual(code, 0)
         self.assertEqual(report["collected"], expected)
         self.assertEqual([item["id"] for item in report["results"]], expected)
@@ -92,8 +93,12 @@ class NativeReportLimitTests(unittest.TestCase):
         for changed in (original.replace(self.rows[0]["Id"], str(uuid.UUID(int=99))),
                         original.replace('outcome="Passed"', 'outcome="Failed"', 1)):
             self.native_trx = changed
-            with self.subTest(xml=changed[:80]), self.assertRaisesRegex(self.runner.DotnetError, "identity|inventory/outcomes"):
-                self.run_native()
+            with self.subTest(xml=changed[:80]):
+                code, report = self.run_native()
+                self.assertEqual(code, 2)
+                self.assertEqual(report["completion"], "incomplete")
+                self.assertEqual(report["results"], [])
+                self.assertRegex(report["diagnostics"][0]["message"], "identity|inventory/outcomes")
 
     def test_large_nunit_discovery_and_execution_xml_preserve_all_full_names(self):
         self.config["dotnet"]["modules"][0]["framework"] = "nunit-vstest"

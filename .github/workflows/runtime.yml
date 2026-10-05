@@ -10,6 +10,10 @@ on:
         description: Verify the published pinned runtimes through the real anonymous downloader
         type: boolean
         default: false
+      failure_probe:
+        description: Intentionally fail a synthetic native compile and preserve its real controller stderr
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,9 +24,12 @@ concurrency:
 
 jobs:
   runtime:
+    if: inputs.failure_probe != true
     name: Runtime / ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    env:
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
     strategy:
       fail-fast: false
       matrix:
@@ -89,12 +96,23 @@ jobs:
           path: dist/runtime/*
           if-no-files-found: error
           retention-days: 7
+      - name: Preserve synthetic native failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-failure-${{ matrix.platform }}
+          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 3
 
   dotnet:
-    if: inputs.release_download != true
+    if: inputs.release_download != true && inputs.failure_probe != true
     name: .NET / ${{ matrix.os }} / SDK ${{ matrix.sdk }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    env:
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
     strategy:
       fail-fast: false
       matrix:
@@ -126,3 +144,46 @@ jobs:
           path: dotnet-evidence.json
           if-no-files-found: error
           retention-days: 7
+      - name: Preserve synthetic native failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dotnet-failure-${{ matrix.os }}-${{ matrix.sdk }}
+          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 3
+
+  failure-probe:
+    if: inputs.failure_probe == true
+    name: Intentional native failure artifact probe
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      AI_TDD_DEMO_FAILURE_ARTIFACTS: ${{ runner.temp }}/ai-tdd-dotnet-failures
+      DOTNET_DEMO_SDK: '8.0.100'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 'lts/*'
+          package-manager-cache: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '8.0.100'
+      - name: Intentionally reject invalid generated C# through the real controller
+        run: python -B scripts/dotnet_demo.py --failure-probe
+      - name: Preserve actual failed native controller diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: intentional-native-failure-diagnostics
+          path: ${{ runner.temp }}/ai-tdd-dotnet-failures/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3

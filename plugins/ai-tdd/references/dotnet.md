@@ -58,7 +58,7 @@ Actual native CI smoke results establish only their tested host scope; this
 local attempt does not prove Python-free use under strict Application Control.
 
 The cache lives under the plugin's `.runtime/<version>/<platform>/` directory.
-Plugin and interpreter versions are independent: plugin 1.5.4 reuses the pinned
+Plugin and interpreter versions are independent: plugin 1.6.0 reuses the pinned
 1.5.0 interpreter, which executes the installed external controller sources.
 Its historical build metadata describes the original build inputs; the new
 plugin source is covered by the source ZIP/checksums and task fingerprints.
@@ -84,8 +84,10 @@ The preset has no fixed project-count limit. It evaluates every discovered
 project and retains every configured test module; 70/128-project regressions
 also check exact ownership/output inventory and rejection of overlapping layouts.
 Large solutions can take longer to evaluate and execute. Select the repository's
-`timeout_seconds` before `begin` if the default 600 seconds is insufficient
-(supported maximum 3600); the task freezes it. A larger repository does not
+`timeout_seconds` before `begin`. New native presets allocate 60 seconds per
+configured module, with a minimum of 600 and maximum of 3600 seconds for the full
+invocation. Existing configuration is not increased automatically; the task
+freezes this budget. A larger repository does not
 relax ownership, reporter, inventory or quality checks.
 
 | Path | Existing package requirements | Evidence used |
@@ -128,7 +130,7 @@ Coverage collectors and coverage-only Include/Exclude configuration remain
 supported. A coverage exclusion controls what is measured, not which tests run.
 The runner supplies its required evidence options and fresh output locations;
 the repository's original runsettings remains the input to each phase. Test
-filters, early stopping, collapsed theory discovery and unsupported adapter
+filters, early stopping and unsupported adapter
 controls are rejected with the setting identified. An unknown control needs a
 precise compatibility rule before it can be accepted; removing the setting to
 make the gate pass is not a setup repair.
@@ -179,13 +181,35 @@ Every run performs full unfiltered discovery and execution, with fresh report
 locations and reconciliation of native IDs, outcomes and TRX counters. Duplicate
 or unstable IDs, missing cases, malformed/truncated events, filters, skips,
 unexecuted cases and inconsistent totals fail closed. The baseline must pass the
-real suite; pre-existing skips or failures need separate resolution.
+real suite; pre-existing skips or failures remain real failures.
+
+Every native run initializes a fresh report with `completion: "incomplete"`,
+the planned module count and pending module statuses. It atomically records
+progress and continues later modules after ordinary build, discovery, execution
+or reconciliation failures. Diagnostics include a stable code, phase and local
+artifact paths. Global ownership, SDK/configuration and external-input drift
+remain fatal. Exit 0 means complete passing outcomes, 1 means complete real
+test failures, and 2 means incomplete/infrastructure evidence. Partial results
+cannot certify a phase even if the observed tests passed.
+
+The controller retains timeout progress, rechecks source/protected/state integrity
+after a timeout and identifies diagnostics or stderr when no report exists.
+Existing baseline runtime errors are named with their receipt path. Observed
+Windows Application Control `0x800711C7` gets `application_control_blocked`,
+including advisory catastrophic adapter stderr before JSON can start. Wrapped
+assertions cannot turn a policy block into behavioral RED. Policy is not weakened
+and failing modules are not excluded or waived.
 
 Native TRX and NUnit XML reports have a 64 MiB budget and must remain fresh regular
 files without linked paths. Missing, unsafe and oversized artifacts receive
 separate diagnostics. This accommodates verbose reports from large theory suites
-without dropping cases or XML payload sections. Native ID/outcome reconciliation
-and the separate normalized controller JSON/message bounds remain unchanged.
+without dropping cases or XML payload sections. Normalized native JSON and
+controller state each have a separate 64 MiB budget, retaining full IDs, outcomes
+and failure payloads. State writes above that bound preserve the previous file.
+Reads are bounded even if an artifact grows after its size check. Configuration,
+specification, ordinary custom JSON reports and discovery transport messages
+retain their separate 5 MB limits. Compact coordinator views omit receipt
+payloads, so retained verbose failures do not need to enter model context.
 
 For xUnit, discovery uses fresh VSTest `--diag` transport JSON rather than the
 readable `--list-tests` output. It collects `TestDiscovery.TestFound` cases and
@@ -194,20 +218,47 @@ completion, matching totals and a fully discovered source assembly. Native
 discovery transport batches use 100 cases to bound individual messages; this
 does not filter or limit the total test inventory. Discovery warnings/errors
 also prevent acceptance evidence. Native
-`XunitTestCaseUniqueID` values must match the typed execution lifecycle. The
-observed VSTest GUIDs must match TRX definitions, assembly source, class/method,
-execution IDs and outcomes. Exactly one execution per discovered case is
-required; non-serializable theories whose rows are enumerated only at runtime
-remain unsupported.
+`XunitTestCaseUniqueID` values must match the typed parent lifecycle. The frozen
+`dotnet.theory_mode: "runtime-parent-rows-v1"` supplies command-scoped
+`xUnit.PreEnumerateTheories=false` consistently to discovery and execution,
+keeping the original runsettings intact. Either existing boolean value is
+accepted. Native parents identify theory methods; every row, including
+nonserializable MemberData, is enumerated and validated at execution.
 
-The external xUnit ID is `project|TFM|xunit:<native-case-ID>`, for example with a
+Each child `TestUniqueID` needs one start, terminal outcome and finish under the
+same assembly/collection/class/method/case ancestry. Exact parent and assembly
+counts and the entire discovered parent inventory must reconcile. The adapter
+supplies TRX with parent VSTest IDs and random execution GUIDs, not reporter child
+IDs. Compare the complete outcome multiset per exact parent, unique execution
+GUIDs, correct definitions, assembly source, method/adapter and all counters.
+Reject nested or unsupported result shapes. This does not invent a child-to-TRX
+GUID association or pair rows by display names.
+
+The external xUnit ID is `project|TFM|xunit:<native-case-ID>|test:<native-test-ID>`, with a
 project prefix of `tests/App.Tests/App.Tests.csproj`. `display_name` is readable
 metadata and may legitimately repeat or differ from a shortened discovery name.
 Long theory data and long fixture paths do not require name-based identity.
 The coordinator reads actual case IDs from the baseline report and each new
 case's RED log/report before selecting tests, mapping ACs or reviewing executed
 cases. Copy the complete reported ID; do not synthesize it from class, method
-or display names.
+or display names. Each existing parent's full child inventory is frozen, so added
+as well as missing rows fail ordinary later phases. A new parent introduces new
+behavior; changing an existing parent requires explicit contract amendment while
+retaining all previously required IDs.
+
+xUnit v2 child IDs derive from parent and row ordinal. They do not fingerprint
+arguments: unchanged row counts cannot prove unchanged or unreordered arbitrary
+runtime data. Protect authored providers and data, and use deterministic theory
+data. Finish/archive tasks using the old ID format with their original plugin
+before updating. This framework limit is not an argument-level identity claim.
+
+Before a fresh `begin`, an inactive legacy native preset can adopt this policy
+automatically only if evaluation proves its SDK, modules, packages, original
+settings and ownership are otherwise unchanged. The original configuration bytes
+are backed up under `.ai-tdd/diagnostics/`; only `dotnet.theory_mode` is added.
+Existing timeouts, quality checks, model choices and budgets are preserved.
+An active task or any other setup drift prevents this upgrade. `init` still never
+overwrites an existing configuration.
 
 Native discovery/execution diagnostics remain in fresh local report directories.
 They can contain fixture values, serialized theory data and local paths; retain
@@ -304,6 +355,10 @@ Primary references:
 - [NuGet contentFiles generation source](https://source.dot.net/NuGet.Commands/RestoreCommand/ContentFiles/ContentFileUtils.cs.html)
 - [Microsoft.Testing.Platform dotnet test integration](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-test-mtp)
 - [xUnit runsettings/reporters](https://xunit.net/docs/config-runsettings)
+- [xUnit adapter 3.1.5 execution identities](https://github.com/xunit/visualstudio.xunit/blob/3.1.5/src/xunit.runner.visualstudio/Sinks/VsExecutionSink.cs)
+- [xUnit v2 bridge child lifecycle](https://github.com/xunit/xunit/blob/v3-3.1.0/src/xunit.v3.runner.utility/Frameworks/v2/Xunit2MessageAdapter.cs)
+- [xUnit theory data stability](https://xunit.net/docs/theory-data-stability-in-vs)
+- [VSTest 18.8.1 TRX logger](https://github.com/microsoft/vstest/blob/v18.8.1/src/Microsoft.TestPlatform.Extensions.TrxLogger/TrxLogger.cs)
 - [xUnit 3.0.0 discovery identities and display names](https://github.com/xunit/visualstudio.xunit/blob/3.0.0/src/xunit.runner.visualstudio/Sinks/VsDiscoverySink.cs)
 - [VSTest 17.14.1 discovery transport and completion](https://github.com/microsoft/vstest/blob/v17.14.1/src/Microsoft.TestPlatform.CommunicationUtilities/TestRequestSender.cs)
 - [NUnit adapter settings](https://docs.nunit.org/articles/vs-test-adapter/Tips-And-Tricks.html)

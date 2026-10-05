@@ -83,7 +83,9 @@ class ExternalNativeRunnerGates(unittest.TestCase):
                 runner, "discovery_cases", return_value={"case": {"source": str(source)}}), mock.patch.object(
                 runner, "reconcile", return_value=evidence), self.assertRaises(runner.DotnetError):
             runner.run(self.root, report)
-        self.assertFalse(report.exists())
+        progress = json.loads(report.read_text(encoding="utf-8"))
+        self.assertEqual(progress["completion"], "incomplete")
+        self.assertNotEqual(progress["native_modules"][0]["status"], "complete")
 
 
 if __name__ == "__main__":

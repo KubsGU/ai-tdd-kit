@@ -7,7 +7,7 @@
       "name": "ai-tdd",
       "source": "./plugins/ai-tdd",
       "description": "Clarify requirements, verify RED, implement with separate agents, and independently review results.",
-      "version": "1.5.4",
+      "version": "1.6.0",
       "homepage": "https://github.com/KubsGU/ai-tdd-kit",
       "repository": "https://github.com/KubsGU/ai-tdd-kit",
       "license": "MIT"
