@@ -181,6 +181,12 @@ or unstable IDs, missing cases, malformed/truncated events, filters, skips,
 unexecuted cases and inconsistent totals fail closed. The baseline must pass the
 real suite; pre-existing skips or failures need separate resolution.
 
+Native TRX and NUnit XML reports have a 64 MiB budget and must remain fresh regular
+files without linked paths. Missing, unsafe and oversized artifacts receive
+separate diagnostics. This accommodates verbose reports from large theory suites
+without dropping cases or XML payload sections. Native ID/outcome reconciliation
+and the separate normalized controller JSON/message bounds remain unchanged.
+
 For xUnit, discovery uses fresh VSTest `--diag` transport JSON rather than the
 readable `--list-tests` output. It collects `TestDiscovery.TestFound` cases and
 the completion message's `LastDiscoveredTests` tail, requiring non-aborted

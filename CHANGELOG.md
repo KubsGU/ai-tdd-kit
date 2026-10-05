@@ -14,6 +14,10 @@
 - Keep existing user-authored external files unsupported, along with imported
   or copied absent inputs. Preserve exact NuGet ownership checks, existing
   runsettings, full test evidence and repository ownership boundaries.
+- Accept native TRX/NUnit XML evidence up to 64 MiB, preserving fresh regular
+  file checks and complete reconciliation. A valid report just above 5 MB no
+  longer appears as missing evidence; missing, unsafe and oversized artifacts
+  receive distinct diagnostics. Normalized controller JSON limits remain intact.
 - Reuse the unchanged pinned runtime 1.5.0 interpreter and its original build
   metadata. Finish/archive active tasks with their original plugin before updating.
 

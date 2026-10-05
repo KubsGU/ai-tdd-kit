@@ -72,6 +72,7 @@
     "plugins/ai-tdd/tests/test_dotnet_content.py",
     "plugins/ai-tdd/tests/test_dotnet_external.py",
     "plugins/ai-tdd/tests/test_dotnet_external_gates.py",
+    "plugins/ai-tdd/tests/test_dotnet_report_limits.py",
     "plugins/ai-tdd/tests/test_dotnet_demo.py",
     "plugins/ai-tdd/tests/test_portable_runtime.py",
     "plugins/ai-tdd/tests/test_node_launch.py",

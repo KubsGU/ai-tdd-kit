@@ -1,6 +1,6 @@
 # Validation report — AI TDD Kit
 
-## 1.5.4 absent linked tooling inputs — 2026-10-05
+## 1.5.4 linked tooling inputs and native report sizes — 2026-10-05
 
 An explicitly linked, absent ancestor `.dockerignore` could prevent setup even
 though the project's own declaration neither copies it to output nor publish.
@@ -17,7 +17,7 @@ receipts/reports. Existing worker guards still deny writes outside the root.
 Windows junction rejection executes locally; dangling symlink privilege is a
 documented local skip. No project-file edit or placeholder creation is a repair.
 
-The full local suite ran 304 tests in 80.227 seconds: 298 passed and six documented
+The final local suite ran 310 tests in 75.341 seconds: 304 passed and six documented
 environment/opt-in skips. The established process-scoped pytest plugin-autoload
 adjustment avoids an unrelated local Application Control restriction; it does not
 change plugin configuration or ordinary clean CI. Ruff, strict manifests and the
@@ -34,6 +34,14 @@ host/SDK and installation results belong in the
 Public fixtures contain no private repository data or paid model calls. Plugin
 1.5.4 retains the original pinned 1.5.0 interpreter and provenance; native CI
 checks its actual execution of the current external sources.
+
+Two additional full-run regressions failed on the old 5 MB native XML bound,
+separately exercising xUnit TRX and NUnit discovery/results. Synthetic XML above
+5 MB now passes the real discovery/lifecycle/XML reconciliation paths without
+dropping any case IDs. The XML budget is 64 MiB, with bounded reads and explicit
+missing/unsafe/oversized diagnostics. Regressions preserve inventory/outcome drift
+rejection, byte-size-before-read checks, growth during reading and Windows junction
+rejection. DTD/entity rejection and normalized controller/message bounds remain.
 
 ## 1.5.3 repository compatibility — 2026-10-05
 

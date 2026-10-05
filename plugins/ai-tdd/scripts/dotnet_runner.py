@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import uuid
@@ -30,6 +31,7 @@ ASSERTIONS = frozenset("Xunit.Sdk." + name for name in (
     "SameException", "SingleException", "StartsWithException", "SubsetException", "SupersetException",
     "ThrowsAnyException", "ThrowsException", "TrueException"))
 TERMINALS = {"test-passed": "passed", "test-failed": "failed", "test-skipped": "skipped", "test-not-run": "skipped"}
+NATIVE_XML_MAX_BYTES = 64 * 1024 * 1024
 
 
 def _unique_names(names):
@@ -201,9 +203,37 @@ def _failure(event, case):
             "detail": "\n".join(arrays["Messages"])[:1200]}
 
 
+def _read_native_xml(path, label):
+    """Read a bounded regular native XML file; distinguish missing from unsafe."""
+    path = Path(path)
+    try:
+        info = path.lstat()
+    except FileNotFoundError as error:
+        raise DotnetError("Missing fresh " + label + " evidence") from error
+    except OSError as error:
+        raise DotnetError("Unsafe " + label + " evidence: " + type(error).__name__) from error
+    try:
+        if (not stat.S_ISREG(info.st_mode) or path.resolve() != path.absolute()
+                or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+            raise DotnetError("Unsafe " + label + " evidence: expected a regular file without links/junctions")
+        if info.st_size > NATIVE_XML_MAX_BYTES:
+            raise DotnetError("Oversized " + label + " evidence: " + str(info.st_size) + " bytes; limit 64 MiB")
+        with path.open("rb") as stream:
+            raw = stream.read(NATIVE_XML_MAX_BYTES + 1)
+        if len(raw) > NATIVE_XML_MAX_BYTES:
+            raise DotnetError("Oversized " + label + " evidence: limit 64 MiB")
+        return raw.decode("utf-8-sig")
+    except OSError as error:
+        raise DotnetError("Unsafe " + label + " evidence: " + type(error).__name__) from error
+    except UnicodeDecodeError as error:
+        raise DotnetError("Malformed " + label + " evidence: expected UTF-8 XML") from error
+
+
 def _xml(raw):
-    if len(raw) > 5_000_000 or "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
-        raise DotnetError("Oversized or DTD/entity XML evidence is unsupported")
+    if len(raw) > NATIVE_XML_MAX_BYTES or len(raw.encode("utf-8")) > NATIVE_XML_MAX_BYTES:
+        raise DotnetError("Oversized native XML evidence: limit 64 MiB")
+    if "<!DOCTYPE" in raw.upper() or "<!ENTITY" in raw.upper():
+        raise DotnetError("DTD/entity XML evidence is unsupported")
     try:
         return ET.fromstring(raw)
     except ET.ParseError as error:
@@ -485,9 +515,7 @@ def run(root, report, config=None):
         if discovery_code:
             raise DotnetError(".NET build/discovery failed; repair compilation or discovery before RED (local logs retained)")
         if nunit:
-            if not dump.is_file() or dump.is_symlink() or dump.stat().st_size > 5_000_000:
-                raise DotnetError("Missing fresh NUnit full discovery dump; repair discovery before RED")
-            native_discovery = dump.read_text(encoding="utf-8-sig")
+            native_discovery = _read_native_xml(dump, "NUnit full discovery XML")
             (directory / "discovery.xml").write_text(native_discovery, encoding="utf-8")
         else:
             if not discovery_log.is_file() or discovery_log.is_symlink():
@@ -506,15 +534,13 @@ def run(root, report, config=None):
         if code not in (0, 1):
             raise DotnetError(".NET test execution did not produce a normal completed run")
         path = directory / "result.trx"
-        if not path.is_file() or path.is_symlink() or path.stat().st_size > 5_000_000:
-            raise DotnetError("Missing fresh bounded TRX evidence")
+        native_trx = _read_native_xml(path, "TRX")
         if nunit:
             native_results = directory / result_name
-            if not native_results.is_file() or native_results.is_symlink() or native_results.stat().st_size > 5_000_000:
-                raise DotnetError("Missing fresh NUnit native result XML; VSTest exit status alone is insufficient")
-            evidence = reconcile_nunit(module["project"], module["tfm"], native_discovery, native_results.read_text(encoding="utf-8-sig"), path.read_text(encoding="utf-8-sig"))
+            evidence = reconcile_nunit(module["project"], module["tfm"], native_discovery,
+                                       _read_native_xml(native_results, "NUnit native result XML"), native_trx)
         else:
-            evidence = reconcile(module["project"], module["tfm"], inventory, execution, path.read_text(encoding="utf-8-sig"))
+            evidence = reconcile(module["project"], module["tfm"], inventory, execution, native_trx)
         failures = any(item["status"] in {"failed", "error"} for item in evidence["results"])
         if code != int(failures):
             raise DotnetError("Native exit status disagrees with executed outcomes")
