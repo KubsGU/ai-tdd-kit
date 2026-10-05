@@ -16,7 +16,7 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.5.2**.
+Version **1.5.3**.
 
 ## Install
 
@@ -87,6 +87,16 @@ Install the plugin, launch Claude in your solution directory, and use
 their MSBuild metadata and configures project ownership, generated output
 directories and the native test runner. It does not upgrade NuGet packages or
 change global settings. Existing configuration is never overwritten.
+
+Existing in-repository `.runsettings` selected through MSBuild, including
+`Directory.Build.props`, are retained and passed explicitly to both discovery
+and execution. Coverage collectors and their coverage Include/Exclude rules
+remain supported; settings that select tests, stop early or hide theory rows
+are rejected. The selected file and its hash are bound to the task.
+Package-supplied `Content`/`None` assets, including transitive dependencies, are
+recognized through their restored package graph and import provenance. Restore
+the repository's existing packages if those records are missing; setup does not
+require editing `.csproj` files or excluding package content to bypass ownership.
 
 The built-in VSTest path supports existing xUnit projects with
 `xunit.runner.visualstudio >= 3.0.0`, and NUnit projects with `NUnit >= 3.14.0`

@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 
 class DotnetError(RuntimeError):
@@ -21,7 +22,7 @@ class DotnetError(RuntimeError):
 PROPERTIES = ("TargetFramework", "TargetFrameworks", "IsTestProject", "EnableMSTestRunner",
               "UseMicrosoftTestingPlatformRunner", "TestingPlatformDotnetTestSupport", "IsTestingPlatformApplication",
               "BaseOutputPath", "BaseIntermediateOutputPath", "MSBuildProjectExtensionsPath", "OutputPath",
-              "IntermediateOutputPath", "RunSettingsFilePath", "VSTestTestCaseFilter", "VSTestCliRunSettings", "NuGetPackageRoot", "ProjectAssetsFile")
+              "IntermediateOutputPath", "RunSettingsFilePath", "VSTestSetting", "VSTestTestCaseFilter", "VSTestCliRunSettings", "NuGetPackageRoot", "ProjectAssetsFile")
 ITEMS = ("PackageReference", "PackageVersion", "Compile", "ProjectReference", "None", "Content")
 SKIP_DIRS = {".git", ".ai-tdd", "node_modules", ".venv"}
 PRESET_INPUTS = ("global.json", ".editorconfig", "Directory.Build.props", "Directory.Build.targets",
@@ -138,7 +139,7 @@ def _profile(project, metadata):
         value = props.get(flag, "").strip().lower()
         if value not in {"", "false"}:
             raise DotnetError("Microsoft.Testing.Platform or unknown " + flag + " is unsupported; this path requires VSTest")
-    for flag in ("RunSettingsFilePath", "VSTestTestCaseFilter", "VSTestCliRunSettings"):
+    for flag in ("VSTestTestCaseFilter", "VSTestCliRunSettings"):
         if props.get(flag, "").strip():
             raise DotnetError("Implicit " + flag + " is unsupported; full unfiltered VSTest discovery/execution is required")
     packages = _packages(metadata)
@@ -148,70 +149,208 @@ def _profile(project, metadata):
     return packages
 
 
-def _testhost_input(project, metadata, packages, package_root, path, defining):
-    """Bind Windows test-host content to the SDK's exact restored dependency."""
+RUNSETTINGS_FIELDS = {
+    "RunConfiguration": set("MaxCpuCount ResultsDirectory TargetPlatform TargetFrameworkVersion TestSessionTimeout "
+                            "DisableAppDomain DisableParallelization TestAdaptersPaths TreatTestAdapterErrorsAsWarnings "
+                            "CollectSourceInformation EnvironmentVariables ExecutionThreadApartmentState BatchSize "
+                            "CaptureStandardOutput CaptureDebugOutput DisableSharedTestHost TestCaseFilter".split()),
+    "xUnit": set("AppDomain Culture DiagnosticMessages InternalDiagnosticMessages MaxParallelThreads MethodDisplay "
+                 "MethodDisplayOptions NoAutoReporters ParallelAlgorithm ParallelizeAssembly ParallelizeTestCollections "
+                 "PreEnumerateTheories PrintMaxEnumerableLength PrintMaxObjectDepth PrintMaxObjectMemberCount "
+                 "PrintMaxStringLength ReporterSwitch Seed ShadowCopy ShowLiveOutput StopOnFail Explicit".split()),
+    "NUnit": set("NumberOfTestWorkers DefaultTimeout Verbosity InternalTraceLevel WorkDirectory TestOutputXml "
+                 "DumpXmlTestDiscovery DisplayName UseVsKeepEngineRunning ShadowCopyFiles UseDefaultAssemblyLoadContext "
+                 "RandomSeed CollectSourceInformation PreFilter ShowInternalProperties ConsoleOut DiscoveryMethod "
+                 "ThrowOnEachFailure SkipNonTestAssemblies ExplicitMode StopOnError Where".split()),
+}
+
+
+def _runsettings(root, project, metadata):
+    """Preserve the effective existing file, while reviewing test-selection controls."""
+    props = metadata["Properties"]
+    value = props.get("VSTestSetting", "").strip() or props.get("RunSettingsFilePath", "").strip()
+    if not value:
+        return None
+    path = Path(os.path.abspath(project.parent / msbuild_path(value)))
     try:
-        sdk = packages["microsoft.net.test.sdk"]
-        _version(sdk)
-        assets_path = Path(os.path.abspath(project.parent / msbuild_path(metadata["Properties"]["ProjectAssetsFile"])))
-        if assets_path.resolve() != assets_path or project.parent / "obj" not in assets_path.parents:
-            return False
-        if not assets_path.is_file() or assets_path.stat().st_size > 20_000_000:
-            return False
-        assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
-        if assets["version"] not in {3, 4}:
-            return False
-        restore = assets["project"]["restore"]
-        if Path(msbuild_path(restore["projectPath"])).resolve() != project:
-            return False
-        if Path(msbuild_path(restore["packagesPath"])).resolve() != package_root:
-            return False
-        if package_root not in [Path(msbuild_path(name)).resolve() for name in assets["packageFolders"]]:
-            return False
-        target = assets["targets"][metadata["Properties"]["TargetFramework"]]
-        sdk_entry = target["Microsoft.NET.Test.Sdk/" + sdk]
-        if sdk_entry["type"] != "package":
-            return False
-        version = sdk_entry["dependencies"]["Microsoft.TestPlatform.TestHost"]
-        _version(version)
-        identity = "Microsoft.TestPlatform.TestHost/" + version
-        selected = target[identity]
-        library = assets["libraries"][identity]
-        if selected["type"] != "package" or library["type"] != "package" or library["path"] != identity.lower():
-            return False
-        package = package_root / identity.lower()
-        if package not in path.parents or package not in defining.parents:
-            return False
-        asset_name = path.relative_to(package).as_posix()
-        import_name = defining.relative_to(package).as_posix()
-        if not isinstance(library["files"], list) or asset_name not in library["files"] or import_name not in library["files"]:
-            return False
-        build = {**selected.get("build", {}), **selected.get("buildTransitive", {})}
-        return defining.suffix.lower() in {".props", ".targets"} and import_name in build
-    except (DotnetError, KeyError, TypeError, ValueError, OSError):
-        return False
+        relative = _relative(root, path)
+        if any(part in {".ai-tdd", ".git"} or part.startswith(".env") for part in path.relative_to(root).parts):
+            raise DotnetError("Private/control files cannot be runsettings inputs")
+        if not path.is_file() or path.stat().st_size > 1_000_000:
+            raise DotnetError("Expected a regular existing runsettings file of at most 1 MB")
+        content = path.read_bytes()
+        # Also cover UTF-16 XML. ElementTree must never expand a supplied DTD.
+        declarations = content.lower().replace(b"\x00", b"")
+        if b"<!doctype" in declarations or b"<!entity" in declarations:
+            raise DotnetError("DTD/entity declarations are unsupported in runsettings")
+        xml = ET.fromstring(content)
+        if xml.tag != "RunSettings" or xml.attrib:
+            raise DotnetError("Expected an unqualified RunSettings XML root")
+        if any(not isinstance(node.tag, str) or "}" in node.tag for node in xml.iter()):
+            raise DotnetError("Namespaced runsettings controls require explicit compatibility support")
+        sections = set()
+        for section in xml:
+            if section.tag in sections:
+                raise DotnetError("Duplicate runsettings section " + section.tag)
+            sections.add(section.tag)
+            if section.tag in {"DataCollectionRunSettings", "InProcDataCollectionRunSettings", "TestRunParameters", "LoggerRunSettings"}:
+                # Collector Include/Exclude filters describe coverage, not test selection.
+                continue
+            if section.tag not in RUNSETTINGS_FIELDS:
+                raise DotnetError("Unsupported runsettings section " + section.tag + "; requires a compatibility rule")
+            fields = set()
+            for node in section:
+                location = section.tag + "/" + node.tag
+                text = (node.text or "").strip().lower()
+                if node.tag not in RUNSETTINGS_FIELDS[section.tag] or node.tag in fields or node.attrib:
+                    raise DotnetError("Unsupported or ambiguous runsettings control " + location)
+                fields.add(node.tag)
+                if len(node) and location != "RunConfiguration/EnvironmentVariables":
+                    raise DotnetError("Unsupported nested runsettings control " + location)
+                if ((location in {"RunConfiguration/TestCaseFilter", "NUnit/Where"} and text)
+                        or (location in {"xUnit/StopOnFail", "NUnit/StopOnError"} and text != "false")
+                        or (location == "xUnit/PreEnumerateTheories" and text != "true")
+                        or (location == "xUnit/Explicit" and text not in {"off", "on"})
+                        or (location == "NUnit/ExplicitMode" and text not in {"strict", "relaxed"})):
+                    raise DotnetError("Runsettings " + location + " can suppress cases or stop early; full native evidence is required")
+        return {"path": relative, "sha256": hashlib.sha256(content).hexdigest()}
+    except (OSError, ET.ParseError, DotnetError) as error:
+        raise DotnetError("Existing runsettings for " + _relative(root, project) + " (" + value + "): " + str(error)) from error
+
+
+def _restored_target(assets, tfm):
+    """Select one evaluated framework, including NuGet v3's normalized alias."""
+    targets = assets["targets"]
+    if tfm in targets:
+        return targets[tfm]
+    frameworks = assets["project"].get("frameworks", {})
+    aliases = [name for name, value in frameworks.items() if value.get("targetAlias") == tfm]
+    if len(aliases) != 1:
+        raise DotnetError("Restored package inputs need the evaluated target framework")
+    return targets[aliases[0]]
+
+
+def _exact_package_version(value):
+    """Normalize an exact NuGet version without treating ranges as exact."""
+    if not isinstance(value, str):
+        return None
+    matched = re.fullmatch(r"(\d+(?:\.\d+){0,3})(-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+                          r"(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?", value)
+    if not matched:
+        return None
+    components = [str(int(part)) for part in matched[1].split(".")]
+    components.extend("0" for _ in range(3 - len(components)))
+    if len(components) == 4 and components[-1] == "0":
+        components.pop()
+    return ".".join(components) + (matched[2] or "").lower()
+
+
+def _restored_inputs(project, metadata, packages, package_root):
+    """Read this project's restore result and its reachable package graph."""
+    assets_path = Path(os.path.abspath(project.parent / msbuild_path(metadata["Properties"]["ProjectAssetsFile"])))
+    if assets_path.resolve() != assets_path or project.parent / "obj" not in assets_path.parents:
+        raise DotnetError("Restored inputs must use this project's own obj/ assets file")
+    if not assets_path.is_file() or assets_path.stat().st_size > 20_000_000:
+        raise DotnetError("Restored package inputs need an existing bounded assets file")
+    assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+    if assets["version"] not in {3, 4}:
+        raise DotnetError("Unsupported restored package metadata")
+    restore = assets["project"]["restore"]
+    if Path(msbuild_path(restore["projectPath"])).resolve() != project:
+        raise DotnetError("Restored package inputs belong to another project")
+    if Path(msbuild_path(restore["packagesPath"])).resolve() != package_root:
+        raise DotnetError("Restored package inputs use another primary cache")
+    folders = [Path(msbuild_path(name)).resolve() for name in assets["packageFolders"]]
+    if package_root not in folders:
+        raise DotnetError("Restored package cache is not recorded by this project")
+    target = _restored_target(assets, metadata["Properties"]["TargetFramework"])
+    by_name = {}
+    for identity, selected in target.items():
+        name, version = identity.split("/")
+        if not name or not version or name.lower() in by_name or selected["type"] not in {"package", "project"}:
+            raise DotnetError("Unsupported restored dependency graph")
+        by_name[name.lower()] = identity
+    pending = []
+    for name, version in packages.items():
+        identity = by_name.get(name.lower())
+        exact = _exact_package_version(version)
+        if identity is None or exact is None:
+            continue
+        if _exact_package_version(identity.split("/")[1]) != exact:
+            raise DotnetError("Restore existing packages after an evaluated dependency version changes")
+        pending.append(identity)
+    # Transitive build assets can also flow through explicit ProjectReference
+    # dependencies. Bind those graph roots to the evaluated project paths.
+    references = {Path(os.path.abspath(project.parent / msbuild_path(item.get("FullPath") or item["Identity"])))
+                  for item in metadata.get("Items", {}).get("ProjectReference", [])}
+    for identity, selected in target.items():
+        if selected["type"] == "project":
+            library = assets["libraries"][identity]
+            referenced = Path(os.path.abspath(project.parent / msbuild_path(library["msbuildProject"])))
+            if referenced in references:
+                pending.append(identity)
+    reachable = set()
+    while pending:
+        identity = pending.pop()
+        if identity in reachable:
+            continue
+        reachable.add(identity)
+        dependencies = target[identity].get("dependencies", {})
+        if not isinstance(dependencies, dict):
+            raise DotnetError("Unsupported restored dependencies")
+        pending.extend(by_name[name.lower()] for name in dependencies if name.lower() in by_name)
+    return assets_path, target, assets["libraries"], folders, reachable
 
 
 def _package_input(metadata, packages, path, item, *, project=None):
-    """Allow adapter runtime assets added by the resolved package's own props.
+    """Allow exact package files owned by this project's restored dependencies.
 
-    These are ordinary external tool dependencies, never copied to config or
-    treated as repository-owned input files. User-authored external links fail.
+    Package build imports and NuGet-generated contentFiles props are separate
+    provenance paths. Neither permits arbitrary files under an external cache.
     """
-    package_root = metadata["Properties"].get("NuGetPackageRoot", "")
-    defining = item.get("DefiningProjectFullPath", "")
-    if not package_root or not defining:
+    try:
+        if project is None:
+            return False
+        package_root = Path(msbuild_path(metadata["Properties"]["NuGetPackageRoot"])).resolve()
+        defining = Path(os.path.abspath(msbuild_path(item["DefiningProjectFullPath"])))
+        path = Path(os.path.abspath(path))
+        if path.resolve() != path or defining.resolve() != defining or not path.is_file() or not defining.is_file():
+            return False
+        assets_path, target, libraries, folders, reachable = _restored_inputs(project, metadata, packages, package_root)
+        generated_props = assets_path.parent / (project.name + ".nuget.g.props")
+        for identity in reachable:
+            selected = target[identity]
+            if selected["type"] != "package":
+                continue
+            library = libraries.get(identity, {})
+            if (library.get("type") != "package" or library.get("path") != identity.lower()
+                    or not isinstance(library.get("files"), list)):
+                continue
+            files = {msbuild_path(name) for name in library["files"]}
+            for folder in folders:
+                package = folder / library["path"]
+                if package not in path.parents:
+                    continue
+                asset_name = path.relative_to(package).as_posix()
+                if asset_name not in files:
+                    continue
+                if package in defining.parents:
+                    import_name = defining.relative_to(package).as_posix()
+                    build = {**selected.get("build", {}), **selected.get("buildTransitive", {})}
+                    if (defining.suffix.lower() in {".props", ".targets"} and import_name in files
+                            and import_name in build):
+                        return True
+                if defining == generated_props:
+                    content = selected.get("contentFiles", {}).get(asset_name, {})
+                    name, version = identity.split("/")
+                    kind = item.get("NuGetItemType")
+                    if (kind in {"None", "Content"} and content.get("buildAction") == kind
+                            and item.get("NuGetPackageId", "").lower() == name.lower()
+                            and item.get("NuGetPackageVersion") == version):
+                        return True
         return False
-    defining = Path(os.path.abspath(msbuild_path(defining)))
-    path = Path(os.path.abspath(path))
-    if path.resolve() != path or defining.resolve() != defining:
+    except (DotnetError, KeyError, TypeError, ValueError, OSError, AttributeError):
         return False
-    package_root = Path(msbuild_path(package_root)).resolve()
-    for name, version in packages.items():
-        package = package_root / name / version
-        if package in path.parents and package in defining.parents:
-            return True
-    return project is not None and _testhost_input(project, metadata, packages, package_root, path, defining)
 
 
 def configure(root):
@@ -269,7 +408,12 @@ def configure(root):
                     if not adapter or _version(adapter) < (4, 5, 0) or _version(tfm_packages["nunit"]) < (3, 14, 0):
                         raise DotnetError("Native NUnit evidence requires existing NUnit >=3.14.0 and NUnit3TestAdapter >=4.5.0; upgrade is a separate user decision")
                     framework = "nunit-vstest"
-                modules.append({"project": relative, "tfm": tfm, "framework": framework, "adapter_version": adapter})
+                module = {"project": relative, "tfm": tfm, "framework": framework, "adapter_version": adapter}
+                settings = _runsettings(root, project, evaluated)
+                if settings:
+                    module["runsettings"] = settings
+                    protected.add(settings["path"])
+                modules.append(module)
             for kind in ("Compile", "ProjectReference", "None", "Content"):
                 for item in evaluated["Items"].get(kind, []):
                     name = item.get("FullPath") or item.get("Identity", "")
@@ -281,8 +425,11 @@ def configure(root):
                     except DotnetError as error:
                         if kind in {"None", "Content"} and _package_input(evaluated, tfm_packages, input_path, item, project=project):
                             continue
-                        raise DotnetError("Unsafe evaluated " + kind + " input in " + relative
-                                          + "; require in-root ownership or the resolved package's own imported assets") from error
+                        raise DotnetError("Unsafe evaluated " + kind + " input in " + relative + ": " + name
+                                          + "; defining import: " + item.get("DefiningProjectFullPath", "<missing>")
+                                          + ". Expected an in-root file or an exact restored NuGet asset/import. "
+                                          "Use the repository root containing shared inputs, or restore existing packages and repeat init; "
+                                          "do not edit the .csproj to bypass ownership.") from error
                     input_path = Path(os.path.abspath(input_path))
                     if any(part in {".ai-tdd", ".git"} or part.startswith(".env") for part in input_path.relative_to(root).parts):
                         raise DotnetError("Private/control paths cannot be evaluated project inputs")

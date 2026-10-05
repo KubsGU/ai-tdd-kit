@@ -7,7 +7,7 @@ autor testów → rzeczywisty RED → osobny implementer → GREEN → niezależ
 Kontroler egzekwuje fazy na podstawie wykonanych testów. Launcher Node uruchamia
 tę samą implementację Pythona przez istniejący interpreter albo sprawdzony runtime
 dołączony do wydania. Hook i ograniczenia narzędzi agentów pilnują właścicieli zmian.
-Wersja 1.5.2, licencja MIT.
+Wersja 1.5.3, licencja MIT.
 
 ## Instalacja z GitHuba
 
@@ -54,7 +54,7 @@ Pythona; [szczegóły](plugins/ai-tdd/references/dotnet.md#runtime-requirements)
 Na innych platformach potrzebny jest Python 3.10+.
 Zależności aplikacji i jej runnera, np. pytest, pozostają częścią projektu.
 
-1. Przenieś ZIP `ai-tdd-kit-1.5.2.zip` i rozpakuj go. Zachowaj ukryty katalog
+1. Przenieś ZIP `ai-tdd-kit-1.5.3.zip` i rozpakuj go. Zachowaj ukryty katalog
    `.claude-plugin` oraz całą strukturę `ai-tdd-kit`.
 2. W terminalu dodaj rozpakowany katalog i zainstaluj plugin:
 
@@ -88,6 +88,16 @@ Uruchom Claude w katalogu solution i wpisz `/ai-tdd:feature <opis zadania>`.
 `init` wykrywa istniejące projekty C#, ocenia ich konfigurację MSBuild i ustawia
 zakres kodu, testów, generowanych plików oraz runnera. Nie podnosi wersji NuGet,
 nie zmienia ustawień globalnych i nie nadpisuje istniejącej konfiguracji pluginu.
+
+Istniejący plik `.runsettings` w repo, wybrany przez MSBuild, również przez
+`Directory.Build.props`, pozostaje bez zmian. Runner przekazuje go jawnie do
+discovery i wykonania. Kolektory coverage oraz ich reguły Include/Exclude są
+obsługiwane; filtrowanie testów, kończenie po pierwszej porażce i ukrywanie wierszy
+teorii pozostają blokowane. Ścieżka i hash ustawień są związane z zadaniem.
+Pliki `Content`/`None` dostarczane przez NuGet, także z zależności przechodnich,
+są rozpoznawane na podstawie odtworzonego grafu pakietów i pochodzenia importów.
+Jeśli brakuje tych danych, przywróć dotychczasowe pakiety repo. Setup nie wymaga
+edycji `.csproj` ani wykluczania zawartości pakietów dla obejścia kontroli.
 
 Ścieżka VSTest obsługuje xUnit z `xunit.runner.visualstudio >= 3.0.0` oraz NUnit
 `>= 3.14.0` z `NUnit3TestAdapter >= 4.5.0`. Runner porównuje pełne discovery,

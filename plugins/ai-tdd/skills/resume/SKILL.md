@@ -12,6 +12,10 @@ If that backend is missing or corrupt, report the concrete environment blocker.
 Resume the
 recorded phase with the appropriate named agent and verified artifacts. Preserve
 user changes, open review findings, test checkpoints and previous test IDs.
+Keep recorded runsettings, project/package inputs and root ownership intact.
+Diagnose missing restore records or unsupported settings through the .NET guide;
+do not alter `.csproj` or strip settings to bypass the gate. Follow the protocol's
+reconfigure/rebase flow for demonstrated setup defects and require fresh evidence.
 In TEST, create new test files; changing any file frozen at begin/next requires
 AMEND. Inspect current GREEN and quality evidence: rerun stale tests with green,
 and let verify refresh quality or use quality explicitly in GREEN/VERIFY. No

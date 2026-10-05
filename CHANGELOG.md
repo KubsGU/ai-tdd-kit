@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.3 — 2026-10-05
+
+- Preserve existing in-repository runsettings selected through evaluated MSBuild
+  properties, including `Directory.Build.props`. Resolve project-relative paths,
+  freeze the selected file/hash and pass the original file to both discovery
+  and execution. Retain coverage collectors and coverage Include/Exclude rules.
+- Reject selective test filters, early-stop/collapsed-theory settings and
+  unsupported adapter controls with specific diagnostics. Full native discovery,
+  assertion evidence, TRX reconciliation and all existing phase gates still apply.
+- Recognize package-owned `Content`/`None` through the exact restored dependency
+  graph, file membership and import provenance, including transitive package
+  assets and NuGet-generated content imports. No blanket cache/outside-root trust.
+- Keep existing project/package/source inputs unchanged. Missing restore records
+  call for normal package restore; `.csproj` edits or excluding package content
+  are not the setup repair path. Existing configuration is never overwritten.
+- Reuse the unchanged pinned runtime 1.5.0 interpreter and its original build
+  metadata. Finish/archive active tasks with their original plugin before updating.
+
 ## 1.5.2 — 2026-10-02
 
 - Reconcile xUnit discovery through fresh VSTest transport JSON and native case
