@@ -206,19 +206,43 @@ def coverage_checks(root, directories=None):
         raise RuntimeError("No native TRX runs available to verify existing coverage settings")
     covered = []
     for path in trx_paths:
+        path = Path(os.path.abspath(path))
+        if path.resolve() != path or root / ".ai-tdd" not in path.parents:
+            raise RuntimeError("Unsafe native results directory for coverage proof")
         tree = ET.fromstring(path.read_text(encoding="utf-8-sig"))
-        attachments = [child.get("href", "") for node in tree.iter() if node.tag.rsplit("}", 1)[-1] == "UriAttachment"
-                       for child in node.iter()]
-        if not any("coverage.cobertura.xml" in value for value in attachments):
-            raise RuntimeError("Inherited coverage collector did not attach its report to a native run")
-        reports = list(path.parent.rglob("coverage.cobertura.xml"))
-        if len(reports) != 1:
-            raise RuntimeError("Each native execution must produce exactly one fresh coverage report")
-        report = ET.fromstring(reports[0].read_text(encoding="utf-8-sig"))
+        ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+        deployments = tree.findall("t:TestSettings/t:Deployment", ns)
+        collectors = tree.findall("t:ResultSummary/t:CollectorDataEntries/t:Collector", ns)
+        attachments = [node.get("href", "") for collector in collectors
+                       if collector.get("uri", "").lower() == "datacollector://microsoft/coverletcodecoverage/1.0"
+                       for node in collector.findall("t:UriAttachments/t:UriAttachment/t:A", ns)]
+        if len(attachments) != 1:
+            raise RuntimeError("Each native execution must have exactly one referenced coverage attachment")
+        if len(deployments) != 1:
+            raise RuntimeError("Coverage attachment requires one unambiguous native deployment directory")
+        deployment = SETUP.msbuild_path(deployments[0].get("runDeploymentRoot", ""))
+        href = SETUP.msbuild_path(attachments[0])
+        # VSTest's TRX logger copies run-level collectors to Deployment/In/href;
+        # the original GUID collector directory is another legitimate copy.
+        # See microsoft/vstest TrxLogger/Utility/Converter.cs ToCollectorEntry.
+        for name in (deployment, href):
+            if (not name or Path(name).is_absolute() or ":" in name or "\x00" in name
+                    or any(part in {"", ".", ".."} for part in name.split("/"))):
+                raise RuntimeError("Unsafe coverage attachment: deployment and href must be relative local paths")
+        if "/" in deployment or Path(href).name != "coverage.cobertura.xml":
+            raise RuntimeError("Unsafe relative coverage attachment or deployment name")
+        attachment = path.parent / deployment / "In" / href
+        if attachment.resolve() != attachment or path.parent not in attachment.parents:
+            raise RuntimeError("Unsafe referenced coverage attachment outside its fresh native directory")
+        if not attachment.is_file() or attachment.stat().st_size > 10_000_000:
+            raise RuntimeError("Missing or unbounded referenced coverage attachment")
+        report = ET.fromstring(attachment.read_text(encoding="utf-8-sig"))
         classes = [node for node in report.iter("class") if node.get("name") == "Demo.Fee"]
         if not classes or not any(int(line.get("hits", "0")) > 0 for node in classes for line in node.iter("line")):
             raise RuntimeError("Coverage attachment did not witness execution of the synthetic feature")
-        covered.append({"native_results": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(reports[0].read_bytes()).hexdigest()})
+        covered.append({"native_results": path.relative_to(root).as_posix(),
+                        "coverage_attachment": attachment.relative_to(root).as_posix(),
+                        "sha256": hashlib.sha256(attachment.read_bytes()).hexdigest()})
     return {"coverage_attached_runs": len(covered), "coverage_feature_hit_proven": True, "coverage_reports": covered}
 
 

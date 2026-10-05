@@ -25,6 +25,14 @@ executed `Demo.Fee` line hits, copied package payload assertions, unchanged proj
 props/settings hashes, and full xUnit/NUnit DONE workflows. Existing 105-row xUnit
 identity and 70-project setup checks remain in the native CI path.
 
+The [initial native run](https://github.com/KubsGU/ai-tdd-kit/actions/runs/37285386449)
+exposed a fixture-verifier mistake: VSTest normally keeps the original coverage
+report plus a deployment copy referenced by TRX. Six attachment regressions now
+bind the exact `Deployment/In/href` file and reject absent, ambiguous, redirected
+or zero-hit references. A small local linked-source xUnit run verified actual
+coverage hits and unchanged authored inputs with both physical copies present.
+That proof is separate from the complete native host/SDK matrix.
+
 Final full-suite, native host/SDK and public install/download results are recorded
 in the [1.5.3 release notes](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.5.3).
 Plugin 1.5.3 retains the original pinned 1.5.0 interpreter and its historical
