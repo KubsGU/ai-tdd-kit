@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 dist/
 validation/*.json
+!validation/SKILLS_BEHAVIOR_PROBES.json
 CHECKSUMS.json
 .ai-tdd/
 .ai-tdd-history/
