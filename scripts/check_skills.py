@@ -68,7 +68,7 @@ def check_workflow(plugin, root):
     folder = root / ".ai-tdd"
     config = json.loads((plugin / "templates/config.unittest.json").read_text(encoding="utf-8"))
     # A real check of every source file's syntax, rather than a successful no-op.
-    config["quality_checks"] = [{"name": "syntax", "kind": "typecheck", "argv": ["{python}", "-B", "syntax_check.py"], "timeout_seconds": 20}]
+    config["quality_checks"] = [{"name": "syntax", "kind": "custom", "argv": ["{python}", "-B", "syntax_check.py"], "timeout_seconds": 20}]
     (root / "syntax_check.py").write_text("import ast\nfrom pathlib import Path\nfor path in Path('src').rglob('*.py'):\n    ast.parse(path.read_text(), filename=str(path))\n", encoding="utf-8")
     config["protected_paths"].append("syntax_check.py")
     (folder / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -112,7 +112,7 @@ def check_workflow(plugin, root):
     review = {"receipt_id": state["green_receipt"]["id"], "quality_receipt_id": state["quality_receipt"]["id"],
         "checked_ac": ["AC1"], "findings": [], "limitations": ["Synthetic deterministic role simulation; no host agent execution"],
         "recommendation": "accept", "repo_conventions": "Existing integer-cent API and unittest conventions preserved",
-        "quality_limitations": ["Syntax check only; no lint, security or formatting tools in this synthetic fixture"],
+        "quality_limitations": ["Syntax check only; no lint, type, security or formatting tools in this synthetic fixture"],
         "test_assessment": [{"test_id": test_id, "detects": "Exclusive boundary or missing fee waiver", "oracle": "AC1 literal zero at 10000 cents",
                              "why_needed": "Distinct boundary complements the regular-fee baseline"}]}
     (folder / "review.json").write_text(json.dumps(review), encoding="utf-8")
