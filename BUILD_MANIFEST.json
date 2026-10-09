@@ -106,6 +106,7 @@
     "marketplace/agensi/ai-tdd-listing.md",
     "marketplace/agensi/ai-tdd-test-review-listing.md",
     "marketplace/agensi/submission.md",
-    "validation/SKILLS_VALIDATION.md"
+    "validation/SKILLS_VALIDATION.md",
+    "validation/SKILLS_BEHAVIOR_PROBES.json"
   ]
 }

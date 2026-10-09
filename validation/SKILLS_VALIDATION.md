@@ -1,7 +1,9 @@
 # Standalone skills validation — 2026-10-09
 
 Release candidate 1.7.0 keeps the canonical controller sources and immutable
-runtime manifest. No external model API calls or private project data were used.
+runtime manifest. Deterministic controller checks need no model API calls. The
+separate bounded Claude probe below used only synthetic files; no private project
+data was used.
 
 ## Local executed checks
 
@@ -41,6 +43,34 @@ reported absent quality evidence and the independence limit from seeing the sour
 in its initial input. It ran no fixture commands, wrote no reports/state and did
 not claim DONE. This is one narrow instruction-behavior probe, not a statistical
 review-accuracy benchmark or proof of Claude/Cursor/Copilot model execution.
+
+## Claude Code activation and refinement
+
+The read-only skill was installed in a fresh synthetic project's `.claude/skills/`
+folder and invoked through Claude Code 2.1.294 with `sonnet`, medium effort, eight
+turns maximum and a $0.50 API budget cap per probe. Only Read/Glob/Grep/Skill tools
+were available; shell, network and mutation tools were absent. MCP configuration
+was empty, project-only settings were selected, and no private project files were
+provided. Both calls succeeded without permission denials.
+
+The first report detected self-equality, preserved the contract-observable mock
+test and refused to turn the author's claim into execution evidence. It missed
+the hardcoded-message counterexample and made no-retry coverage depend on resolving
+unspecified exception propagation. The skill/reference were refined to consider
+constant output/arguments for generalized contracts and assess independent clauses
+separately. The same unaltered fixture was then repeated once. The second report
+detected the hardcoded-message gap and no-retry checks without demanding exception
+propagation; it still labeled all probes unexecuted and quality evidence absent.
+
+Both complete reports and the unchanged fixture are retained in
+[SKILLS_BEHAVIOR_PROBES.json](SKILLS_BEHAVIOR_PROBES.json). The CLI reported
+`claude-sonnet-5-5` and list-price cost estimates $0.0676206/$0.0671044, including
+cache read/write usage. These are provider-reported observations, not independent
+backend identity verification or a subscription bill. The two probes total about
+$0.135 estimated list-price usage. No savings/accuracy comparison is established.
+Codex and Claude activation tests cover this narrow read-only skill; the full
+new Claude coordinator has deterministic/native registration evidence, not an
+additional end-to-end paid model trial. Other clients are not behavior-certified.
 
 ## CI and unverified scope
 

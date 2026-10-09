@@ -50,10 +50,12 @@ self-equality assertion and a useful contract-observable cache interaction test.
 The package uses the [Agent Skills format](https://agentskills.io/specification).
 The official skill-creator `quick_validate.py` accepted its frontmatter and naming
 during preparation on 2026-10-09. This does not establish model behavior, review
-accuracy, marketplace acceptance, or actual execution across agents. The example
-is illustrative and is not executed evidence. Any agent-executed evaluation should
-be reported separately with its scope and result; do not infer one from format
-validation.
+accuracy, marketplace acceptance, or actual execution across agents. The cache
+example is illustrative and is not executed evidence. Separate narrow activation
+probes used a synthetic message-forwarding contract in Codex and Claude Code;
+the initial Claude report missed a gap, then a refinement and one repeat detected
+it. See [the scoped validation and both reports](https://github.com/KubsGU/ai-tdd-kit/blob/main/validation/SKILLS_VALIDATION.md).
+These observations do not establish general review accuracy or every-client support.
 
 This reviewer does not run tests, modify code, issue verification receipts, or
 certify DONE. It cannot guarantee bug detection or enforce an operating-system

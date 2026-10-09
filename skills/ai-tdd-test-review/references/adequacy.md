@@ -49,6 +49,20 @@ Retain existing useful tests. Recommend merging or removing only a specifically
 justified redundant or invalid assertion, with the behavior protection preserved.
 Coverage and test counts help locate gaps; they cannot substitute for this judgment.
 
+For input-general contracts, try a small mental counterexample: always return the
+literal exercised by the test, or always forward that one literal argument. If
+the supplied suite accepts it while another valid input violates the contract,
+name that specific gap and propose a distinct example or contract-derived property.
+This is not a quota of two values per test, and the counterexample is unexecuted
+unless actual evidence is supplied. A correct current implementation does not
+make inadequate regression protection adequate.
+
+Keep clauses independent. If a contract forbids retries but leaves the caller's
+error outcome unspecified, a dependency-failure probe can still check one attempt
+without asserting that an exception must propagate. State any genuinely undecided
+outcome separately; do not turn it into a requirement or use it to ignore an
+already specified obligation.
+
 ## Execution and selected mutations
 
 The reviewer proposes probes; an authorized coordinator or developer executes them

@@ -55,6 +55,12 @@ Do not reproduce secrets or private runtime payloads in the report.
    Check skipped, deleted, or weakened tests and meaningful integration boundaries.
    An interaction assertion is valid when the contract makes that call, side effect,
    cache behavior, or rate limit observable. Do not reject mocks merely for existing.
+   For a contract that generalizes over inputs, explicitly consider a constant
+   result or hardcoded forwarded argument that matches the supplied example.
+   Report any surviving consequential fault as a proposed gap, even when the
+   current implementation is correct. Separate independent obligations: a
+   specified no-retry rule can be assessed by call count without inventing an
+   unspecified exception-propagation requirement.
 4. Compare behavior and test style with repository instructions, neighboring code,
    and established tooling. Reuse useful existing tests. Suggest consolidation only
    when it preserves meaningful fault detection. Do not impose test-count, coverage,
