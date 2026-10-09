@@ -16,7 +16,31 @@ change each artifact.
 · [Research](validation/RESEARCH.md)
 · [Validation](validation/VALIDATION.md) · [Roadmap](ROADMAP.md) · [MIT license](LICENSE)
 
-Version **1.6.0**.
+Version **1.7.0**.
+
+## Standalone Agent Skills
+
+Download one skill ZIP from the [1.7.0 release](https://github.com/KubsGU/ai-tdd-kit/releases/tag/v1.7.0),
+then copy its complete top-level folder into your agent's skills directory:
+
+| Skill | Purpose | Requirements |
+| --- | --- | --- |
+| `ai-tdd` | Clarification, separate test author/implementer, verified RED/GREEN, resume and independent review | Node.js, project toolchain, fresh sequential worker contexts; native Claude hooks require plugin registration |
+| `ai-tdd-test-review` | Read-only review of independent oracles, distinct fault detection and supplied quality evidence | File-reading agent; no runtime or plugin |
+
+Claude Code uses `.claude/skills/`, Cursor `.cursor/skills/`, and Copilot
+`.github/skills/`. See the bundled READMEs for official paths and installation.
+The full skill ships the **same controller sources** as this plugin; there is no
+second implementation or project adapter to maintain. Other hosts retain
+execution checkpoints but do not acquire Claude's hook interception or enforced
+worker permissions from Markdown. A host without fresh worker contexts cannot
+perform the full workflow. Read-only review remains usable.
+
+Existing Claude plugin users should keep the native installation below. For a
+fresh offline installation, the full skill also contains a local marketplace
+definition; its README explains registration without changing project settings.
+[Agensi submission drafts and disclosure](marketplace/agensi/submission.md) are
+included. Marketplace acceptance and execution in every agent are not claimed.
 
 ## Install
 

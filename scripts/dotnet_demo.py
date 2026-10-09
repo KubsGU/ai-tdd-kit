@@ -758,6 +758,7 @@ def failure_probe(root):
 
 
 def main():
+    global PLUGIN, SETUP, RUNNER, TDD
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runner-only", action="store_true")
     parser.add_argument("--linked-source", action="store_true", help="Use shared source files when local application control blocks newly built referenced DLLs")
@@ -766,7 +767,13 @@ def main():
     parser.add_argument("--framework", choices=("xunit", "nunit", "both"), default="both")
     parser.add_argument("--output")
     parser.add_argument("--failure-probe", action="store_true", help="Intentionally fail a generated native compile to verify CI artifact retention")
+    parser.add_argument("--plugin-root", type=Path, help="Exercise an extracted standalone skill's unchanged runtime sources")
     args = parser.parse_args()
+    if args.plugin_root:
+        PLUGIN = args.plugin_root.resolve()
+        SETUP = load("skill_dotnet_setup", "dotnet_setup.py")
+        RUNNER = load("skill_dotnet_runner", "dotnet_runner.py")
+        TDD = load("skill_dotnet_controller", "tdd.py")
     summaries = []
     packaged = None
     with fixture_directory() as root:

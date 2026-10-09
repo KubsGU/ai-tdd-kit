@@ -48,3 +48,7 @@ jobs:
         run: python -B scripts/test_strength_demo.py
       - name: Build public ZIP
         run: python -B scripts/build_zip.py
+      - name: Build standalone skills and verify relocated CLI evidence
+        run: |
+          python -B scripts/build_skills.py
+          python -B scripts/check_skills.py dist/skills/ai-tdd-1.7.0.zip dist/skills/ai-tdd-test-review-1.7.0.zip

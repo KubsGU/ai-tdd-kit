@@ -343,7 +343,7 @@ uploading private source is not required to use the kit or diagnose these checks
 MSBuild/test execution is trusted project code, not a sandbox for hostile code.
 External services, installed package contents and nondeterminism are not fully
 fingerprinted. Framework support is bounded; consult the
-[validation report](../../../validation/VALIDATION.md) for actual executed scope.
+[validation report](https://github.com/KubsGU/ai-tdd-kit/blob/main/validation/VALIDATION.md) for actual executed scope.
 Finish and archive active tasks with their original plugin before upgrading;
 the existing baseline, RED/GREEN and evidence freshness guards still apply.
 

@@ -1,0 +1,16 @@
+{
+  "name": "ai-tdd-local-skills",
+  "description": "Optional local native Claude integration for the standalone AI TDD skill.",
+  "owner": {"name": "KubsGU"},
+  "plugins": [
+    {
+      "name": "ai-tdd",
+      "source": "./",
+      "description": "Clarified contracts, independent test authorship, separate implementation and verified TDD evidence.",
+      "version": "1.7.0",
+      "homepage": "https://github.com/KubsGU/ai-tdd-kit",
+      "repository": "https://github.com/KubsGU/ai-tdd-kit",
+      "license": "MIT"
+    }
+  ]
+}

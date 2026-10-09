@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-09",
+  "host": "Claude Code 2.1.294",
+  "scope": "Two narrow synthetic read-only activation probes; same fixture before/after instruction refinement; not a general quality benchmark",
+  "controls": {
+    "model_alias": "sonnet",
+    "effort": "medium",
+    "max_turns": 8,
+    "max_budget_usd": 0.5,
+    "tools": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Skill"
+    ],
+    "settings_sources": [
+      "project"
+    ],
+    "mcp_servers": {},
+    "shell_network_mutation_tools_available": false
+  },
+  "fixture": {
+    "contract": "AC1: enqueue_one(queue,message) publishes exactly one message through queue.publish and returns that publish receipt unchanged. No retries or new receipt. Existing convention unittest and injected queue. No runner or quality output was supplied. The implementer says tests passed.",
+    "implementation": "def enqueue_one(queue, message):\n    return queue.publish(message)\n",
+    "tests": "import unittest\nfrom unittest.mock import Mock\nfrom send import enqueue_one\nclass SendTests(unittest.TestCase):\n    def test_response(self):\n        q = Mock()\n        actual = enqueue_one(q, \"hello\")\n        self.assertEqual(actual, actual)\n    def test_publish_once(self):\n        q = Mock()\n        receipt = object()\n        q.publish.return_value = receipt\n        actual = enqueue_one(q, \"hello\")\n        q.publish.assert_called_once_with(\"hello\")\n        self.assertIs(actual, receipt)\n"
+  },
+  "initial": {
+    "scope": "synthetic-read-only-skill-activation",
+    "exit_code": 0,
+    "is_error": false,
+    "subtype": "success",
+    "requested_model": "sonnet",
+    "model_usage": {
+      "claude-sonnet-5-5": {
+        "inputTokens": 8,
+        "outputTokens": 2151,
+        "cacheReadInputTokens": 35693,
+        "cacheCreationInputTokens": 9739,
+        "webSearchRequests": 0,
+        "costUSD": 0.0676206,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-sonnet-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "estimated_cost_usd": 0.0676206,
+    "report": "# AI TDD Test Review: `enqueue_one`\n\n## Scope and contract\n- **Files read:** `contract.md`, `send.py`, `test_send.py`, and the skill's `SKILL.md` and `references/adequacy.md`. I did not open `references/example.md`, `README.md` or `LICENSE`.\n- **Criterion assessed:** AC1. `enqueue_one(queue, message)` publishes exactly one message through `queue.publish` and returns that receipt unchanged. It makes no retries and creates no new receipt. The convention is `unittest` with an injected queue.\n- **Revision or diff:** none supplied. This is not a git repository, so I reviewed the files as they are now.\n- **Missing information:** the contract doesn't say what happens if `publish` raises. I didn't treat that as a requirement. See the question under Next actions.\n- **Independence limit:** I read the implementation, which is one line, in the same pass as the tests. The expectations below come from AC1, not from the implementation.\n\n## Findings\n\n**1. Low: `test_response` is a self-equality assertion.**\n- **Where:** `test_send.py:5-8`, `SendTests.test_response`.\n- **Evidence:** `self.assertEqual(actual, actual)` compares a value with itself, so it passes whatever `enqueue_one` returns.\n- **Faulty behavior it would accept (static, not executed):** `return None`, `return \"new receipt\"`, or a wrapped receipt would all pass. So would a version that publishes twice. `Mock()` makes `publish` return an auto-created `Mock`, and that equals itself.\n- **Clause:** AC1, returns the receipt unchanged.\n- **Impact:** it adds nothing to the suite and looks like coverage of the return value. Real coverage comes only from `test_publish_once`.\n- **Repair:** delete it, or assert against an independent expected value, as `test_publish_once` does. Removing it loses no fault detection.\n\n**2. Possible gap (not a defect): retries and exactly-once are only partly pinned.**\n- **Where:** `test_publish_once`.\n- **Evidence:** `assert_called_once_with(\"hello\")` rejects a second publish and a changed message. `assertIs` rejects a replaced or wrapped receipt.\n- **Gap:** the receipt is a single `object()` and the queue never fails. A retry only happens on failure, so the \"no retries\" clause is not exercised.\n- **Possible faulty behavior (unexecuted):** `try: return queue.publish(m) except Exception: return queue.publish(m)` passes every current test.\n- **Proposed probe:** set `q.publish.side_effect = RuntimeError`. Assert that `enqueue_one` raises, and that `publish` was called once.\n- **Dependency:** this probe only applies if the contract intends exceptions to propagate. That point needs confirming first.\n\n## Test assessment\n\n| Test | Concrete fault detected | Independently justified oracle | Distinct value |\n|---|---|---|---|\n| `test_response` | None. It accepts any return value. | None, because it is self-equality. | None. Remove it. |\n| `test_publish_once` | Double publish, publish skipped, wrong or mutated message, return of `None` or a new or wrapped receipt. | Yes. The receipt sentinel is created in the test, and AC1 fixes \"once\", the message, and \"unchanged\". `assertIs` checks identity, which is stricter than equality. | It is the only meaningful test. Keep it. |\n\n- **Mock use:** the `Mock` queue is valid here. The contract makes the `publish` call and its single invocation observable, and an injected queue is the stated convention.\n- **Not covered:** an `enqueue_one` that returns the right receipt without calling `publish` is caught, because `assert_called_once_with` would fail.\n\n## Execution evidence\n- **Supplied results:** none. The contract states that no runner or quality output was supplied.\n- **Implementer claim:** \"tests passed\" is not execution evidence. It has no command, scope, revision or output.\n- **Reviewer execution:** I ran nothing. The findings above are static.\n- **Lint, format, type and security checks:** all four are unverified. No configuration or run output was supplied.\n\n## Next actions and limits\n1. Remove `test_response`, or replace it with a real assertion. `test_publish_once` already covers that assertion.\n2. **Question:** should an exception from `publish` propagate with no retry? If yes, add the single-attempt failure test from finding 2. If the contract is silent by design, leave it out.\n3. **Unchecked risks:** behavior with `None` or non-string messages, and queue objects without `publish`. AC1 does not specify these, so I did not require them.\n4. Someone with execution access should run the suite and report the command, scope and result, since none is available to me.\n\n**Verdict: changes recommended.** This is a minor cleanup plus one open contract question. It is not a certification of completion or of exhaustive correctness.",
+    "permission_denials": []
+  },
+  "refined": {
+    "scope": "synthetic-read-only-skill-activation",
+    "exit_code": 0,
+    "is_error": false,
+    "subtype": "success",
+    "requested_model": "sonnet",
+    "model_usage": {
+      "claude-sonnet-5-5": {
+        "inputTokens": 6,
+        "outputTokens": 2206,
+        "cacheReadInputTokens": 23002,
+        "cacheCreationInputTokens": 10108,
+        "webSearchRequests": 0,
+        "costUSD": 0.0671044,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 0,
+        "canonicalModel": "claude-sonnet-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "estimated_cost_usd": 0.0671044,
+    "report": "## AI TDD Test Review: `enqueue_one`\n\n### Scope and contract\n- **Files read:** `contract.md`, `send.py`, `test_send.py`, and the skill's `references/adequacy.md`. I read the contract first, but I had also seen the implementation before I wrote the examples below, so the review is not fully independent of it.\n- **AC1:** `enqueue_one(queue, message)` publishes exactly one message through `queue.publish` and returns that publish receipt unchanged. It must not retry or create a new receipt. The convention is `unittest` with an injected queue.\n- **Missing:** no diff or revision, no runner output, and no lint, format, type or security output. The contract says the implementer reports passing tests. That is a claim, not evidence.\n- **Unreviewed:** nothing. Both tests were reviewed.\n\n### Findings\n\n**1. Medium: `test_response` is self-equality.**\n- **Where:** `test_send.py:5-8`, against AC1 (\"returns that receipt unchanged\").\n- **Evidence:** `assertEqual(actual, actual)` always passes. The test never checks the publish call or the receipt.\n- **Faulty behavior it accepts (not executed):** `return None`, `return \"new-receipt\"`, or `queue.publish(message); return object()`.\n- **Impact:** the test looks like coverage of AC1 but protects nothing. It also calls the bare `Mock()`, so `publish` runs once with no check.\n- **Repair:** delete it or replace it with a real assertion. `test_publish_once` already covers its intended contract, so deleting it loses nothing.\n\n**2. Low\u2013Medium: the suite accepts hardcoded values (possible gap, not executed).**\n- **Where:** `test_send.py:9-15`. The only input is `\"hello\"`, and the receipt is a single `object()`.\n- **Counterexample:** `def enqueue_one(queue, message): return queue.publish(\"hello\")` passes both tests. AC1 generalizes over messages, so a function that forwards a fixed literal violates it.\n- **Impact:** a message could be silently replaced or dropped for every input except `\"hello\"`.\n- **Repair:** add a second test with a different message, for example `{\"id\": 7}` or a distinct object. Assert `assert_called_once_with` on that message. Using `assertIs` on the message identity would also catch a copy or transformation, but only if the contract requires the message to be passed unchanged. The contract says only \"publishes \u2026 message\", so I'd treat identity as optional.\n\n**3. Low: the no-retry clause is only partly checked.**\n- **Where:** AC1, \"No retries\".\n- **Evidence:** `assert_called_once_with` does fail on a retry loop when `publish` returns normally. It does not cover a retry triggered by a failure or a falsy or \"not ready\" receipt.\n- **Counterexample (not executed):** `r = queue.publish(m); if not r: r = queue.publish(m); return r` passes both current tests, because the receipt is truthy and the bare `Mock()` is only used in the self-equality test.\n- **Repair:** add a probe where `publish.return_value` is falsy (`None` or `0`). Assert exactly one call and that the same value is returned. Optionally add a `side_effect=RuntimeError` probe that asserts one call. The contract doesn't say how errors should propagate, so don't assert that an exception must be raised.\n\n### Test assessment\n\n| Test | Fault detected | Independent oracle | Distinct value |\n|---|---|---|---|\n| `test_send.py::SendTests::test_response` | None. It's a tautology. | None. It compares the result to itself. | None. Remove it. |\n| `test_send.py::SendTests::test_publish_once` | Not calling `publish`, calling it twice, publishing a different message than `\"hello\"`, returning something other than the receipt (`assertIs` rejects an equal copy or a wrapper). | The contract fixes it. The receipt is a sentinel the test creates, so the expected value doesn't come from production code. The call count and forwarding are observable behavior the contract requires. | Keep it. It is the only real AC1 check. The mock is acceptable because the injected `publish` call is the contract. |\n\n### Execution evidence\n- **Supplied:** none. The implementer's \"tests passed\" has no command, scope, result or revision, so it is not evidence.\n- **Executed by me:** nothing. All counterexamples above are static and unexecuted.\n- **Lint, format, type and security:** all four are unverified, and none were supplied.\n\n### Next actions and limits\nChanges recommended.\n1. Remove or replace `test_response` (finding 1).\n2. Add a second-message forwarding test (finding 2).\n3. Add a falsy-receipt single-call test (finding 3).\n\n**Question:** should the message be passed through by identity or only by equality? This affects whether `assertIs` or `assertEqual` is the right check on the forwarded message.\n\n**Unchecked risks:** the tests were never run, so I can't confirm they even collect and pass. I did not check how the real queue behaves, including error handling. This review does not certify the feature as complete or exhaustively correct.",
+    "permission_denials": []
+  }
+}

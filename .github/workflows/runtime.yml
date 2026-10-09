@@ -88,6 +88,16 @@ jobs:
         run: |
           if [ "$RUNTIME_PLATFORM" = win32-x64 ]; then suffix=.exe; else suffix=; fi
           python -B scripts/measure_runtime.py --packaged-executable "$PWD/dist/runtime/ai-tdd-controller-1.5.0-${RUNTIME_PLATFORM}${suffix}" --output "dist/runtime/runtime-timing-${RUNTIME_PLATFORM}.json"
+      - name: Verify extracted skill through the native interpreter and .NET
+        if: inputs.release_download != true
+        shell: bash
+        env:
+          RUNTIME_PLATFORM: ${{ matrix.platform }}
+          DOTNET_DEMO_SDK: '10.0.301'
+        run: |
+          if [ "$RUNTIME_PLATFORM" = win32-x64 ]; then suffix=.exe; else suffix=; fi
+          python -B scripts/build_skills.py
+          python -B scripts/check_skills.py dist/skills/ai-tdd-1.7.0.zip --native-dotnet --packaged-executable "$PWD/dist/runtime/ai-tdd-controller-1.5.0-${RUNTIME_PLATFORM}${suffix}" --output "dist/runtime/skill-${RUNTIME_PLATFORM}.json"
       - name: Verify anonymous released-runtime bootstrap
         run: python -B scripts/check_runtime_download.py --project-count 70 --native-dotnet --output dist/runtime/bootstrap-${{ matrix.platform }}.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

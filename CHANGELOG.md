@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.7.0 — 2026-10-09
+
+- Publish two individually installable MIT Agent Skills: full `ai-tdd` and
+  read-only `ai-tdd-test-review`, with standard metadata, complete support files,
+  examples, official installation paths and free Agensi listing drafts.
+- Build one reproducible ZIP per skill from explicit public source mappings.
+  Include checksums and the unchanged canonical controller closure, never private
+  repositories, caches or compiled runtimes. Preserve the existing plugin ZIP.
+- Distinguish portable execution checkpoints from Claude's preventive hooks and
+  worker permissions. Require fresh sequential worker contexts; do not simulate
+  independence in one conversation. Offer optional local native plugin registration.
+- Freeze the standalone coordinator instructions, host guide and registration
+  definitions during active tasks, with a real RED/GREEN tamper regression.
+- Verify downloaded and relocated CLI workflows, actual quality execution,
+  source/test tamper rejection and native .NET fixtures in CI. This is deterministic
+  execution validation, not an LLM benchmark or a claim of all-agent support.
+- Keep pinned interpreter 1.5.0 and its original public hashes. Finish/archive
+  active tasks with their original engine before upgrading or moving installations.
+
 ## 1.6.0 — 2026-10-05
 
 - Automatically support runtime-enumerated xUnit theory rows, including
