@@ -78,6 +78,31 @@ for the current requirements. The official `claude-plugins-official` marketplace
 has a separate partner-contact route; directory submission does not itself add
 the plugin to that marketplace.
 
+## Standalone skills and Agensi
+
+Keep `SKILLS_MANIFEST.json` and `BUILD_MANIFEST.json` aligned with the release
+version. The skill builder maps public canonical sources into a complete skill
+folder; do not maintain another controller copy under `skills/`.
+
+```text
+python -B scripts/build_skills.py
+python -B scripts/check_skills.py dist/skills/ai-tdd-1.7.0.zip dist/skills/ai-tdd-test-review-1.7.0.zip --claude-install
+```
+
+The check extracts outside the checkout, verifies the exact inventory and hashes,
+runs real subprocess RED/GREEN/quality/review/final gates, checks tamper rejection,
+and optionally installs the native bundle in temporary Claude settings. Native
+runtime CI additionally exercises the extracted bundle against real .NET fixtures
+with Python absent from the controller's PATH. These are scoped checks, not model
+quality benchmarks or certification of every host's orchestration.
+
+Attach both individual ZIPs and their `.sha256` files to the release alongside the
+existing plugin ZIP. Use the dedicated [Agensi submission package](marketplace/agensi/submission.md)
+for separate listing drafts, permission/network disclosures and account/review
+steps. Do not upload the source repository ZIP as a single skill, ship runtime
+binaries in a skill archive, guess undocumented scanner fields, or claim review
+approval before it exists.
+
 ## Forking
 
 For your own marketplace, replace the repository owner/name in install commands,

@@ -79,4 +79,4 @@ Hooks are workflow controls, not OS isolation. Separate contexts can still share
 a mistaken interpretation, and tests in the same repository are not a secret
 holdout. One validated example is not a comparative benchmark.
 
-MIT license. Version 1.6.0.
+MIT license. Version 1.7.0.

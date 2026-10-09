@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "files": [
     "README.md",
     "README.pl.md",
@@ -89,6 +89,23 @@
     "validation/dotnet-native-fixtures.json",
     "scripts/check_runtime_download.py",
     "validation/DOTNET_VALIDATION.md",
-    "validation/DOTNET_CI_RESULTS.json"
+    "validation/DOTNET_CI_RESULTS.json",
+    "SKILLS_MANIFEST.json",
+    "scripts/build_skills.py",
+    "scripts/check_skills.py",
+    "plugins/ai-tdd/tests/test_skill_distribution.py",
+    "skills/ai-tdd/SKILL.md",
+    "skills/ai-tdd/README.md",
+    "skills/ai-tdd/references/host-integration.md",
+    "skills/ai-tdd/.claude-plugin/marketplace.json",
+    "skills/ai-tdd-test-review/SKILL.md",
+    "skills/ai-tdd-test-review/README.md",
+    "skills/ai-tdd-test-review/LICENSE",
+    "skills/ai-tdd-test-review/references/adequacy.md",
+    "skills/ai-tdd-test-review/references/example.md",
+    "marketplace/agensi/ai-tdd-listing.md",
+    "marketplace/agensi/ai-tdd-test-review-listing.md",
+    "marketplace/agensi/submission.md",
+    "validation/SKILLS_VALIDATION.md"
   ]
 }

@@ -75,7 +75,7 @@ If a different model is needed, preserve the incomplete evidence; do not change
 config, use forced environment overrides or silently retry a different profile.
 The current fixed policy trades flexibility for auditable model choices.
 
-Use [the paired benchmark protocol](../../../validation/MODEL_BENCHMARK_PROTOCOL.md)
+Use [the paired benchmark protocol](https://github.com/KubsGU/ai-tdd-kit/blob/main/validation/MODEL_BENCHMARK_PROTOCOL.md)
 and its observed results to assess profiles. Small synthetic samples do not prove
 lossless routing for arbitrary repositories or security-critical changes.
 

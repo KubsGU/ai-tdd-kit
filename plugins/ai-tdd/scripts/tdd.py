@@ -394,7 +394,8 @@ class Controller:
         for name in ("scripts/tdd.py", "scripts/quality.py", "scripts/unittest_runner.py", "scripts/pytest_runner.py", "scripts/hook-launcher.cjs", "hooks/hooks.json",
                      "scripts/tdd-launcher.cjs", "scripts/runtime_entry.py", "scripts/dotnet_runner.py", "scripts/dotnet_setup.py", "runtime-manifest.json", "references/dotnet.md",
                      "agents/test-author.md", "agents/implementer.md", "agents/verifier.md",
-                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md", "references/quality.md"):
+                     "skills/feature/SKILL.md", "skills/resume/SKILL.md", "references/protocol.md", "references/efficiency.md", "references/quality.md",
+                     "SKILL.md", "references/host-integration.md", ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"):
             result["plugin/" + name] = digest(PLUGIN / name)
         return result
 

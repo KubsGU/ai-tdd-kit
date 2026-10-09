@@ -1,0 +1,44 @@
+{
+  "version": "1.7.0",
+  "skills": {
+    "ai-tdd": {
+      "runtime-manifest.json": "plugins/ai-tdd/runtime-manifest.json",
+      "scripts/tdd.py": "plugins/ai-tdd/scripts/tdd.py",
+      "scripts/quality.py": "plugins/ai-tdd/scripts/quality.py",
+      "scripts/dotnet_setup.py": "plugins/ai-tdd/scripts/dotnet_setup.py",
+      "scripts/dotnet_runner.py": "plugins/ai-tdd/scripts/dotnet_runner.py",
+      "scripts/unittest_runner.py": "plugins/ai-tdd/scripts/unittest_runner.py",
+      "scripts/pytest_runner.py": "plugins/ai-tdd/scripts/pytest_runner.py",
+      "scripts/runtime_entry.py": "plugins/ai-tdd/scripts/runtime_entry.py",
+      "scripts/tdd-launcher.cjs": "plugins/ai-tdd/scripts/tdd-launcher.cjs",
+      "scripts/hook-launcher.cjs": "plugins/ai-tdd/scripts/hook-launcher.cjs",
+      "templates/config.unittest.json": "plugins/ai-tdd/templates/config.unittest.json",
+      "templates/config.pytest.json": "plugins/ai-tdd/templates/config.pytest.json",
+      "templates/spec.example.json": "plugins/ai-tdd/templates/spec.example.json",
+      "templates/review.example.json": "plugins/ai-tdd/templates/review.example.json",
+      "references/protocol.md": "plugins/ai-tdd/references/protocol.md",
+      "references/efficiency.md": "plugins/ai-tdd/references/efficiency.md",
+      "references/quality.md": "plugins/ai-tdd/references/quality.md",
+      "references/dotnet.md": "plugins/ai-tdd/references/dotnet.md",
+      "agents/test-author.md": "plugins/ai-tdd/agents/test-author.md",
+      "agents/implementer.md": "plugins/ai-tdd/agents/implementer.md",
+      "agents/verifier.md": "plugins/ai-tdd/agents/verifier.md",
+      "hooks/hooks.json": "plugins/ai-tdd/hooks/hooks.json",
+      "skills/feature/SKILL.md": "plugins/ai-tdd/skills/feature/SKILL.md",
+      "skills/resume/SKILL.md": "plugins/ai-tdd/skills/resume/SKILL.md",
+      ".claude-plugin/plugin.json": "plugins/ai-tdd/.claude-plugin/plugin.json",
+      "SKILL.md": "skills/ai-tdd/SKILL.md",
+      "README.md": "skills/ai-tdd/README.md",
+      "references/host-integration.md": "skills/ai-tdd/references/host-integration.md",
+      ".claude-plugin/marketplace.json": "skills/ai-tdd/.claude-plugin/marketplace.json",
+      "LICENSE": "LICENSE"
+    },
+    "ai-tdd-test-review": {
+      "SKILL.md": "skills/ai-tdd-test-review/SKILL.md",
+      "README.md": "skills/ai-tdd-test-review/README.md",
+      "LICENSE": "skills/ai-tdd-test-review/LICENSE",
+      "references/adequacy.md": "skills/ai-tdd-test-review/references/adequacy.md",
+      "references/example.md": "skills/ai-tdd-test-review/references/example.md"
+    }
+  }
+}
